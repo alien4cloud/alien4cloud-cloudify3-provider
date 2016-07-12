@@ -289,6 +289,10 @@ public class CloudifyDeploymentBuilderService {
         Map<String, IndexedNodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
         Map<String, IndexedRelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
         for (PaaSNodeTemplate nonNative : deploymentContext.getPaaSTopology().getNonNatives()) {
+            // Ignore if the non native type is a docker type
+            if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
+                continue;
+            }
             nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
             List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();
             for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {

@@ -38,9 +38,11 @@ public class CSARUtil {
     public static final Path TOSCA_NORMATIVE_TYPES = ARTIFACTS_DIRECTORY.resolve(TOSCA_NORMATIVE_TYPES_NAME);
     public static final String URL_FOR_NORMATIVES = "https://github.com/alien4cloud/tosca-normative-types.git";
     public static final String URL_FOR_STORAGE = "https://github.com/alien4cloud/alien4cloud-extended-types.git";
+    public static final String URL_FOR_DOCKER = "https://github.com/alien4cloud/docker-tosca-types.git";
     public static final String ALIEN4CLOUD_STORAGE_TYPES = "alien4cloud-extended-types";
     public static final String ALIEN_EXTENDED_STORAGE_TYPES = "alien-extended-storage-types";
     public static final String ALIEN_EXTENDED_BASE_TYPES = "alien-base-types";
+    public static final String DOCKER_TYPES_NAME = "docker-tosca-types";
 
     @Resource
     private ArchiveUploadService archiveUploadService;
@@ -107,6 +109,11 @@ public class CSARUtil {
         uploadCSAR(Paths.get(ClassLoader.getSystemResource("components/support-hss").toURI()));
     }
 
+
+    public void uploadDockerTypes() throws Exception {
+        uploadCSAR(ARTIFACTS_DIRECTORY.resolve(DOCKER_TYPES_NAME));
+    }
+
     public void uploadCustomApache() throws Exception {
         uploadCSAR(Paths.get("./src/test/resources/components/apache"));
     }
@@ -115,6 +122,7 @@ public class CSARUtil {
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_SAMPLES, "master", SAMPLES_TYPES_NAME);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "master", TOSCA_NORMATIVE_TYPES_NAME);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_STORAGE, "master", ALIEN4CLOUD_STORAGE_TYPES);
+        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_DOCKER, "master", DOCKER_TYPES_NAME);
         uploadNormativeTypes();
         uploadStorage();
         uploadTomcat();
@@ -125,5 +133,6 @@ public class CSARUtil {
         uploadArtifactTest();
         uploadCustomFS();
         uploadCustomApache();
+        uploadDockerTypes();
     }
 }

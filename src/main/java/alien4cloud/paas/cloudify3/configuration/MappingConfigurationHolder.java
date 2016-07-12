@@ -6,15 +6,14 @@ import java.nio.file.Files;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.YamlParserUtil;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component("cloudify-mapping-configuration-holder")

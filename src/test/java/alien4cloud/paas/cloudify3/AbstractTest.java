@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3;
 
+import alien4cloud.component.repository.exception.CSARVersionAlreadyExistsException;
 import alien4cloud.model.components.CSARSource;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -91,7 +92,7 @@ public abstract class AbstractTest {
 
         // FileUtil.copy(Paths.get("src/main/resources"), tempPluginDataPath);
         for (Path cloudify3Path : Files.newDirectoryStream(Paths.get("target/"))) {
-            if (Files.isDirectory(cloudify3Path) && cloudify3Path.toString().startsWith("target/alien4cloud-cloudify3-provider")) {
+            if (Files.isDirectory(cloudify3Path) && cloudify3Path.toString().replaceAll("\\\\", "/").startsWith("target/alien4cloud-cloudify3-provider")) {
                 FileUtil.copy(cloudify3Path, tempPluginDataPath);
             }
         }
@@ -112,11 +113,16 @@ public abstract class AbstractTest {
 
         FileUtil.delete(Paths.get(repositoryCsarDirectory));
         csarUtil.uploadAll();
+
         // Reload in order to be sure that the archive is constructed once all dependencies have been uploaded
         List<ParsingError> parsingErrors = Lists.newArrayList();
         for (PluginArchive pluginArchive : cloudifyOrchestrator.pluginArchives()) {
             // index the archive in alien catalog
-            archiveIndexer.importArchive(pluginArchive.getArchive(), CSARSource.OTHER, pluginArchive.getArchiveFilePath(), parsingErrors);
+            try {
+                archiveIndexer.importArchive(pluginArchive.getArchive(), CSARSource.OTHER, pluginArchive.getArchiveFilePath(), parsingErrors);
+            } catch (CSARVersionAlreadyExistsException e) {
+                e.printStackTrace();
+            }
         }
 
         // index archives of provided locations in alien catalog
@@ -127,7 +133,11 @@ public abstract class AbstractTest {
                 if (locationConfigurator != null) {
                     for (PluginArchive pluginArchive : locationConfigurator.pluginArchives()) {
                         // index the archive in alien catalog
-                        archiveIndexer.importArchive(pluginArchive.getArchive(), CSARSource.OTHER, pluginArchive.getArchiveFilePath(), parsingErrors);
+                        try {
+                            archiveIndexer.importArchive(pluginArchive.getArchive(), CSARSource.OTHER, pluginArchive.getArchiveFilePath(), parsingErrors);
+                        } catch (CSARVersionAlreadyExistsException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }

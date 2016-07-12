@@ -17,12 +17,15 @@ imports:
 node_types:
 #parse("types.yaml.vm")
 
-#if($util.collectionHasElement($deployment.nonNativesTypes))
+#if($docker_types)
+#parse("provider/${deployment.locationType}/kubernetes_types.yaml.vm")
+#elseif($util.collectionHasElement($deployment.nonNativesTypes))
 #foreach($nonNativeType in ${deployment.nonNativesTypes})
   ${nonNativeType.elementId}:
     derived_from: $util.nonNative.getDerivedFromType($nonNativeType.derivedFrom)
 #end
 #end
+
 #parse("provider/common/monitor_type.yaml.vm")
 
 #if($util.collectionHasElement($deployment.nonNativesRelationshipTypes))
@@ -36,11 +39,16 @@ relationships:
 #end
 
 node_templates:
+
+#if($docker_types)
+#parse("provider/${deployment.locationType}/kubernetes.yaml.vm")
+#else
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
 
 #nonNativeNodes($deployment.nonNatives)
+#end
 
 #parse("provider/common/monitor_node.yaml.vm")
 
