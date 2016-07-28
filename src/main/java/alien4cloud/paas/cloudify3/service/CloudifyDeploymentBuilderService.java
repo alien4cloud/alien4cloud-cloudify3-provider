@@ -289,7 +289,7 @@ public class CloudifyDeploymentBuilderService {
         Map<String, IndexedNodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
         Map<String, IndexedRelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
         for (PaaSNodeTemplate nonNative : deploymentContext.getPaaSTopology().getNonNatives()) {
-            // Ignore if the non native type is a docker type
+            // FIXME ugly workaround for docker/kubernetes. Ignore if the non native type is a docker type
             if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
                 continue;
             }
@@ -298,8 +298,13 @@ public class CloudifyDeploymentBuilderService {
             for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {
                 if (!NormativeRelationshipConstants.DEPENDS_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())
                         && !NormativeRelationshipConstants.HOSTED_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())) {
-                    nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
-                            relationshipTemplate.getIndexedToscaElement());
+                    // FIXME kubernetes. If the source of the relationship is a docker node, ignore it
+                    PaaSNodeTemplate sourceNodeTemplate = deploymentContext.getPaaSTopology().getAllNodes().get(relationshipTemplate.getSource());
+                    if (!ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER,
+                            sourceNodeTemplate.getIndexedToscaElement())) {
+                        nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
+                                relationshipTemplate.getIndexedToscaElement());
+                    }
                 }
             }
         }

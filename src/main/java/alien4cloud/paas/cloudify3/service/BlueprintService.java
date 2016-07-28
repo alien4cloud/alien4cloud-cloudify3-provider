@@ -318,15 +318,18 @@ public class BlueprintService {
                 // }
             }
         }
+        // FIXME ugly remove docker types from non native types list
+        alienDeployment.getNonNatives().removeAll(dockerTypes);
         if (!dockerTypes.isEmpty()) {
             context.put("docker_types", dockerTypes);
+
         }
         if (!docker_envs.isEmpty()) {
             context.put("docker_envs", docker_envs);
         }
 
         // Generate the blueprint at the end
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
+            VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
         return generatedBlueprintFilePath;
     }
 
