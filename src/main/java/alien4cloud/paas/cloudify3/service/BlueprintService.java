@@ -1,17 +1,31 @@
 package alien4cloud.paas.cloudify3.service;
 
+import static alien4cloud.paas.cloudify3.util.ArtifactUtil.getInternalRepositoryArtifactPath;
+import static alien4cloud.paas.cloudify3.util.ArtifactUtil.getToscaArchiveArtifactPath;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.elasticsearch.common.collect.Sets;
+import org.springframework.beans.factory.annotation.Required;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Maps;
+
 import alien4cloud.component.repository.ArtifactLocalRepository;
 import alien4cloud.component.repository.ArtifactRepositoryConstants;
 import alien4cloud.component.repository.CsarFileRepository;
 import alien4cloud.component.repository.exception.CSARVersionNotFoundException;
-import alien4cloud.model.components.DeploymentArtifact;
-import alien4cloud.model.components.IArtifact;
-import alien4cloud.model.components.ImplementationArtifact;
-import alien4cloud.model.components.IndexedArtifactToscaElement;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.IndexedRelationshipType;
-import alien4cloud.model.components.Interface;
-import alien4cloud.model.components.Operation;
+import alien4cloud.model.components.*;
 import alien4cloud.model.topology.AbstractTemplate;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
@@ -22,35 +36,12 @@ import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
 import alien4cloud.paas.cloudify3.service.model.Relationship;
 import alien4cloud.paas.cloudify3.util.VelocityUtil;
-import alien4cloud.paas.model.PaaSDeploymentLog;
-import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
-import com.google.common.collect.Maps;
-import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.elasticsearch.common.collect.Sets;
-import org.springframework.beans.factory.annotation.Required;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 /**
  * Handle blueprint generation from alien model
@@ -295,37 +286,33 @@ public class BlueprintService {
     private void copyArtifact(Path generatedBlueprintDirectoryPath, Path csarPath, String pathToNode, IArtifact artifact, IArtifact originalArtifact)
             throws IOException {
         Path artifactPath;
-        Path artifactCopiedPath;
+        Path artifactTargetPath;
         if (originalArtifact != null && ArtifactRepositoryConstants.ALIEN_ARTIFACT_REPOSITORY.equals(artifact.getArtifactRepository())) {
-            // If the internal repository is used
-            // Overridden artifact
-            Path artifactCopiedDirectory = generatedBlueprintDirectoryPath
-                    .resolve(mappingConfigurationHolder.getMappingConfiguration().getTopologyArtifactDirectoryName()).resolve(pathToNode)
-                    .resolve(originalArtifact.getArchiveName());
+            // If the internal repository is used: overridden artifact
+            artifactTargetPath = getInternalRepositoryArtifactPath(generatedBlueprintDirectoryPath, mappingConfigurationHolder.getMappingConfiguration(),
+                    pathToNode, artifact, originalArtifact);
             artifactPath = artifactRepository.resolveFile(artifact.getArtifactRef());
-            artifactCopiedPath = artifactCopiedDirectory.resolve(originalArtifact.getArtifactRef());
-            ensureArtifactDefined(originalArtifact, pathToNode);
         } else {
-            Path artifactCopiedDirectory = generatedBlueprintDirectoryPath.resolve("artifacts").resolve(artifact.getArchiveName());
+            ensureArtifactDefined(artifact, pathToNode);
             FileSystem csarFS = FileSystems.newFileSystem(csarPath, null);
             artifactPath = csarFS.getPath(artifact.getArtifactRef());
-            artifactCopiedPath = artifactCopiedDirectory.resolve(artifact.getArtifactRef());
-            ensureArtifactDefined(artifact, pathToNode);
+            artifactTargetPath = getToscaArchiveArtifactPath(generatedBlueprintDirectoryPath, artifact);
         }
-        if (Files.isRegularFile(artifactCopiedPath)) {
+        if (Files.isRegularFile(artifactTargetPath)) {
             // already copied do nothing
             return;
         }
-        Files.createDirectories(artifactCopiedPath.getParent());
+        Files.createDirectories(artifactTargetPath.getParent());
         if (Files.isDirectory(artifactPath)) {
-            FileUtil.copy(artifactPath, artifactCopiedPath, StandardCopyOption.REPLACE_EXISTING);
+            FileUtil.copy(artifactPath, artifactTargetPath, StandardCopyOption.REPLACE_EXISTING);
         } else {
-            Files.copy(artifactPath, artifactCopiedPath);
+            Files.copy(artifactPath, artifactTargetPath);
         }
     }
 
     private void ensureArtifactDefined(IArtifact artifact, String nodeId) {
         if (artifact.getArtifactRef() == null || artifact.getArtifactRef().isEmpty()) {
+            // TODO Better generate a warn log and return (optional artifacts).
             throw new BlueprintGenerationException(
                     "Cloudify plugin only manage deployment artifact with an artifact ref not null or empty. Failed to copy artifact of type <"
                             + artifact.getArtifactType() + "> for node <" + nodeId + ">.");

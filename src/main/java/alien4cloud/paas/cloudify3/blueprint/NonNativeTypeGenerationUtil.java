@@ -19,6 +19,7 @@ import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
 import alien4cloud.paas.cloudify3.service.model.Relationship;
+import alien4cloud.paas.cloudify3.util.ArtifactUtil;
 import alien4cloud.paas.exception.NotSupportedException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.PaaSNodeTemplate;
@@ -367,7 +368,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             return getArtifactRelativePath(artifact);
         } else if (Objects.equals(topologyArtifact.getArtifactRepository(), ArtifactRepositoryConstants.ALIEN_ARTIFACT_REPOSITORY)) {
             // Overidden in the topology via upload
-            return mappingConfiguration.getTopologyArtifactDirectoryName() + "/" + nodeId + "/" + artifact.getArchiveName() + "/" + artifact.getArtifactRef();
+            return ArtifactUtil.getInternalRepositoryArtifactPath(mappingConfiguration, nodeId, topologyArtifact, artifact);
         } else {
             // overridded in topology via yaml import
             return getArtifactRelativePath(topologyArtifact);
@@ -409,7 +410,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public String getArtifactRelativePath(IArtifact artifact) {
-        return "artifacts/" + artifact.getArchiveName() + "/" + artifact.getArtifactRef();
+        return ArtifactUtil.getToscaArchiveArtifactPath(artifact);
     }
 
     public String getArtifactWrapperPath(IPaaSTemplate<?> owner, String interfaceName, String operationName, IArtifact artifact) {
