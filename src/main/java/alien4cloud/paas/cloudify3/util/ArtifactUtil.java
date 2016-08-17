@@ -32,9 +32,9 @@ public final class ArtifactUtil {
         Path targetPath = rootPath.resolve(mappingConfiguration.getTopologyArtifactDirectoryName()).resolve(nodeId).resolve(originalArtifact.getArchiveName());
 
         if (originalArtifact.getArtifactRef() == null || originalArtifact.getArtifactRef().isEmpty()) {
-            targetPath.resolve(artifact.getArtifactRef());
+            targetPath = targetPath.resolve(artifact.getArtifactRef());
         } else {
-            targetPath.resolve(originalArtifact.getArtifactRef());
+            targetPath = targetPath.resolve(originalArtifact.getArtifactRef());
         }
 
         return targetPath;
@@ -53,7 +53,7 @@ public final class ArtifactUtil {
     public static String getInternalRepositoryArtifactPath(MappingConfiguration mappingConfiguration, String nodeId, IArtifact artifact,
             IArtifact originalArtifact) {
         StringBuilder sb = new StringBuilder(mappingConfiguration.getTopologyArtifactDirectoryName()).append("/").append(nodeId).append("/")
-                .append(originalArtifact.getArchiveName());
+                .append(originalArtifact.getArchiveName()).append("/");
 
         if (originalArtifact.getArtifactRef() == null || originalArtifact.getArtifactRef().isEmpty()) {
             sb.append(artifact.getArtifactRef());

@@ -94,9 +94,6 @@ public class BlueprintService {
     public void postConstruct() throws IOException {
         synchronized (BlueprintService.class) {
             this.pluginRecipeResourcesPath = this.pluginContext.getPluginPath().resolve("recipe");
-            // if (Files.exists(this.pluginRecipeResourcesPath.resolve("velocity").resolve("provider"))) {
-            // return;
-            // }
             log.info("Copy provider templates to velocity main template's folder");
             // This is a workaround to copy provider templates to velocity folder as relative path do not work with velocity
             List<Path> providerTemplates = FileUtil.listFiles(this.pluginContext.getPluginPath().resolve("provider"), ".+\\.yaml\\.vm");
