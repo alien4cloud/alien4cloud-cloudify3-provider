@@ -54,6 +54,8 @@ public class CloudifyDeployment {
 
     private Map<String, PaaSNodeTemplate> allNodes;
 
+    private Map<String, List<PaaSNodeTemplate>> groups;
+
     /**
      * node id --> artifact_name --> artifact
      */

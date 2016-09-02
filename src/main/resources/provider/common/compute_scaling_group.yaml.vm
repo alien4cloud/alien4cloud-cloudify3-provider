@@ -1,0 +1,46 @@
+#*
+  For each compute in the compute list.
+  Add scalable compute into a map: _a4c_scalable_computes 
+  Also add volumes and public ips attached to the compute
+*#
+#macro(buildScalableComputeGroups $computes)
+#set($_a4c_scalable_computes={})
+#foreach($compute in $computes)
+##if($compute.scalingPolicy.maxInstances > 1 && $compute.groups.isEmpty())
+#if($compute.scalingPolicy.maxInstances > 1)
+## ###### add scalable compute ###
+#set($members=[$compute.id])
+## ###### add attached volumes ###
+#foreach($storageNode in $compute.storageNodes)
+#set($dummy=$members.add($storageNode.id))
+#end## foreach storageNodes
+## ###### add existing floating ip ###
+#foreach($network in $compute.networkNodes)
+#if($util.common.isFromType("alien.nodes.PublicNetwork", $network.getIndexedToscaElement()))
+#set($floating_ip_node_name=$util.network.generateFloatingIpNodeName($compute.id, $network.id))
+#set($dummy=$members.add($floating_ip_node_name))
+#end## if public network
+#end## foreach networks
+## ###### add members list into the group ###
+#set($dummy=$_a4c_scalable_computes.put("_a4c_${compute.id}", $members))
+#end## if scalable
+#end## foreach computes
+#end## macro
+#*
+  Retrieve the default number of instances of the compute
+*#
+#macro(printDefaultInstancesFromGroup $computeList $groupMembers)
+#set($targetCompute='null')
+#foreach($compute in $computeList)
+#foreach($member in $groupMembers)
+#if($compute.id == $member)
+#set($targetCompute=$compute)
+#end## if
+#end## foreach group members
+#end## foreach computes
+#if($targetCompute)
+$targetCompute.scalingPolicy.initialInstances
+#else
+1
+#end## if
+#end## macro

@@ -23,11 +23,12 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 @Slf4j
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
-    private static final String CFY_VERSION = "3.3.1";
-
-    public static final String CFY_SCRIPT_VERSION = "1.3.1";
-
-    public static final String CFY_BYON_VERSION = "1.4";
+    public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
+    public static final String CFY_VERSION = "3.4";
+    public static final String CFY_DIAMOND_VERSION = "1.3.1";
+    public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
+    public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
+    public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
 
     @Resource
     private ApplicationContext factoryContext;
@@ -54,23 +55,23 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
         LocationConfiguration amazon = new LocationConfiguration();
         amazon.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/cloudify/" + CFY_VERSION + "/types.yaml",
-                "http://www.getcloudify.org/spec/aws-plugin/" + CFY_SCRIPT_VERSION + "/plugin.yaml",
-                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_SCRIPT_VERSION + "/plugin.yaml"));
-        amazon.setDsl("cloudify_dsl_1_2");
+                "http://www.getcloudify.org/spec/aws-plugin/" + CFY_AWS_PLUGIN_VERSION + "/plugin.yaml",
+                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml"));
+        amazon.setDsl(CFY_DSL_1_3);
         locationConfigurations.setAmazon(amazon);
 
         LocationConfiguration openstack = new LocationConfiguration();
         openstack.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/cloudify/" + CFY_VERSION + "/types.yaml",
-                "http://www.getcloudify.org/spec/openstack-plugin/" + CFY_SCRIPT_VERSION + "/plugin.yaml",
-                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_SCRIPT_VERSION + "/plugin.yaml"));
-        openstack.setDsl("cloudify_dsl_1_2");
+                "http://www.getcloudify.org/spec/openstack-plugin/" + CFY_OPENSTACK_PLUGIN_VERSION + "/plugin.yaml",
+                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml"));
+        openstack.setDsl(CFY_DSL_1_3);
         locationConfigurations.setOpenstack(openstack);
 
         LocationConfiguration byon = new LocationConfiguration();
         byon.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/cloudify/" + CFY_VERSION + "/types.yaml",
-                "http://www.getcloudify.org/spec/host-pool-plugin/" + CFY_BYON_VERSION + "/plugin.yaml",
-                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_SCRIPT_VERSION + "/plugin.yaml"));
-        byon.setDsl("cloudify_dsl_1_2");
+                "http://www.getcloudify.org/spec/host-pool-plugin/" + CFY_BYON_PLUGIN_VERSION + "/plugin.yaml",
+                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml"));
+        byon.setDsl(CFY_DSL_1_3);
         locationConfigurations.setByon(byon);
 
         cloudConfiguration.setLocations(locationConfigurations);

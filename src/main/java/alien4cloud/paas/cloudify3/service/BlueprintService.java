@@ -152,6 +152,7 @@ public class BlueprintService {
         context.put("util", util);
         context.put("deployment", alienDeployment);
         context.put("newline", "\n");
+        context.put("velocityResourcesPath", this.pluginRecipeResourcesPath.resolve("velocity"));
 
         // Copy artifacts
         for (PaaSNodeTemplate nonNative : alienDeployment.getNonNatives()) {
@@ -252,13 +253,6 @@ public class BlueprintService {
             FileUtil.copy(pluginRecipeResourcesPath.resolve("monitor"), generatedBlueprintDirectoryPath.resolve("monitor"),
                     StandardCopyOption.REPLACE_EXISTING);
         }
-        // custom openstack plugin (scalable compute workaround)
-        Files.copy(pluginRecipeResourcesPath.resolve("cloudify-openstack-plugin/openstack-plugin.yaml"),
-                generatedBlueprintDirectoryPath.resolve("openstack-plugin.yaml"));
-        FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-openstack-plugin/cloudify-openstack-plugin.zip"),
-                generatedBlueprintDirectoryPath.resolve("plugins"));
-        Files.copy(pluginRecipeResourcesPath.resolve("cloudify-openstack-plugin/cloudify-openstack-plugin.zip"),
-                generatedBlueprintDirectoryPath.resolve("plugins/cloudify-openstack-plugin.zip"));
 
         if (CollectionUtils.isNotEmpty(blueprintGeneratorExtensions)) {
             for (BlueprintGeneratorExtension blueprintGeneratorExtension : blueprintGeneratorExtensions) {

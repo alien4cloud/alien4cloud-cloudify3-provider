@@ -372,29 +372,6 @@ public class StatusService {
                         }
                     }
                 }
-                // [[ Scaling issue workarround
-                // Code for scaling workaround : here we are looking for the _a4c_substitute_for property of the node
-                // if it contains something, this means that this node is substituting others
-                // we generate 'fake' instances for these ghosts nodes
-                for (Entry<String, Node> nodeEntry : nodeMap.entrySet()) {
-                    List substitutePropertyAsList = ScalableComputeReplacementService.getSubstituteForPropertyAsList(nodeEntry.getValue());
-                    if (substitutePropertyAsList != null) {
-                        Map<String, InstanceInformation> instancesInfo = information.get(nodeEntry.getKey());
-                        for (Object substitutePropertyItem : substitutePropertyAsList) {
-                            String substitutedNodeId = substitutePropertyItem.toString();
-                            Map<String, InstanceInformation> nodeInformation = Maps.newHashMap();
-                            information.put(substitutedNodeId, nodeInformation);
-                            for (Entry<String, InstanceInformation> instanceEntry : instancesInfo.entrySet()) {
-                                InstanceInformation ii = new InstanceInformation();
-                                ii.setState(instanceEntry.getValue().getState());
-                                ii.setInstanceStatus(instanceEntry.getValue().getInstanceStatus());
-                                // TODO map runtime properties ?
-                                nodeInformation.put(instanceEntry.getKey(), ii);
-                            }
-                        }
-                    }
-                }
-                // Scaling issue workarround ]]
                 callback.onSuccess(information);
             }
 

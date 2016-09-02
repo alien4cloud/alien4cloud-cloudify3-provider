@@ -1,0 +1,155 @@
+tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
+description: Single compute test
+template_name: single_compute_test
+template_version: 0.1.0-SNAPSHOT
+template_author: admin
+
+imports:
+  - tosca-normative-types:1.0.0-SNAPSHOT
+  - alien-extended-storage-types:1.3.0-SNAPSHOT
+  - openstack-types:$projectVersion
+  - support_hss_types:1.0-SNAPSHOT
+  - cloudify3-common-types:$projectVersion
+
+topology_template:
+
+  node_templates:
+
+    Compute3:
+      type: alien.nodes.openstack.Compute
+      properties:
+        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+        flavor: 2
+        user: ubuntu
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 2
+            default_instances: 1
+      requirements:
+        - network:
+            node: NetPub
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+
+    Volume1:
+      type: alien.cloudify.openstack.nodes.Volume
+      properties:
+        size: 1 Gib
+      requirements:
+        - attachment:
+            node: Compute3
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+
+    LinuxFileSystem1:
+      type: alien.nodes.LinuxFileSystem
+      properties:
+        fs_type: ext4
+        location: /var/cbs1
+      requirements:
+        - host:
+            node: Compute3
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+        - partition:
+            node: Volume1
+            capability: tosca.capabilities.Node
+            relationship: alien.relationships.LinuxPartition
+            properties:
+              partition_type: 83
+
+    NonScaledCompute:
+      type: alien.nodes.openstack.Compute
+      properties:
+        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+        flavor: 2
+        user: ubuntu
+      requirements:
+        - network:
+            node: NetPub
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+
+    AnotherScaleCompute:
+      type: alien.nodes.openstack.Compute
+      properties:
+        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+        flavor: 2
+        user: ubuntu
+      requirements:
+        - network:
+            node: NetPub
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 2
+            default_instances: 1
+
+    Compute:
+      type: alien.nodes.openstack.Compute
+      properties:
+        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+        flavor: 2
+        user: ubuntu
+      capabilities:
+        scalable:
+          properties:
+            max_instances: 4
+            min_instances: 1
+            default_instances: 2
+      requirements:
+        - network:
+            node: NetPub
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+
+    FileSystem:
+      type: fastconnect.nodes.SoftwareTest4HSS
+      requirements:
+        - Supp_to_volume:
+            node: BlockStorage
+            capability: tosca.capabilities.Node
+            relationship: fastconnect.relationships.Supp_to_volume
+        - Supp_to_volume:
+            node: BlockStorage2
+            capability: tosca.capabilities.Node
+            relationship: fastconnect.relationships.Supp_to_volume
+        - host: Compute
+
+    BlockStorage:
+      type: alien.cloudify.openstack.nodes.Volume
+      properties:
+        size: 1 GiB
+      requirements:
+        - attachment:
+            node: Compute
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+
+    BlockStorage2:
+      type: alien.cloudify.openstack.nodes.Volume
+      properties:
+        size: 1 GiB
+      requirements:
+        - attachment:
+            node: Compute
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+
+    NetPub:
+      type: alien.nodes.openstack.PublicNetwork
+      properties:
+        floatingip:
+          floating_network_name: net-pub
+
+  groups:
+    scaling_group:
+      members: [ Compute, AnotherScaleCompute ]
+      policies:
+        - name: Scalable Policy
+          type: tosca.policies.Scaling

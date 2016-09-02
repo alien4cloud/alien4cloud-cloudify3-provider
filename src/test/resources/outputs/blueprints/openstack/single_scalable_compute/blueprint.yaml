@@ -1,0 +1,175 @@
+
+
+
+
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.3.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
+
+node_types:
+  alien.nodes.openstack.Compute:
+    derived_from: cloudify.openstack.nodes.Server
+    properties:
+      _a4c_substitute_for:
+        default: []
+      _a4c_att_ip_address:
+        default:
+          function: get_attribute
+          parameters:
+            - SELF
+            - ip
+      _a4c_att_public_ip_address:
+        default:
+          function: get_attribute
+          parameters:
+            - TARGET
+            - cloudify.openstack.server_connected_to_floating_ip
+            - floating_ip_address
+  alien.nodes.openstack.PublicNetwork:
+    derived_from: cloudify.openstack.nodes.FloatingIP
+    properties:
+      _a4c_substitute_for:
+        default: []
+  alien.cloudify.openstack.nodes.Volume:
+    derived_from: cloudify.openstack.nodes.Volume
+    properties:
+      _a4c_substitute_for:
+        default: []
+      _a4c_att_device:
+        default:
+          function: get_attribute
+          parameters:
+            - SELF
+            - device_name
+      _a4c_persistent_resources:
+        default: {"external_id":"volume_id"}
+
+  alien.nodes.LinuxFileSystem:
+    derived_from: cloudify.nodes.SoftwareComponent
+
+relationships:
+  alien.relationships.LinuxPartition:
+    derived_from: cloudify.relationships.depends_on
+
+node_templates:
+
+  Compute3:
+    type: alien.nodes.openstack.Compute
+    properties: 
+      flavor: 2
+      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+      cloudify_agent: 
+        user: ubuntu
+    relationships:
+      - target: _a4c_floating_ip_Compute3_on_NetPub
+        type: cloudify.openstack.server_connected_to_floating_ip
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+        install:
+          implementation: diamond.diamond_agent.tasks.install
+          inputs:
+            diamond_config:
+               interval: 1
+        start: diamond.diamond_agent.tasks.start
+        stop: diamond.diamond_agent.tasks.stop
+        uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+               CPUCollector: {}
+               MemoryCollector: {}
+               LoadAverageCollector: {}
+               DiskUsageCollector:
+                 config:
+                   devices: x?vd[a-z]+[0-9]*$
+               NetworkCollector: {}
+  _a4c_floating_ip_Compute3_on_NetPub:
+    type: alien.nodes.openstack.PublicNetwork
+    properties: 
+      floatingip: 
+        floating_network_name: net-pub
+  Volume1:
+    type: alien.cloudify.openstack.nodes.Volume
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        delete: {}
+    properties: 
+      volume: 
+        size: 1
+    relationships:
+      - target: Compute3
+        type: cloudify.openstack.volume_attached_to_server
+
+  LinuxFileSystem1:
+    type: alien.nodes.LinuxFileSystem
+    instances:
+      deploy: 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        stop: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
+        start: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
+    relationships:
+      - target: Volume1
+        type: alien.relationships.LinuxPartition
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            postconfigure: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
+            preconfigure: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
+      - target: Compute3
+        type: cloudify.relationships.contained_in
+
+
+
+groups:
+  _a4c_Compute3:
+    members: [Compute3, Volume1, _a4c_floating_ip_Compute3_on_NetPub]
+
+policies:
+  _a4c_Compute3_policy:
+    type: cloudify.policies.scaling
+    targets: [_a4c_Compute3]
+    properties:
+      default_instances: 2
+
+
+plugins:
+  custom_wf_plugin:
+    executor: central_deployment_agent
+    source: custom_wf_plugin
+
+workflows:
+  a4c_install: custom_wf_plugin.plugin.workflows.a4c_install
+  a4c_uninstall: custom_wf_plugin.plugin.workflows.a4c_uninstall
+  a4c_scale:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_scale
+    parameters:
+      node_id:
+        description: Which node (not node instance) to scale
+      delta:
+        description: >
+            How many nodes should be added/removed.
+            A positive number denotes increase of instances.
+            A negative number denotes decrease of instances.
+        default: 1
+      scale_compute:
+        description: >
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
+        default: true
+      ignore_failure:
+        default: false
+  a4c_heal:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_heal
+    parameters:
+      node_instance_id:
+        description: Which node instance has failed
+      diagnose_value:
+        description: Diagnosed reason of failure
+        default: Not provided

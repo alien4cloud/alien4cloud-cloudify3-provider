@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # This script suppose that lsblk is available on the target machine.
 #
@@ -23,10 +23,10 @@ max_retry=5
 #
 mapDevice() {
   DEVICE_TO_MAP=$1
-  for device in $(sudo lsblk -npo KNAME,TYPE | grep disk | cut -d ' ' -f-1) ; do
+  for device in $(sudo lsblk -no KNAME,TYPE | grep disk | cut -d ' ' -f-1) ; do
     #echo mapping device $device
     if [ "${DEVICE_TO_MAP: -1}" = "${device: -1}" ] ; then
-      MATCHED_DEVICE=$device
+      MATCHED_DEVICE=/dev/$device
       break
     fi
   done

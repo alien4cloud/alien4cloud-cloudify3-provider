@@ -148,9 +148,32 @@ public class CloudifyDeploymentBuilderService {
     private HostWorkflow buildHostWorkflow(String hostId, Workflow workflow) {
         HostWorkflow hostWorkflow = new HostWorkflow();
         hostWorkflow.setSteps(getHostRelatedSteps(hostId, workflow));
+        hostWorkflow.getSteps().putAll(getOrphanRelatedSteps(hostWorkflow.getSteps(), getOrphanSteps(workflow)));
         processLinks(hostWorkflow.getSteps(), hostWorkflow.getInternalLinks(), hostWorkflow.getExternalLinks());
         // hostWorkflow.setInternalLinks(getLinksBetweenSteps(hostWorkflow.getSteps()));
         return hostWorkflow;
+    }
+
+    /**
+     * Get orphan steps that are related to the workflow.
+     *
+     * @param workflow The given workflow
+     * @param orphanSteps Map of orphan steps
+     * @return A Map of orphans that are related to the given workflow.
+     */
+    private Map<String, AbstractStep> getOrphanRelatedSteps(Map<String, AbstractStep> workflow, Map<String, AbstractStep> orphanSteps) {
+        Map<String, AbstractStep> relatedSteps = Maps.newLinkedHashMap();
+        for (AbstractStep step : orphanSteps.values()) {
+            if (step instanceof NodeActivityStep) {
+                for (AbstractStep sh : workflow.values()) {
+                    if ((sh.getPrecedingSteps() != null && sh.getPrecedingSteps().contains(step.getName())) || (sh.getFollowingSteps() != null && sh
+                            .getFollowingSteps().contains(step.getName()))) {
+                        relatedSteps.put(step.getName(), step);
+                    }
+                }
+            }
+        }
+        return relatedSteps;
     }
 
     private void processLinks(Map<String, AbstractStep> steps, List<WorkflowStepLink> internalLinks, List<WorkflowStepLink> externalLinks) {
@@ -187,8 +210,8 @@ public class CloudifyDeploymentBuilderService {
      * build lists of {@link WorkflowStepLink} representing a link from a given step to others steps.
      * The links can be internal to a set of given steps, or externals
      *
-     * @param step step from which to get the links
-     * @param steps The map of steps in which the following step related to the internal link should be
+     * @param step          step from which to get the links
+     * @param steps         The map of steps in which the following step related to the internal link should be
      * @param externalLinks
      * @param internalLinks
      * @return
@@ -252,10 +275,8 @@ public class CloudifyDeploymentBuilderService {
      * Map the networks from the topology to either public or private network.
      * Cloudify 3 plugin indeed maps the public network to floating ips while private network are mapped to network and subnets.
      *
-     * @param cloudifyDeployment
-     *            The cloudify deployment context with private and public networks mapped.
-     * @param deploymentContext
-     *            The deployment context from alien 4 cloud.
+     * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
+     * @param deploymentContext  The deployment context from alien 4 cloud.
      */
     private void processNetworks(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
         List<PaaSNodeTemplate> allNetworks = deploymentContext.getPaaSTopology().getNetworks();
@@ -280,10 +301,8 @@ public class CloudifyDeploymentBuilderService {
      * Extract the types of all types that are not provided by cloudify (non-native types) for both nodes and relationships.
      * Types have to be generated in the blueprint in correct order (based on derived from hierarchy).
      *
-     * @param cloudifyDeployment
-     *            The cloudify deployment context with private and public networks mapped.
-     * @param deploymentContext
-     *            The deployment context from alien 4 cloud.
+     * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
+     * @param deploymentContext  The deployment context from alien 4 cloud.
      */
     private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
         Map<String, IndexedNodeType> nonNativesTypesMap = Maps.newLinkedHashMap();

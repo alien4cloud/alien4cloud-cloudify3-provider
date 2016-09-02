@@ -3,7 +3,6 @@ package alien4cloud.paas.cloudify3;
 import alien4cloud.paas.cloudify3.service.BlueprintService;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.ScalableComputeReplacementService;
 import alien4cloud.paas.cloudify3.util.ApplicationUtil;
 import alien4cloud.paas.cloudify3.util.DeploymentLauncher;
 import alien4cloud.paas.cloudify3.util.FileTestUtil;
@@ -32,9 +31,6 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
 
     @Inject
     private ApplicationUtil applicationUtil;
-
-    @Inject
-    private ScalableComputeReplacementService scalableComputeReplacementService;
 
     @Inject
     private PropertyEvaluatorService propertyEvaluatorService;
@@ -72,15 +68,14 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
             log.warn("Topology {} do not exist for location {}", topology, locationName);
             return null;
         }
-        String recordedDirectory = "src/test/resources/outputs/blueprints/" + locationName + "/" + outputFile;
         PaaSTopologyDeploymentContext context = deploymentLauncher.buildPaaSDeploymentContext(testName, topology, locationName);
         if (contextVisitor != null) {
             contextVisitor.visitDeploymentContext(context);
         }
         propertyEvaluatorService.processGetPropertyFunction(context);
-        context = scalableComputeReplacementService.transformTopology(context);
         Path generated = blueprintService.generateBlueprint(cloudifyDeploymentBuilderService.buildCloudifyDeployment(context));
         Path generatedDirectory = generated.getParent();
+        String recordedDirectory = "src/test/resources/outputs/blueprints/" + locationName + "/" + outputFile;
         if (isRecord()) {
             FileUtil.delete(Paths.get(recordedDirectory));
             FileUtil.copy(generatedDirectory, Paths.get(recordedDirectory), StandardCopyOption.REPLACE_EXISTING);

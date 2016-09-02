@@ -7,6 +7,7 @@ This template is used to generate cloudify 3 recipe from alien model
 - $util --> contains utility methods
 *#
 #parse("provider/common/non_native_nodes.yaml.vm")
+#parse("provider/common/compute_scaling_group.yaml.vm")
 tosca_definitions_version: $cloud.getConfigurationLocation($deployment.locationType).getDsl()
 
 imports:
@@ -44,6 +45,31 @@ node_templates:
 
 #parse("provider/common/monitor_node.yaml.vm")
 
+#* Handle scaling groups *#
+#if($util.common.doesVelocityFileExists("${velocityResourcesPath}/provider/${deployment.locationType}/compute_scaling_group.yaml.vm"))
+#parse("provider/${deployment.locationType}/compute_scaling_group.yaml.vm")
+#buildSpecificScalableComputeGroups($deployment.computes)
+#else
+#buildScalableComputeGroups($deployment.computes)
+#end## if exist
+#if(!$_a4c_scalable_computes.isEmpty())
+groups:
+#foreach($group in $_a4c_scalable_computes.entrySet())
+  $group.key:
+    members: $group.value
+#end## foreach groups
+
+policies:
+#foreach($group in $_a4c_scalable_computes.entrySet())
+  ${group.key}_policy:
+    type: cloudify.policies.scaling
+    targets: [$group.key]
+    properties:
+      default_instances: #printDefaultInstancesFromGroup($deployment.computes $group.value)
+#end## foreach groups
+#end## if(!$_a4c_scalable_computes.isEmpty())
+#* End of scaling groups *#
+
 plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
@@ -66,10 +92,13 @@ workflows:
         default: 1
       scale_compute:
         description: >
-            If node is contained (transitively) within a compute node
-            and this property is 'true', operate on compute node instead
-            of 'node_id'
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
         default: true
+      ignore_failure:
+        default: false
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:
