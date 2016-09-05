@@ -1,5 +1,14 @@
 package alien4cloud.paas.cloudify3;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+
+import javax.inject.Inject;
+
+import org.junit.Before;
+
+import alien4cloud.deployment.ArtifactProcessorService;
 import alien4cloud.paas.cloudify3.service.BlueprintService;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
@@ -8,14 +17,8 @@ import alien4cloud.paas.cloudify3.util.DeploymentLauncher;
 import alien4cloud.paas.cloudify3.util.FileTestUtil;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.utils.FileUtil;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import javax.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Assert;
-import org.junit.Before;
 
 @Slf4j
 public abstract class AbstractTestBlueprint extends AbstractTest {
@@ -35,7 +38,10 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
     @Inject
     private PropertyEvaluatorService propertyEvaluatorService;
 
-    protected boolean record = false;
+    @Inject
+    private ArtifactProcessorService artifactProcessorService;
+
+    protected boolean record = true;
 
     /**
      * Set true to this boolean so the blueprint will be uploaded to the manager to verify
@@ -45,7 +51,7 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
     @Override
     @Before
     public void before() throws Exception {
-        Assert.assertTrue("This test only works on Java version 1.7", System.getProperty("java.version").startsWith("1.7"));
+        // Assert.assertTrue("This test only works on Java version 1.7", System.getProperty("java.version").startsWith("1.7"));
         super.before();
     }
 
@@ -69,6 +75,7 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
             return null;
         }
         PaaSTopologyDeploymentContext context = deploymentLauncher.buildPaaSDeploymentContext(testName, topology, locationName);
+        artifactProcessorService.processArtifacts(context);
         if (contextVisitor != null) {
             contextVisitor.visitDeploymentContext(context);
         }

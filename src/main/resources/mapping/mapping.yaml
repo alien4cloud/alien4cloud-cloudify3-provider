@@ -6,7 +6,9 @@ generated_artifact_prefix: _a4c
 
 native_property_parent: _a4c_native_property
 
-topology_artifact_directory_name: _a4c_topology_artifact
+artifact_directory_name: _a4c_artifact
+
+implementation_artifact_directory_name: _a4c_impl_artifact
 
 normative_types:
   tosca.nodes.Root: cloudify.nodes.Root

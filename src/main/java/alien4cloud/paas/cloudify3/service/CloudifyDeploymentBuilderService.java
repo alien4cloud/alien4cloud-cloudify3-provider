@@ -329,7 +329,7 @@ public class CloudifyDeploymentBuilderService {
         for (Map.Entry<String, PaaSNodeTemplate> nodeEntry : deploymentContext.getPaaSTopology().getAllNodes().entrySet()) {
             PaaSNodeTemplate node = nodeEntry.getValue();
             // add the node artifacts
-            putArtifacts(allArtifacts, node.getId(), node.getIndexedToscaElement().getArtifacts());
+            putArtifacts(allArtifacts, node.getId(), node.getTemplate().getArtifacts());
             // add the relationships artifacts
             addRelationshipsArtifacts(allRelationshipArtifacts, nodeEntry.getValue().getRelationshipTemplates());
         }
@@ -345,10 +345,10 @@ public class CloudifyDeploymentBuilderService {
         }
 
         for (PaaSRelationshipTemplate relationship : relationships) {
-            Map<String, DeploymentArtifact> artifacts = relationship.getIndexedToscaElement().getArtifacts();
+            Map<String, DeploymentArtifact> artifacts = relationship.getTemplate().getArtifacts();
 
             putArtifacts(allRelationshipArtifacts,
-                    new Relationship(relationship.getId(), relationship.getSource(), relationship.getRelationshipTemplate().getTarget()), artifacts);
+                    new Relationship(relationship.getId(), relationship.getSource(), relationship.getTemplate().getTarget()), artifacts);
         }
     }
 

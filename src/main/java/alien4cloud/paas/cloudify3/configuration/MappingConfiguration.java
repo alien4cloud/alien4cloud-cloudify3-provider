@@ -19,7 +19,9 @@ public class MappingConfiguration {
 
     private String nativePropertyParent;
 
-    private String topologyArtifactDirectoryName;
+    private String artifactDirectoryName;
+
+    private String implementationArtifactDirectoryName;
 
     private Map<String, String> normativeTypes;
 
