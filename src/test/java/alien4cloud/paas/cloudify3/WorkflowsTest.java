@@ -105,7 +105,7 @@ public class WorkflowsTest {
         assertNotEmpty(installHostWFs);
         Assert.assertEquals(installWf.getHosts().size(), installHostWFs.size());
         assertHostWorkflow(installHostWFs, host1, 4, 3, 0);
-        assertHostWorkflow(installHostWFs, host2, 3, 2, 2);
+        assertHostWorkflow(installHostWFs, host2, 4, 3, 2); // additional step b2 -> orphan1 considered as internal link
 
         assertNotEmpty(builtWorkflow.getStandardWorkflows());
         StandardWorkflow installSdf = builtWorkflow.getStandardWorkflows().get(Workflow.INSTALL_WF);

@@ -1,6 +1,22 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import alien4cloud.component.repository.ArtifactRepositoryConstants;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.model.components.AbstractPropertyValue;
 import alien4cloud.model.components.ConcatPropertyValue;
@@ -8,6 +24,7 @@ import alien4cloud.model.components.DeploymentArtifact;
 import alien4cloud.model.components.FunctionPropertyValue;
 import alien4cloud.model.components.IArtifact;
 import alien4cloud.model.components.IValue;
+import alien4cloud.model.components.ImplementationArtifact;
 import alien4cloud.model.components.Interface;
 import alien4cloud.model.components.Operation;
 import alien4cloud.model.components.OperationOutput;
@@ -29,21 +46,7 @@ import alien4cloud.topology.TopologyUtils;
 import alien4cloud.tosca.ToscaUtils;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 import alien4cloud.utils.FileUtil;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
@@ -170,7 +173,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             // Custom command do nothing
             return "''";
         } else {
-            throw new NotSupportedException("The value " + input + "'s type is not supported as input");
+            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input for " + owner.getId());
         }
     }
 
@@ -359,25 +362,6 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return relationships;
     }
 
-    public String getArtifactPath(String nodeId, String artifactId, IArtifact artifact) {
-        Map<String, DeploymentArtifact> topologyArtifacts = alienDeployment.getAllNodes().get(nodeId).getNodeTemplate().getArtifacts();
-        IArtifact topologyArtifact = topologyArtifacts != null ? topologyArtifacts.get(artifactId) : null;
-        if (topologyArtifact == null) {
-            // not overridded
-            return getArtifactRelativePath(artifact);
-        } else if (Objects.equals(topologyArtifact.getArtifactRepository(), ArtifactRepositoryConstants.ALIEN_ARTIFACT_REPOSITORY)) {
-            // Overidden in the topology via upload
-            return mappingConfiguration.getTopologyArtifactDirectoryName() + "/" + nodeId + "/" + artifact.getArchiveName() + "/" + artifact.getArtifactRef();
-        } else {
-            // overridded in topology via yaml import
-            return getArtifactRelativePath(topologyArtifact);
-        }
-    }
-
-    public boolean isArtifactDirectory(String artifactPath) {
-        return Files.isDirectory(recipePath.resolve(artifactPath));
-    }
-
     public Map<String, String> listArtifactDirectory(final String artifactPath) throws IOException {
         final Map<String, String> children = Maps.newHashMap();
         final Path realArtifactPath = recipePath.resolve(artifactPath);
@@ -393,41 +377,8 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return children;
     }
 
-    public String getRelationshipArtifactPath(String sourceId, String relationshipId, String artifactId, IArtifact artifact) {
-        Map<String, DeploymentArtifact> topologyArtifacts = alienDeployment.getAllNodes().get(sourceId).getRelationshipTemplate(relationshipId, sourceId)
-                .getRelationshipTemplate().getArtifacts();
-        IArtifact topologyArtifact = topologyArtifacts != null ? topologyArtifacts.get(artifactId) : null;
-        if (topologyArtifact == null) {
-            return getArtifactRelativePath(artifact);
-        } else if (Objects.equals(topologyArtifact.getArtifactRepository(), ArtifactRepositoryConstants.ALIEN_ARTIFACT_REPOSITORY)) {
-            // Overridden in the topology
-            return mappingConfiguration.getTopologyArtifactDirectoryName() + "/" + sourceId + "/" + artifact.getArchiveName() + "/" + artifact.getArtifactRef();
-        } else {
-            // overridded in topology via yaml import
-            return getArtifactRelativePath(topologyArtifact);
-        }
-    }
-
-    public String getArtifactRelativePath(IArtifact artifact) {
-        return "artifacts/" + artifact.getArchiveName() + "/" + artifact.getArtifactRef();
-    }
-
-    public String getArtifactWrapperPath(IPaaSTemplate<?> owner, String interfaceName, String operationName, IArtifact artifact) {
-        String artifactCopiedPath = getArtifactRelativePath(artifact);
-        int lastSlashIndex = artifactCopiedPath.lastIndexOf('/');
-        String fileName = artifactCopiedPath.substring(lastSlashIndex + 1);
-        String parent = artifactCopiedPath.substring(0, lastSlashIndex);
-        String wrapperPath = parent + "/" + mappingConfiguration.getGeneratedArtifactPrefix() + "_" + fileName.substring(0, fileName.lastIndexOf('.')) + ".py";
-        if (owner instanceof PaaSNodeTemplate) {
-            PaaSNodeTemplate ownerNode = (PaaSNodeTemplate) owner;
-            return "wrapper/" + ownerNode.getId() + "/" + interfaceName + "/" + operationName + "/" + wrapperPath;
-        } else if (owner instanceof PaaSRelationshipTemplate) {
-            PaaSRelationshipTemplate ownerRelationship = (PaaSRelationshipTemplate) owner;
-            return "wrapper/" + ownerRelationship.getSource() + "_" + ownerRelationship.getRelationshipTemplate().getTarget() + "/" + ownerRelationship.getId()
-                    + "/" + wrapperPath;
-        } else {
-            throw new NotSupportedException("Not supported template type " + owner.getId());
-        }
+    public boolean isArtifactDirectory(String artifactPath) {
+        return Files.isDirectory(recipePath.resolve(artifactPath));
     }
 
     public boolean operationHasDeploymentArtifacts(OperationWrapper operationWrapper) {
@@ -460,5 +411,45 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean isNonNative(PaaSNodeTemplate nodeTemplate) {
         return alienDeployment.getNonNatives().contains(nodeTemplate);
+    }
+
+    public String getArtifactPath(String nodeId, String artifactId, DeploymentArtifact artifact) {
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + nodeId + "/" + artifactId + "/" + artifact.getArtifactRef();
+    }
+
+    public String getRelationshipArtifactPath(String sourceId, String relationshipId, String artifactId, DeploymentArtifact artifact) {
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + sourceId + "/" + relationshipId + "/" + artifactId + "/" + artifact.getArtifactRef();
+    }
+
+    public String getImplementationArtifactPath(PaaSNodeTemplate owner, String interfaceName, String operationName, ImplementationArtifact artifact) {
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getId() + "/" + interfaceName + "/" + operationName + "/"
+                + Paths.get(artifact.getArtifactRef()).getFileName().toString();
+    }
+
+    public String getRelationshipImplementationArtifactPath(PaaSRelationshipTemplate owner, String interfaceName, String operationName,
+            ImplementationArtifact artifact) {
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getSource() + "_" + owner.getTemplate().getTarget() + "/"
+                + owner.getId() + "/" + interfaceName + "/" + operationName + Paths.get(artifact.getArtifactRef()).getFileName().toString();
+    }
+
+    public String getArtifactWrapperPath(IPaaSTemplate<?> owner, String interfaceName, String operationName, IArtifact artifact) {
+        Path artifactRefPath = Paths.get(artifact.getArtifactRef());
+        String fileName = artifactRefPath.getFileName().toString();
+        String parent = artifactRefPath.getParent() != null ? artifactRefPath.getParent().toString() : "";
+        int indexOfPoint = fileName.lastIndexOf('.');
+        if (indexOfPoint > 0) {
+            fileName = fileName.substring(0, indexOfPoint);
+        }
+        String wrapperPath = parent + "/" + mappingConfiguration.getGeneratedArtifactPrefix() + "_" + fileName + ".py";
+        if (owner instanceof PaaSNodeTemplate) {
+            PaaSNodeTemplate ownerNode = (PaaSNodeTemplate) owner;
+            return "wrapper/" + ownerNode.getId() + "/" + interfaceName + "/" + operationName + "/" + wrapperPath;
+        } else if (owner instanceof PaaSRelationshipTemplate) {
+            PaaSRelationshipTemplate ownerRelationship = (PaaSRelationshipTemplate) owner;
+            return "wrapper/" + ownerRelationship.getSource() + "_" + ownerRelationship.getTemplate().getTarget() + "/" + ownerRelationship.getId() + "/"
+                    + interfaceName + "/" + operationName + wrapperPath;
+        } else {
+            throw new NotSupportedException("Not supported template type " + owner.getId());
+        }
     }
 }

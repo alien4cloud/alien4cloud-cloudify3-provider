@@ -20,6 +20,7 @@ import java.util.Properties;
 import java.util.Set;
 import javax.inject.Inject;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,9 @@ import org.springframework.core.io.ClassPathResource;
 
 public abstract class AbstractTest {
 
-    public static final String SCALABLE_COMPUTE_TOPOLOGY = "scalable_compute";
+    public static final String NEW_SCALABLE_COMPUTE_TOPOLOGY = "new_scalable_compute";
+
+    public static final String SINGLE_SCALABLE_COMPUTE_TOPOLOGY = "single_scalable_compute";
 
     public static final String SINGLE_COMPUTE_TOPOLOGY = "single_compute";
 
@@ -61,6 +64,8 @@ public abstract class AbstractTest {
 
     private static boolean isInitialized = false;
 
+    private static boolean forceReloadCSARs = false;
+
     @Inject
     private CSARUtil csarUtil;
 
@@ -84,14 +89,17 @@ public abstract class AbstractTest {
 
     @BeforeClass
     public static void cleanup() throws IOException {
-        FileUtil.delete(CSARUtil.ARTIFACTS_DIRECTORY);
+        if (forceReloadCSARs) {
+            FileUtil.delete(CSARUtil.ARTIFACTS_DIRECTORY);
+            FileUtils.deleteDirectory(CSARUtil.ARTIFACTS_DIRECTORY.toFile());
+        }
         FileUtil.delete(tempPluginDataPath);
         // this is a hack for the yml resources changes to be taken into account without having to build the project
         // we should filter before copying files
 
         // FileUtil.copy(Paths.get("src/main/resources"), tempPluginDataPath);
         for (Path cloudify3Path : Files.newDirectoryStream(Paths.get("target/"))) {
-            if (Files.isDirectory(cloudify3Path) && cloudify3Path.toString().startsWith("target/alien4cloud-cloudify3-provider")) {
+            if (Files.isDirectory(cloudify3Path) && cloudify3Path.toString().replaceAll("\\\\", "/").startsWith("target/alien4cloud-cloudify3-provider")) {
                 FileUtil.copy(cloudify3Path, tempPluginDataPath);
             }
         }
@@ -110,8 +118,11 @@ public abstract class AbstractTest {
         // locationConfigurators.put("amazon", amazonLocationConfigurator);
         // locationConfigurators.put("byon", byonLocationConfigurator);
 
-        FileUtil.delete(Paths.get(repositoryCsarDirectory));
-        csarUtil.uploadAll();
+        if (forceReloadCSARs || !Files.isDirectory(CSARUtil.ARTIFACTS_DIRECTORY)) {
+            FileUtil.delete(Paths.get(repositoryCsarDirectory));
+            csarUtil.uploadAll();
+        }
+
         // Reload in order to be sure that the archive is constructed once all dependencies have been uploaded
         List<ParsingError> parsingErrors = Lists.newArrayList();
         for (PluginArchive pluginArchive : cloudifyOrchestrator.pluginArchives()) {

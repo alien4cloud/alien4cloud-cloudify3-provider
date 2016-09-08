@@ -79,55 +79,73 @@ def _a4c_${wfEntry.key}(ctx, graph, custom_context):
 #foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
 #if($util.workflow.isSetStateTask(${wfStepEntry.value}))
     custom_context.add_customized_wf_node('${wfStepEntry.value.activity.nodeId}')
-#end
-#end
+#end## if($util.workflow.isSetStateTask(${wfStepEntry.value}))
+#end## foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
 #foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
 #if($util.workflow.isSetStateTask(${wfStepEntry.value}))
     set_state_task(ctx, graph, '${wfStepEntry.value.activity.nodeId}', '${wfStepEntry.value.activity.stateName}', '${wfStepEntry.value.name}', custom_context)
-#end
+#end## if($util.workflow.isSetStateTask(${wfStepEntry.value}))
 #if($util.workflow.isOperationExecutionTask(${wfStepEntry.value}))
     operation_task(ctx, graph, '${wfStepEntry.value.activity.nodeId}', '$util.nonNative.tryToMapToCloudifyInterface(${wfStepEntry.value.activity.interfaceName}).${wfStepEntry.value.activity.operationName}', '${wfStepEntry.value.name}', custom_context)
-#end
+#end## if($util.workflow.isOperationExecutionTask(${wfStepEntry.value}))
 #if($util.workflow.isDelegateActivityStep(${wfStepEntry.value}))
     custom_context.register_native_delegate_wf_step('${wfStepEntry.value.activity.nodeId}', '${wfStepEntry.value.name}')
-#end
-#end
+#end## if($util.workflow.isDelegateActivityStep(${wfStepEntry.value}))
+#end## foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
     generate_native_node_workflows(ctx, graph, custom_context, '${wfEntry.key}')
 #foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
 #foreach($preceding_step in ${wfStepEntry.value.precedingSteps})
     link_tasks(graph, '${wfStepEntry.value.name}', '${preceding_step}', custom_context)
-#end
-#end
+#end## foreach($preceding_step in ${wfStepEntry.value.precedingSteps})
+#end## foreach($wfStepEntry in ${wfEntry.value.steps.entrySet()})
+#end## foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})
 
+def _get_scaling_group_name_from_node_id(ctx, node_id):
+    scaling_groups=ctx.deployment.scaling_groups
+    for group_name, scaling_group in ctx.deployment.scaling_groups.iteritems():
+        for member in scaling_group['members']:
+            if member == node_id:
+                ctx.logger.info("Node {} found in scaling group {}".format(node_id, group_name))
+                return group_name
+    return None
 
 @workflow
 def a4c_scale(ctx, node_id, delta, scale_compute, **kwargs):
-    scaled_node = ctx.get_node(node_id)
-    if not scaled_node:
-        raise ValueError("Node {0} doesn't exist".format(node_id))
-    if not is_host_node(scaled_node):
-        raise ValueError("Node {0} is not a host. This workflow can only scale hosts".format(node_id))
-    if delta == 0:
-        ctx.logger.info('delta parameter is 0, so no scaling will take place.')
-        return
+    delta = int(delta)
+    scalable_entity_name = _get_scaling_group_name_from_node_id(ctx, node_id)
+    scaling_group = ctx.deployment.scaling_groups.get(scalable_entity_name)
+    if scalable_entity_name:
+        curr_num_instances = scaling_group['properties']['current_instances']
+        planned_num_instances = curr_num_instances + delta
+        scale_id = scalable_entity_name
+    else:
+      scaled_node = ctx.get_node(scalable_entity_name)
+      if not scaled_node:
+          raise ValueError("Node {0} doesn't exist".format(scalable_entity_name))
+      if not is_host_node(scaled_node):
+          raise ValueError("Node {0} is not a host. This workflow can only scale hosts".format(scalable_entity_name))
+      if delta == 0:
+          ctx.logger.info('delta parameter is 0, so no scaling will take place.')
+          return
+      curr_num_instances = scaled_node.number_of_instances
+      planned_num_instances = curr_num_instances + delta
+      scale_id = scaled_node.id
 
-    curr_num_instances = scaled_node.number_of_instances
-    planned_num_instances = curr_num_instances + delta
     if planned_num_instances < 1:
         raise ValueError('Provided delta: {0} is illegal. current number of'
-                         'instances of node {1} is {2}'
-                         .format(delta, node_id, curr_num_instances))
+                         'instances of node/group {1} is {2}'
+                         .format(delta, scalable_entity_name, curr_num_instances))
 
     modification = ctx.deployment.start_modification({
-        scaled_node.id: {
+        scale_id: {
             'instances': planned_num_instances
         }
     })
-    ctx.logger.info(
-        'Deployment modification started. [modification_id={0} : {1}]'.format(modification.id, dir(modification)))
+    ctx.logger.info('Deployment modification started. [modification_id={0} : {1}]'.format(modification.id, dir(modification)))
+    
     try:
         if delta > 0:
-            ctx.logger.info('Scaling host {0} adding {1} instances'.format(node_id, delta))
+            ctx.logger.info('Scaling host/group {0} adding {1} instances'.format(scalable_entity_name, delta))
             added_and_related = _get_all_nodes(modification.added)
             added = _get_all_modified_node_instances(added_and_related, 'added')
             graph = ctx.graph_mode()
@@ -138,19 +156,19 @@ def a4c_scale(ctx, node_id, delta, scale_compute, **kwargs):
             try:
                 graph.execute()
             except:
-                ctx.logger.error('Scale failed. Uninstalling node {0}'.format(node_id))
+                ctx.logger.error('Scale failed. Uninstalling node/group {0}'.format(scalable_entity_name))
                 graph = ctx.internal.task_graph
                 for task in graph.tasks_iter():
                     graph.remove_task(task)
                 try:
                     custom_context = CustomContext(ctx, added, added_and_related)
-                    uninstall_host(ctx, graph, custom_context, node_id)
+                    uninstall_host(ctx, graph, custom_context, scalable_entity_name)
                     graph.execute()
                 except:
-                    ctx.logger.error('Node {0} uninstallation following scale failure has failed'.format(node_id))
+                    ctx.logger.error('Node {0} uninstallation following scale failure has failed'.format(scalable_entity_name))
                 raise
         else:
-            ctx.logger.info('Unscaling host {0} removing {1} instances'.format(node_id, delta))
+            ctx.logger.info('Unscaling host/group {0} removing {1} instances'.format(scalable_entity_name, delta))
             removed_and_related = _get_all_nodes(modification.removed)
             removed = _get_all_modified_node_instances(removed_and_related, 'removed')
             graph = ctx.graph_mode()
@@ -228,8 +246,6 @@ def a4c_heal(
     install_host(ctx, graph, custom_context, node_id)
     graph.execute()
 
-
-#end
 #[[#]]#following code can be pasted in src/test/python/workflows/context.py for simulation
 #[[#]]#def _build_nodes(ctx):
 #foreach($nodeEntry in ${deployment.allNodes.entrySet()})

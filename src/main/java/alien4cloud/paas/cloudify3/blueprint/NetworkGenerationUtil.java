@@ -36,4 +36,8 @@ public class NetworkGenerationUtil extends NativeTypeGenerationUtil {
     public List<PaaSNodeTemplate> getInternalNetworks(PaaSNodeTemplate compute) {
         return getNetworksOfType(compute, "alien.nodes.PrivateNetwork");
     }
+
+    public String generateFloatingIpNodeName(String computeId, String networkId) {
+        return String.format("%s_floating_ip_%s_on_%s", mappingConfiguration.getGeneratedNodePrefix(), computeId, networkId);
+    }
 }

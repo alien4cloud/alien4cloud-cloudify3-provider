@@ -271,6 +271,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                     #if relationship.target_node_instance.id not in custom_context.modified_instance_ids:
                     fork.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish'))
                     if 'cloudify.nodes.Volume' in instance.node.type_hierarchy:
+                        ctx.logger.info("[MAPPING] instance={} hierarchy={}".format(instance.id, instance.node.type_hierarchy))
                         host_instance = __get_host(ctx, relationship.target_node_instance)
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
@@ -283,7 +284,9 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
             instance.send_event("Start monitoring on node '{0}' instance '{1}'".format(node_id, instance.id)),
             forkjoin_sequence(graph, fork, instance, "establish")
         )
-        if host_instance is not None and 'alien4cloud.mapping.device.execute' in host_instance.node.operations:
+        if host_instance is not None and host_instance.id == instance.id:
+            ctx.logger.info("[MAPPING] Do nothing it is the same instance: host_instance.id={} instance.id={}".format(host_instance.id, instance.id))
+        elif host_instance is not None and 'alien4cloud.mapping.device.execute' in host_instance.node.operations:
             sequence.add(host_instance.send_event("Updating device attribute for instance {0} and volume {0}".format(host_instance.id, instance.id)))
             sequence.add(host_instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': instance.id}))
     elif operation_fqname == 'cloudify.interfaces.lifecycle.configure':

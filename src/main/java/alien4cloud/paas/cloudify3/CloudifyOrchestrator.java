@@ -29,7 +29,6 @@ import alien4cloud.paas.cloudify3.service.EventService;
 import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
 import alien4cloud.paas.cloudify3.service.PluginArchiveService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.ScalableComputeReplacementService;
 import alien4cloud.paas.cloudify3.service.StatusService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
@@ -100,9 +99,6 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     }
 
     @Resource
-    private ScalableComputeReplacementService scalableComputeReplacementService;
-
-    @Resource
     private PropertyEvaluatorService propertyEvaluatorService;
 
     /**
@@ -132,7 +128,6 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         try {
             // TODO Better do it in Alien4Cloud or in plugin ?
             propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
-            deploymentContext = scalableComputeReplacementService.transformTopology(deploymentContext);
 
             // pre-process the topology to add availability zones.
             osAzPPolicyService.process(deploymentContext);

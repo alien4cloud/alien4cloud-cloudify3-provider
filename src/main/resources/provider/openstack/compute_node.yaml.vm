@@ -8,15 +8,6 @@
 #if($computeHardSetPassword)
       use_password: false
 #end
-
-#if(${compute.scalingPolicy})
-    instances:
-#if(${compute.scalingPolicy.initialInstances})
-      deploy: ${compute.scalingPolicy.initialInstances}
-#else
-      deploy: 1
-#end
-#end
 #set( $publicNetworks = ${util.network.getExternalNetworks($compute)} )
 #set( $privateNetworks = ${util.network.getInternalNetworks($compute)} )
 #if($util.collectionHasElement(${publicNetworks}) || $util.collectionHasElement(${privateNetworks}) || (!$computeHardSetPassword && $computeIsWindows))
@@ -39,7 +30,7 @@
 #parse("provider/common/monitoring_interfaces.yaml.vm")
 #end
 #foreach($externalNetwork in $publicNetworks)
-  ${mapping.generatedNodePrefix}_floating_ip_${compute.id}_on_${externalNetwork.id}:
+  $util.network.generateFloatingIpNodeName(${compute.id},${externalNetwork.id}):
     type: ${externalNetwork.nodeTemplate.type}
     properties: ${util.natives.formatProperties(3, ${externalNetwork.nodeTemplate.properties}, ${util.natives.loadPropertyMapping(${externalNetwork.indexedToscaElement}, "_a4c_c3_floating_ip_prop_map")})}
 #end

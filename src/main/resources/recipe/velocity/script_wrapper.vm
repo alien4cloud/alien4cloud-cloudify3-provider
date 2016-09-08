@@ -100,7 +100,11 @@ operationOutputNames = None
 operationOutputNames = '${util.nonNative.getOperationOutputNames(${operation})}'
 #end
 convert_env_value_to_string(new_script_process['env'])
-parsed_output = execute(ctx.download_resource('${util.nonNative.getArtifactRelativePath(${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
+parsed_output = execute(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+#else
+parsed_output = execute(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+#end
 for k,v in parsed_output['outputs'].items():
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))

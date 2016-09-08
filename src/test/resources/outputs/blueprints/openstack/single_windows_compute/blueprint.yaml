@@ -1,9 +1,11 @@
 
 
-tosca_definitions_version: cloudify_dsl_1_2
+
+
+tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
   - http://www.getcloudify.org/spec/openstack-plugin/1.3.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
 
@@ -36,11 +38,10 @@ node_templates:
     properties: 
       cloudify_agent: 
         port: 5985
-        user: Admin
         wait_started_timeout: 3600
-      image: 53e6ef20-a087-44d1-9bdb-5c7f4bffad5b
+        user: Admin
       flavor: 3
-
+      image: 53e6ef20-a087-44d1-9bdb-5c7f4bffad5b
     relationships:
       - target: _a4c_key_pair_for_compute
         type: cloudify.openstack.server_connected_to_keypair
@@ -50,6 +51,9 @@ node_templates:
       resource_id: a4c-manager
       use_external_resource: true
       private_key_path: /root/.ssh/agent_key.pem
+
+
+
 
 
 
@@ -74,10 +78,13 @@ workflows:
         default: 1
       scale_compute:
         description: >
-            If node is contained (transitively) within a compute node
-            and this property is 'true', operate on compute node instead
-            of 'node_id'
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
         default: true
+      ignore_failure:
+        default: false
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:

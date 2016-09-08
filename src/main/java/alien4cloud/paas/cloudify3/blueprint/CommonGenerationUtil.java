@@ -1,7 +1,11 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
+import alien4cloud.model.components.IndexedInheritableToscaElement;
+import alien4cloud.tosca.ToscaUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import alien4cloud.model.components.AbstractPropertyValue;
@@ -31,10 +35,6 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
                 DeploymentPropertiesNames.MONITORING_INTERVAL_INMINUTE);
     }
 
-    public String getCfyScriptVersion() {
-        return CloudifyOrchestratorFactory.CFY_SCRIPT_VERSION;
-    }
-
     public String getScalarPropertyValue(NodeTemplate nodeTemplate, String propertyName) {
         AbstractPropertyValue value = (AbstractPropertyValue) MapUtil.get(nodeTemplate.getProperties(), propertyName);
         if (value != null) {
@@ -54,5 +54,16 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
                 return toBeAbbreviated;
             }
         }
+    }
+
+    public boolean isFromType(String type, IndexedInheritableToscaElement indexedInheritableToscaElement){
+       return ToscaUtils.isFromType(type, indexedInheritableToscaElement);
+    }
+
+    public boolean doesVelocityFileExists(String velocityFilePath) {
+        if(Files.exists(Paths.get(velocityFilePath))) {
+            return true;
+        }
+        return false;
     }
 }

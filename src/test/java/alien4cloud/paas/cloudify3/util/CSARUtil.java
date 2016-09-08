@@ -108,7 +108,10 @@ public class CSARUtil {
     }
 
     public void uploadCustomApache() throws Exception {
-        uploadCSAR(Paths.get("./src/test/resources/components/apache"));
+        Path apache = Paths.get("./src/test/resources/components/apache");
+        if (Files.exists(apache)) {
+            uploadCSAR(apache);
+        }
     }
 
     public void uploadAll() throws Exception {

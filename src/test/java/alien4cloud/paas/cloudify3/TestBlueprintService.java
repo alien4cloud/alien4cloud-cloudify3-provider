@@ -13,14 +13,13 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import com.google.common.collect.Maps;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import com.google.common.collect.Maps;
 import com.google.common.io.Closeables;
 
 import alien4cloud.component.repository.ArtifactLocalRepository;
@@ -44,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:test-context.xml")
-@Ignore
+// @Ignore
 public class TestBlueprintService extends AbstractTestBlueprint {
 
     @Inject
@@ -66,7 +65,7 @@ public class TestBlueprintService extends AbstractTestBlueprint {
      * Set true to this boolean when the blueprint has changed and you want to re-register
      */
     @Getter
-    protected boolean record = false;
+    protected boolean record = true;
 
     /**
      * Set true to this boolean so the blueprint will be uploaded to the manager to verify
@@ -103,11 +102,13 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     }
 
     @Test
-    public void testGenerateScalableCompute() {
-        String oldImport = cloudConfigurationHolder.getConfiguration().getLocations().getOpenstack().getImports().get(1);
-        cloudConfigurationHolder.getConfiguration().getLocations().getOpenstack().getImports().set(1, "openstack-plugin.yaml");
-        testGeneratedBlueprintFile(SCALABLE_COMPUTE_TOPOLOGY);
-        cloudConfigurationHolder.getConfiguration().getLocations().getOpenstack().getImports().set(1, oldImport);
+    public void testGenerateNewScalableCompute() {
+        testGeneratedBlueprintFile(NEW_SCALABLE_COMPUTE_TOPOLOGY);
+    }
+
+    @Test
+    public void testGenerateSingleScalableCompute() {
+        testGeneratedBlueprintFile(SINGLE_SCALABLE_COMPUTE_TOPOLOGY);
     }
 
     @Test
@@ -161,12 +162,7 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     public void testGenerateOverriddenArtifactsTest() {
         for (String location : LOCATIONS) {
             testGeneratedBlueprintFile(ARTIFACT_TEST_TOPOLOGY, location, ARTIFACT_TEST_TOPOLOGY + "Overridden", "testGenerateOverridenArtifactsTest",
-                    new DeploymentContextVisitor() {
-                        @Override
-                        public void visitDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
-                            overrideArtifact(context, "War", "war_file", Paths.get("src/test/resources/data/war-examples/helloWorld.war"));
-                        }
-                    });
+                    context -> overrideArtifact(context, "War", "war_file", Paths.get("src/test/resources/data/war-examples/helloWorld.war")));
         }
     }
 

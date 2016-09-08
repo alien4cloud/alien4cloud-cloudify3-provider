@@ -5,14 +5,6 @@
     type: ${compute.nodeTemplate.type}
     properties: ${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment.propertyMappings.get($compute.nodeTemplate.type))}
       name: ${compute.id}
-#if(${compute.scalingPolicy})
-    instances:
-#if(${compute.scalingPolicy.initialInstances})
-      deploy: ${compute.scalingPolicy.initialInstances}
-#else
-      deploy: 1
-#end
-#end
 #set($publicNetworks = ${util.network.getExternalNetworks($compute)} )
 #if($util.collectionHasElement(${publicNetworks}) || $computeIsWindows)
     relationships:
@@ -42,7 +34,7 @@
 #parse("provider/common/monitoring_interfaces.yaml.vm")
 #end
 #foreach($externalNetwork in $publicNetworks)
-  ${mapping.generatedNodePrefix}_floating_ip_${compute.id}_on_${externalNetwork.id}:
+  $util.network.generateFloatingIpNodeName(${compute.id},${externalNetwork.id}):
     type: ${externalNetwork.nodeTemplate.type}
 #end
 #end

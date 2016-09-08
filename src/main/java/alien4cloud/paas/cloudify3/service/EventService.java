@@ -44,9 +44,6 @@ public class EventService {
     private Set<String> lastEvents;
     private long lastRequestedTimestamp;
 
-    @Resource
-    private ScalableComputeReplacementService scalableComputeReplacementService;
-
     // TODO : May manage in a better manner this kind of state
     private Map<String, String> paaSDeploymentIdToAlienDeploymentIdMapping = Maps.newConcurrentMap();
 
@@ -186,9 +183,6 @@ public class EventService {
                     log.debug("Received event {}", cloudifyEvent);
                 }
                 alienEvents.add(alienEvent);
-                // [[ Scaling issue workarround
-                scalableComputeReplacementService.processEventForSubstitutes(alienEvents, alienEvent, cloudifyEvent);
-                // Scaling issue workarround ]]
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("Filtered event {}", cloudifyEvent);
@@ -227,10 +221,6 @@ public class EventService {
                 alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getContext().getNodeName(), cloudifyEvent.getContext().getNodeId(),
                         eventAlienPersistent.getPersistentAlienAttribute(), attributeValue);
 
-                // [[ Scaling issue workarround
-                scalableComputeReplacementService.processPersistentResourceEvent(eventAlienPersistent, (PaaSInstancePersistentResourceMonitorEvent) alienEvent,
-                        cloudifyEvent);
-                // Scaling issue workarround ]]
             } catch (Exception e) {
                 log.warn("Problem processing persistent event " + cloudifyEvent.getId(), e);
                 return null;

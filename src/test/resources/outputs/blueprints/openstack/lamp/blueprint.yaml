@@ -1,9 +1,11 @@
 
 
-tosca_definitions_version: cloudify_dsl_1_2
+
+
+tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
   - http://www.getcloudify.org/spec/openstack-plugin/1.3.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
 
@@ -59,11 +61,10 @@ node_templates:
   DataBase:
     type: alien.nodes.openstack.Compute
     properties: 
-      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       flavor: 2
+      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       cloudify_agent: 
         user: ubuntu
-
     relationships:
       - target: InternalNetwork
         type: cloudify.relationships.connected_to
@@ -94,11 +95,10 @@ node_templates:
   Server:
     type: alien.nodes.openstack.Compute
     properties: 
-      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       flavor: 2
+      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       cloudify_agent: 
         user: ubuntu
-
     relationships:
       - target: InternalNetwork
         type: cloudify.relationships.connected_to
@@ -207,6 +207,9 @@ node_templates:
         type: cloudify.relationships.contained_in
 
 
+
+
+
 plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
@@ -228,10 +231,13 @@ workflows:
         default: 1
       scale_compute:
         description: >
-            If node is contained (transitively) within a compute node
-            and this property is 'true', operate on compute node instead
-            of 'node_id'
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
         default: true
+      ignore_failure:
+        default: false
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:
