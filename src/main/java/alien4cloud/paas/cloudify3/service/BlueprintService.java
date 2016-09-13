@@ -186,8 +186,8 @@ public class BlueprintService {
                             Relationship keyRelationship = new Relationship(relationship.getId(), relationship.getSource(),
                                     relationship.getTemplate().getTarget());
                             Map<Relationship, Map<String, DeploymentArtifact>> relationshipArtifacts = Maps.newLinkedHashMap();
-                            if (MapUtils.isNotEmpty(relationship.getIndexedToscaElement().getArtifacts())) {
-                                relationshipArtifacts.put(keyRelationship, relationship.getIndexedToscaElement().getArtifacts());
+                            if (MapUtils.isNotEmpty(relationship.getTemplate().getArtifacts())) {
+                                relationshipArtifacts.put(keyRelationship, relationship.getTemplate().getArtifacts());
                             }
                             Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
                             Map<String, DeploymentArtifact> sourceArtifacts = alienDeployment.getAllNodes().get(relationship.getSource()).getTemplate()
@@ -262,15 +262,13 @@ public class BlueprintService {
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("operation", operationWrapper);
         VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/script_wrapper.vm"),
-                generatedBlueprintDirectoryPath
-                        .resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName, operation.getImplementationArtifact())),
-                operationContext);
+                generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName)), operationContext);
         return operationWrapper;
     }
 
     private void copyArtifact(Path artifactsDirectory, String pathToArtifact, IArtifact artifact) throws IOException {
         Path artifactCopiedPath = artifactsDirectory.resolve(pathToArtifact);
-        Path artifactPath = artifact.getArtifactPath();
+        Path artifactPath = Paths.get(artifact.getArtifactPath());
         ensureArtifactDefined(artifact, pathToArtifact);
         if (Files.isRegularFile(artifactCopiedPath)) {
             return;
