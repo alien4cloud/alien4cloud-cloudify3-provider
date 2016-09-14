@@ -22,11 +22,11 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import alien4cloud.component.repository.exception.CSARVersionNotFoundException;
-import alien4cloud.model.components.DeploymentArtifact;
-import alien4cloud.model.components.IArtifact;
-import alien4cloud.model.components.ImplementationArtifact;
-import alien4cloud.model.components.Interface;
-import alien4cloud.model.components.Operation;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.IArtifact;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;

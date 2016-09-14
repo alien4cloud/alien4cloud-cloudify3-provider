@@ -1,8 +1,8 @@
 package alien4cloud.paas.cloudify3;
 
 import alien4cloud.model.common.Tag;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.PropertyDefinition;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.model.HostWorkflow;
 import alien4cloud.paas.cloudify3.service.model.StandardWorkflow;
@@ -35,7 +35,7 @@ public class WorkflowsTest {
 
     @Test
     public void testPropertyMapping() {
-        IndexedNodeType nodeType = new IndexedNodeType();
+        NodeType nodeType = new NodeType();
         Map<String, PropertyDefinition> properties = new HashMap<>();
         PropertyDefinition propertyDefinition = new PropertyDefinition();
         propertyDefinition.setType("string");

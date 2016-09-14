@@ -4,14 +4,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import alien4cloud.model.components.IndexedInheritableToscaElement;
+import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
 import alien4cloud.tosca.ToscaUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import alien4cloud.model.components.AbstractPropertyValue;
-import alien4cloud.model.components.ScalarPropertyValue;
-import alien4cloud.model.topology.NodeTemplate;
-import alien4cloud.paas.cloudify3.CloudifyOrchestratorFactory;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
@@ -56,7 +55,7 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
         }
     }
 
-    public boolean isFromType(String type, IndexedInheritableToscaElement indexedInheritableToscaElement){
+    public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement){
        return ToscaUtils.isFromType(type, indexedInheritableToscaElement);
     }
 

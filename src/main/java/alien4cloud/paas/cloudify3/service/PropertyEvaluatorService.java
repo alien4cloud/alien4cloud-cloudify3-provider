@@ -3,11 +3,11 @@ package alien4cloud.paas.cloudify3.service;
 import java.util.List;
 import java.util.Map;
 
+import org.alien4cloud.tosca.model.definitions.*;
 import org.springframework.stereotype.Component;
 
 import alien4cloud.exception.InvalidArgumentException;
-import alien4cloud.model.components.*;
-import alien4cloud.model.topology.Capability;
+import org.alien4cloud.tosca.model.templates.Capability;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.PaaSNodeTemplate;

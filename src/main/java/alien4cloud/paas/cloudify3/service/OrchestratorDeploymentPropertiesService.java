@@ -7,10 +7,10 @@ import javax.annotation.PostConstruct;
 
 import org.apache.commons.lang3.StringUtils;
 
-import alien4cloud.model.components.PropertyConstraint;
-import alien4cloud.model.components.PropertyDefinition;
-import alien4cloud.model.components.ScalarPropertyValue;
-import alien4cloud.model.components.constraints.GreaterThanConstraint;
+import org.alien4cloud.tosca.model.definitions.PropertyConstraint;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.definitions.constraints.GreaterThanConstraint;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.tosca.normative.ToscaType;
 import alien4cloud.utils.MapUtil;

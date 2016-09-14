@@ -3,7 +3,7 @@ package alien4cloud.paas.cloudify3.util;
 import alien4cloud.application.ApplicationService;
 import alien4cloud.dao.ElasticSearchDAO;
 import alien4cloud.model.application.Application;
-import alien4cloud.model.topology.Topology;
+import org.alien4cloud.tosca.model.templates.Topology;
 import alien4cloud.paas.cloudify3.AbstractTest;
 import alien4cloud.tosca.ArchiveParser;
 import alien4cloud.tosca.model.ArchiveRoot;
