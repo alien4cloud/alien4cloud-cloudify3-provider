@@ -3,7 +3,7 @@ package alien4cloud.paas.cloudify3.util;
 import alien4cloud.git.RepositoryManager;
 import org.alien4cloud.tosca.model.Csar;
 import alien4cloud.security.model.Role;
-import alien4cloud.tosca.ArchiveUploadService;
+import org.alien4cloud.tosca.catalog.ArchiveUploadService;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.tosca.parser.ParsingErrorLevel;
 import alien4cloud.tosca.parser.ParsingResult;
