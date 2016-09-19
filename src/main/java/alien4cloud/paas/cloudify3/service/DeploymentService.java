@@ -16,7 +16,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import alien4cloud.component.repository.exception.CSARVersionNotFoundException;
 import alien4cloud.paas.cloudify3.model.*;
 import alien4cloud.paas.cloudify3.restclient.BlueprintClient;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
@@ -65,7 +64,7 @@ public class DeploymentService extends RuntimeService {
         Path blueprintPath;
         try {
             blueprintPath = blueprintService.generateBlueprint(alienDeployment);
-        } catch (IOException | CSARVersionNotFoundException e) {
+        } catch (IOException e) {
             log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
                     + alienDeployment.getDeploymentId(), e);
 

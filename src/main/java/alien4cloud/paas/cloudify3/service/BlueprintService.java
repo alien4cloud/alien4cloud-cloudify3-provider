@@ -12,6 +12,7 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
+import org.alien4cloud.tosca.model.definitions.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Required;
@@ -21,12 +22,6 @@ import org.springframework.stereotype.Component;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import alien4cloud.component.repository.exception.CSARVersionNotFoundException;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.IArtifact;
-import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
@@ -124,7 +119,7 @@ public class BlueprintService {
      *            the alien deployment's configuration
      * @return the generated blueprint
      */
-    public Path generateBlueprint(CloudifyDeployment alienDeployment) throws IOException, CSARVersionNotFoundException {
+    public Path generateBlueprint(CloudifyDeployment alienDeployment) throws IOException {
         // Where the whole blueprint will be generated
         Path generatedBlueprintDirectoryPath = resolveBlueprintPath(alienDeployment.getDeploymentPaaSId());
         if (Files.exists(generatedBlueprintDirectoryPath)) {
@@ -289,8 +284,7 @@ public class BlueprintService {
         }
     }
 
-    private void copyDeploymentArtifacts(NonNativeTypeGenerationUtil util, Path artifactsDir, IPaaSTemplate<?> node)
-            throws IOException, CSARVersionNotFoundException {
+    private void copyDeploymentArtifacts(NonNativeTypeGenerationUtil util, Path artifactsDir, IPaaSTemplate<?> node) throws IOException {
         Map<String, DeploymentArtifact> artifacts = node.getTemplate().getArtifacts();
         if (MapUtils.isEmpty(artifacts)) {
             return;
@@ -313,8 +307,7 @@ public class BlueprintService {
         }
     }
 
-    private void copyImplementationArtifacts(NonNativeTypeGenerationUtil util, Path artifactsDir, IPaaSTemplate<?> node)
-            throws IOException, CSARVersionNotFoundException {
+    private void copyImplementationArtifacts(NonNativeTypeGenerationUtil util, Path artifactsDir, IPaaSTemplate<?> node) throws IOException {
         Map<String, Interface> interfaces = node.getInterfaces();
         if (interfaces == null || interfaces.isEmpty()) {
             return;

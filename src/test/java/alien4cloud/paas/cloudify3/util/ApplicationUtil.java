@@ -46,7 +46,7 @@ public class ApplicationUtil {
             applicationService.delete(application.getId());
         }
         ArchiveRoot archiveRoot = parseYamlTopology(topologyFileName, locationName);
-        String applicationId = applicationService.create("alien", applicationName, null);
+        String applicationId = applicationService.create("alien", applicationName, applicationName, null);
         // TODO validate this works
         archiveRoot.getArchive().setDelegateId(applicationId);
         archiveRoot.getArchive().setDelegateType(Application.class.getSimpleName().toLowerCase());
