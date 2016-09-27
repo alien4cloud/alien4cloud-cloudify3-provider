@@ -4,6 +4,7 @@ import java.nio.file.Path;
 
 import javax.inject.Inject;
 
+import alien4cloud.common.AlienConstants;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Component;
@@ -32,7 +33,7 @@ public class PluginArchiveService {
         ParsingResult<ArchiveRoot> result;
         Path archivePath = selfContext.getPluginPath().resolve(archiveRelativePath);
         try {
-            result = this.archiveParser.parseDir(archivePath);
+            result = this.archiveParser.parseDir(archivePath, AlienConstants.GLOBAL_WORKSPACE_ID);
         } catch (ParsingException e) {
             log.error("Failed to parse archive, plugin won't work", e);
             throw new BadConfigurationException("Failed to parse archive, plugin won't work", e);

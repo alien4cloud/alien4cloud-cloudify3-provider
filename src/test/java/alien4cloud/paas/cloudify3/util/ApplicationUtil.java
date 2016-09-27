@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.util;
 
 import alien4cloud.application.ApplicationService;
+import alien4cloud.common.AlienConstants;
 import alien4cloud.dao.ElasticSearchDAO;
 import alien4cloud.model.application.Application;
 import alien4cloud.paas.cloudify3.AbstractTest;
@@ -61,7 +62,7 @@ public class ApplicationUtil {
         VelocityUtil.generate(Paths.get("src/test/resources/topologies/" + locationName + "/" + topologyFileName + ".yaml"), realTopologyPath,
                 MapUtil.newHashMap(new String[] { "projectVersion" }, new String[] { AbstractTest.VERSION }));
         FileUtil.zip(realTopologyPath, zipPath);
-        ParsingResult<ArchiveRoot> parsingResult = parser.parse(zipPath);
+        ParsingResult<ArchiveRoot> parsingResult = parser.parse(zipPath, AlienConstants.GLOBAL_WORKSPACE_ID);
         return parsingResult.getResult();
     }
 }
