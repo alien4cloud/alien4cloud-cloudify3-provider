@@ -8,6 +8,27 @@ imports:
   - tosca-normative-types:1.0.0-SNAPSHOT
   - cloudify3-common-types:${project.version}
 
+data_types:
+
+  alien.data.aws.InstanceParameters:
+    properties:
+      key_name:
+        type: string
+        required: false
+      security_groups:
+        type: list
+        required: false
+        entry_schema:
+          type: string
+      security_group_ids:
+        type: list
+        required: false
+        entry_schema:
+          type: string
+      placement:
+        type: string
+        required: false
+
 node_types:
   # configuration types
   alien.cloudify.aws.nodes.Image:
@@ -34,8 +55,13 @@ node_types:
     derived_from: tosca.nodes.Compute
     tags:
       _a4c_c3_derived_from: cloudify.aws.nodes.Instance
+      _a4c_c3_prop_map: >
+        {"extra_parameters": "parameters"}
     properties:
       parameters:
+        type: alien.data.aws.InstanceParameters
+        required: false
+      extra_parameters:
         type: map
         entry_schema:
           type: string

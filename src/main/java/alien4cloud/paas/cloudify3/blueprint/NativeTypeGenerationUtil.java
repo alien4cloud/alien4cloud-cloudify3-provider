@@ -1,11 +1,11 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
 import alien4cloud.model.common.Tag;
-import alien4cloud.model.components.AbstractPropertyValue;
-import alien4cloud.model.components.FunctionPropertyValue;
-import alien4cloud.model.components.IValue;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.error.BadConfigurationException;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
@@ -37,7 +37,7 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
      *            The tosca node type.
      * @return The matching cloudify's type.
      */
-    public String mapToCloudifyType(IndexedNodeType toscaNodeType) {
+    public String mapToCloudifyType(NodeType toscaNodeType) {
         String cloudifyType = TagUtil.getTagValue(toscaNodeType.getTags(), MAPPED_TO_KEY);
         if (cloudifyType == null) {
             throw new BadConfigurationException("In the type " + toscaNodeType.getElementId() + " the tag " + MAPPED_TO_KEY
@@ -68,7 +68,7 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
         return ToscaPropertySerializerUtils.formatProperties(indentLevel, mappedProperties);
     }
 
-    public Map<String, List<IPropertyMapping>> loadPropertyMapping(IndexedNodeType type, String tagName) {
+    public Map<String, List<IPropertyMapping>> loadPropertyMapping(NodeType type, String tagName) {
         return PropertiesMappingUtil.loadPropertyMapping(tagName, type);
     }
 

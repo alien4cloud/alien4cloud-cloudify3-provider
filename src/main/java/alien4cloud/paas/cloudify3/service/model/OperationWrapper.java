@@ -5,11 +5,11 @@ import java.util.Set;
 
 import com.google.common.collect.Maps;
 
-import alien4cloud.model.components.DeploymentArtifact;
-import alien4cloud.model.components.IValue;
-import alien4cloud.model.components.ImplementationArtifact;
-import alien4cloud.model.components.Operation;
-import alien4cloud.model.components.OperationOutput;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.OperationOutput;
 import alien4cloud.paas.IPaaSTemplate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

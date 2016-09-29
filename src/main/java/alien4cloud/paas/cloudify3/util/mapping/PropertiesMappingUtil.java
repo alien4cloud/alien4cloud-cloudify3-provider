@@ -1,9 +1,9 @@
 package alien4cloud.paas.cloudify3.util.mapping;
 
-import alien4cloud.model.components.IndexedInheritableToscaElement;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.IndexedToscaElement;
-import alien4cloud.model.components.PropertyDefinition;
+import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.AbstractToscaType;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
 import alien4cloud.tosca.normative.ToscaType;
 import alien4cloud.utils.TagUtil;
@@ -38,13 +38,13 @@ public class PropertiesMappingUtil {
      * @param topologyContext
      * @return A map <nodeType, <toscaPath, cloudifyPath>>>
      */
-    public static Map<String, Map<String, List<IPropertyMapping>>> loadPropertyMappings(List<IndexedNodeType> nodeTypes, TopologyContext topologyContext) {
+    public static Map<String, Map<String, List<IPropertyMapping>>> loadPropertyMappings(List<NodeType> nodeTypes, TopologyContext topologyContext) {
         TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
         };
 
         // <nodeType, <toscaPath, cloudifyPath>>>
         Map<String, Map<String, List<IPropertyMapping>>> propertyMappingsByTypes = Maps.newLinkedHashMap();
-        for (IndexedNodeType nodeType : nodeTypes) {
+        for (NodeType nodeType : nodeTypes) {
             deeplyLoadPropertyMapping(PROP_MAPPING_TAG_KEY, propertyMappingsByTypes, nodeType, topologyContext);
         }
         return propertyMappingsByTypes;
@@ -58,7 +58,7 @@ public class PropertiesMappingUtil {
      * @param topologyContext
      */
     private static void deeplyLoadPropertyMapping(String fromTag, Map<String, Map<String, List<IPropertyMapping>>> propertyMappingsByTypes,
-            IndexedInheritableToscaElement inheritableToscaElement, TopologyContext topologyContext) {
+                                                  AbstractInheritableToscaType inheritableToscaElement, TopologyContext topologyContext) {
         // do not proceed if mapping already exists
         if (inheritableToscaElement == null || propertyMappingsByTypes.containsKey(inheritableToscaElement.getElementId())) {
             return;
@@ -82,7 +82,7 @@ public class PropertiesMappingUtil {
      * @param topologyContext
      */
     private static void loadPropertiesDataTypesMapping(String fromTag, Map<String, Map<String, List<IPropertyMapping>>> propertyMappingsByTypes,
-            IndexedInheritableToscaElement inheritableToscaElement, TopologyContext topologyContext) {
+                                                       AbstractInheritableToscaType inheritableToscaElement, TopologyContext topologyContext) {
         if (MapUtils.isEmpty(inheritableToscaElement.getProperties())) {
             return;
         }
@@ -91,7 +91,7 @@ public class PropertiesMappingUtil {
             ComplexPropertyMapping mapping = buildPropertyMapping(definitionEntry.getValue());
 
             if (mapping != null) {
-                IndexedInheritableToscaElement dataType = (IndexedInheritableToscaElement) topologyContext.findElement(IndexedToscaElement.class,
+                AbstractInheritableToscaType dataType = (AbstractInheritableToscaType) topologyContext.findElement(AbstractToscaType.class,
                         mapping.getType());
                 // if dataType found in repository, then try to load its mapping
                 if (dataType != null) {
@@ -136,7 +136,7 @@ public class PropertiesMappingUtil {
         }
     }
 
-    public static Map<String, List<IPropertyMapping>> loadPropertyMapping(String fromTagName, IndexedInheritableToscaElement toscaElement) {
+    public static Map<String, List<IPropertyMapping>> loadPropertyMapping(String fromTagName, AbstractInheritableToscaType toscaElement) {
         TypeReference<HashMap<String, Object>> typeRef = new TypeReference<HashMap<String, Object>>() {
         };
         String mappingStr = TagUtil.getTagValue(toscaElement.getTags(), fromTagName);
@@ -152,7 +152,7 @@ public class PropertiesMappingUtil {
         }
     }
 
-    private static Map<String, List<IPropertyMapping>> fromFullPathMap(Map<String, Object> parsedMappings, IndexedInheritableToscaElement toscaElement) {
+    private static Map<String, List<IPropertyMapping>> fromFullPathMap(Map<String, Object> parsedMappings, AbstractInheritableToscaType toscaElement) {
         Map<String, List<IPropertyMapping>> propertyMappings = Maps.newLinkedHashMap();
 
         for (Map.Entry<String, Object> parsedMapping : parsedMappings.entrySet()) {
