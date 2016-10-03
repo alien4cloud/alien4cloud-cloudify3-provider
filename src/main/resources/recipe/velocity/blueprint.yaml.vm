@@ -107,3 +107,10 @@ workflows:
       diagnose_value:
         description: Diagnosed reason of failure
         default: Not provided
+  a4c_set_instance_state:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_set_instance_state
+    parameters:
+      node_instance_id:
+        description: the node instance
+      state:
+        description: the state

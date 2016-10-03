@@ -261,3 +261,17 @@ def a4c_heal(
     #[[#]]#_add_relationship(node_${nodeEntry.key}, node_${relationshipEntry.value.target})
 #end
 #end
+
+@workflow
+def a4c_set_instance_state(
+        ctx,
+        node_instance_id,
+        state,
+        **kwargs):
+
+    ctx.logger.info("Starting 'set_instance_state' workflow on node {0}, state: {1}"
+                    .format(node_instance_id, state))
+    instance = ctx.get_node_instance(node_instance_id)
+    graph = ctx.graph_mode()
+    graph.add_task(instance.set_state(state))
+    graph.execute()

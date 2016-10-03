@@ -26,11 +26,13 @@
 #end
 
 env_map = {}
+env_map['A4C_DEPLOYMENT_ID'] = '$deployment.deploymentId'
 #if($util.nonNative.isOperationOwnedByNode(${operation}))
 env_map['NODE'] = ctx.node.id
 env_map['INSTANCE'] = ctx.instance.id
 env_map['INSTANCES'] = get_instance_list(ctx.node.id)
 env_map['HOST'] = get_host_node_name(ctx.instance)
+env_map['HOST_INSTANCE'] = get_host_instance_id(ctx.instance)
 #elseif($util.nonNative.isOperationOwnedByRelationship(${operation}))
 env_map['TARGET_NODE'] = ctx.target.node.id
 env_map['TARGET_INSTANCE'] = ctx.target.instance.id
