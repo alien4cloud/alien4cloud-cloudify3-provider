@@ -7,7 +7,7 @@ import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import alien4cloud.model.components.IndexedNodeType;
+import org.alien4cloud.tosca.model.types.NodeType;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -28,8 +28,8 @@ public abstract class AbstractGenerationUtil {
         return mappingConfiguration.getNormativeTypes().containsKey(toscaType);
     }
 
-    protected IndexedNodeType getTypeFromName(String name, List<IndexedNodeType> types) {
-        for (IndexedNodeType type : types) {
+    protected NodeType getTypeFromName(String name, List<NodeType> types) {
+        for (NodeType type : types) {
             if (name.equals(type.getId())) {
                 return type;
             }

@@ -1,9 +1,10 @@
 package alien4cloud.paas.cloudify3.util;
 
+import alien4cloud.common.AlienConstants;
 import alien4cloud.git.RepositoryManager;
-import alien4cloud.model.components.Csar;
+import org.alien4cloud.tosca.model.Csar;
 import alien4cloud.security.model.Role;
-import alien4cloud.tosca.ArchiveUploadService;
+import org.alien4cloud.tosca.catalog.ArchiveUploadService;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.tosca.parser.ParsingErrorLevel;
 import alien4cloud.tosca.parser.ParsingResult;
@@ -53,7 +54,7 @@ public class CSARUtil {
         FileUtil.zip(path, zipPath);
         Authentication auth = new TestingAuthenticationToken(Role.ADMIN, "", Role.ADMIN.name());
         SecurityContextHolder.getContext().setAuthentication(auth);
-        ParsingResult<Csar> result = archiveUploadService.upload(zipPath, CSARSource.UPLOAD);
+        ParsingResult<Csar> result = archiveUploadService.upload(zipPath, CSARSource.UPLOAD, AlienConstants.GLOBAL_WORKSPACE_ID);
         if (result.getContext().getParsingErrors() != null && !result.getContext().getParsingErrors().isEmpty()) {
             boolean hasError = false;
             for (ParsingError error : result.getContext().getParsingErrors()) {

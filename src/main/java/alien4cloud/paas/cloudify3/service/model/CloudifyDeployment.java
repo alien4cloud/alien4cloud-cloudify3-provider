@@ -8,9 +8,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import alien4cloud.model.components.DeploymentArtifact;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.IndexedRelationshipType;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.RelationshipType;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 
@@ -46,11 +46,11 @@ public class CloudifyDeployment {
 
     private List<PaaSNodeTemplate> nonNatives;
 
-    private List<IndexedNodeType> nonNativesTypes;
+    private List<NodeType> nonNativesTypes;
 
-    private List<IndexedRelationshipType> nonNativesRelationshipTypes;
+    private List<RelationshipType> nonNativesRelationshipTypes;
 
-    private List<IndexedNodeType> nativeTypes;
+    private List<NodeType> nativeTypes;
 
     private Map<String, PaaSNodeTemplate> allNodes;
 

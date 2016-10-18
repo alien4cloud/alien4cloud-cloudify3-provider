@@ -3,36 +3,24 @@ package alien4cloud.paas.cloudify3;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
-import javax.validation.constraints.AssertTrue;
 
-import alien4cloud.model.components.*;
 import alien4cloud.model.orchestrators.locations.LocationResourceTemplate;
-import alien4cloud.model.topology.AbstractPolicy;
-import alien4cloud.model.topology.HaPolicy;
-import alien4cloud.model.topology.NodeGroup;
-import alien4cloud.model.topology.NodeTemplate;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.topology.TopologyUtils;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.collect.Maps;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -40,19 +28,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import alien4cloud.component.repository.ArtifactLocalRepository;
-import alien4cloud.component.repository.ArtifactRepositoryConstants;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
-import alien4cloud.paas.cloudify3.location.AmazonLocationConfigurator;
-import alien4cloud.paas.cloudify3.location.ByonLocationConfigurator;
 import alien4cloud.paas.cloudify3.location.OpenstackLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.util.ApplicationUtil;
-import alien4cloud.paas.cloudify3.util.CSARUtil;
 import alien4cloud.paas.cloudify3.util.DeploymentLauncher;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-
-import com.google.common.io.Closeables;
 
 @Slf4j
 @RunWith(SpringJUnit4ClassRunner.class)

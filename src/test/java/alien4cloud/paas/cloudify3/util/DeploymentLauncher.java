@@ -3,7 +3,7 @@ package alien4cloud.paas.cloudify3.util;
 import alien4cloud.common.AlienConstants;
 import alien4cloud.model.deployment.DeploymentTopology;
 import alien4cloud.model.orchestrators.locations.Location;
-import alien4cloud.model.topology.Topology;
+import org.alien4cloud.tosca.model.templates.Topology;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.CloudifyOrchestrator;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;

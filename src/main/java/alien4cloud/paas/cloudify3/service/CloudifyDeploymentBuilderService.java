@@ -16,10 +16,10 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
-import alien4cloud.model.components.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import alien4cloud.model.components.IndexedModelUtils;
-import alien4cloud.model.components.IndexedNodeType;
-import alien4cloud.model.components.IndexedRelationshipType;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.RelationshipType;
 import alien4cloud.paas.cloudify3.error.SingleLocationRequiredException;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -64,7 +64,7 @@ public class CloudifyDeploymentBuilderService {
         processNonNativeTypes(cloudifyDeployment, deploymentContext);
         processDeploymentArtifacts(cloudifyDeployment, deploymentContext);
 
-        List<IndexedNodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getComputes());
+        List<NodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getComputes());
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
 
@@ -253,8 +253,8 @@ public class CloudifyDeploymentBuilderService {
         return Objects.equals(step.getHostId(), hostId);
     }
 
-    private List<IndexedNodeType> getTypesOrderedByDerivedFromHierarchy(List<PaaSNodeTemplate> nodes) {
-        Map<String, IndexedNodeType> nodeTypeMap = Maps.newLinkedHashMap();
+    private List<NodeType> getTypesOrderedByDerivedFromHierarchy(List<PaaSNodeTemplate> nodes) {
+        Map<String, NodeType> nodeTypeMap = Maps.newLinkedHashMap();
         for (PaaSNodeTemplate node : nodes) {
             nodeTypeMap.put(node.getIndexedToscaElement().getElementId(), node.getIndexedToscaElement());
         }
@@ -305,8 +305,8 @@ public class CloudifyDeploymentBuilderService {
      * @param deploymentContext  The deployment context from alien 4 cloud.
      */
     private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
-        Map<String, IndexedNodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
-        Map<String, IndexedRelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
+        Map<String, NodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
+        Map<String, RelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
         for (PaaSNodeTemplate nonNative : deploymentContext.getPaaSTopology().getNonNatives()) {
             nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
             List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();

@@ -24,10 +24,10 @@ import com.google.common.io.Closeables;
 
 import alien4cloud.component.repository.ArtifactLocalRepository;
 import alien4cloud.component.repository.ArtifactRepositoryConstants;
-import alien4cloud.model.components.DeploymentArtifact;
-import alien4cloud.model.components.FunctionPropertyValue;
-import alien4cloud.model.components.IValue;
-import alien4cloud.model.components.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.paas.cloudify3.location.AmazonLocationConfigurator;
 import alien4cloud.paas.cloudify3.location.ByonLocationConfigurator;
