@@ -286,6 +286,15 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
         )
         if host_instance is not None and host_instance.id == instance.id:
             ctx.logger.info("[MAPPING] Do nothing it is the same instance: host_instance.id={} instance.id={}".format(host_instance.id, instance.id))
+        elif 'cloudify.nodes.Compute' in instance.node.type_hierarchy:
+            # This part is specific to Azure as with the Azure plugin, the relationship is from the Compute to a Volume
+            for relationship in instance.relationships:
+                # In the Azure definition types of the Cloudify plugin, the datadisk type doesn't derived from cloudify.nodes.Volume
+                if 'cloudify.azure.nodes.storage.DataDisk' in relationship.target_node_instance.node.type_hierarchy and 'alien4cloud.mapping.device.execute' in instance.node.operations:
+                    volume_instance_id=relationship.target_id
+                    ctx.logger.info("[MAPPING] DO THE MAPPING on id={}".format(volume_instance_id))
+                    sequence.add(instance.send_event("Updating device attribute for instance {0} and volume {0}".format(instance.id, volume_instance_id)))
+                    sequence.add(instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': volume_instance_id}))
         elif host_instance is not None and 'alien4cloud.mapping.device.execute' in host_instance.node.operations:
             sequence.add(host_instance.send_event("Updating device attribute for instance {0} and volume {0}".format(host_instance.id, instance.id)))
             sequence.add(host_instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': instance.id}))
