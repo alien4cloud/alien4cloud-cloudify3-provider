@@ -12,6 +12,9 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.IArtifact;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.elasticsearch.common.collect.Sets;
@@ -273,7 +276,14 @@ public class BlueprintService {
                 propertyEvaluatorService, allNodes);
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("operation", operationWrapper);
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/script_wrapper.vm"),
+
+        // get the script wrapper based on the artifact.
+
+        String wrapper = "velocity/script_wrapper.vm";
+        if(operation.getImplementationArtifact().getArtifactType().equals("alien.artifacts.AnsiblePlaybook")){
+            wrapper = "velocity/ansible_wrapper.vm";
+        }
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve(wrapper),
                 generatedBlueprintDirectoryPath
                         .resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName, operation.getImplementationArtifact())),
                 operationContext);

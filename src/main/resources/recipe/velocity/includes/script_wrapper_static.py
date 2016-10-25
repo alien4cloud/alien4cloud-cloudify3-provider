@@ -21,6 +21,17 @@ def convert_env_value_to_string(envDict):
     for key, value in envDict.items():
         envDict[str(key)] = str(envDict.pop(key))
 
+def get_attribute_user(ctx):
+    if get_attribute(ctx, 'user'):
+        return get_attribute(ctx, 'user')
+    else:
+        return get_attribute(ctx, 'cloudify_agent')['user']
+
+def get_attribute_key(ctx):
+    if get_attribute(ctx, 'key'):
+        return get_attribute(ctx, 'key')
+    else:
+        return get_attribute(ctx, 'cloudify_agent')['key']
 
 def get_host(entity):
     if entity.instance.relationships:
