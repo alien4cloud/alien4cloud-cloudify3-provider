@@ -22,6 +22,12 @@
       _a4c_persistent_resources:
         default: $getPersistentResourceId
 #end
+#if($util.common.isFromType('tosca.nodes.BlockStorage',$nativeType))
+      _a4c_device:
+        description: >
+          This property is needed as a workaround to fill the gap when the device property doesn't exist in Cloudify's plugin.
+        default: ''
+#end
 ##end
 #end
 #end
