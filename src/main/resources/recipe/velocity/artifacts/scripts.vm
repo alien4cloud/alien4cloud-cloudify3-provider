@@ -1,0 +1,19 @@
+## This file contains wrapper executor for tosca.artifacts.Implementation.Bash and alien.artifacts.BatchScript artifacts.
+
+#include("includes/script_wrapper_static.py")
+
+new_script_process = {'env': env_map}
+
+operationOutputNames = None
+#if(${operation.getOutputs()} && !${operation.getOutputs().isEmpty()})
+operationOutputNames = '${util.nonNative.getOperationOutputNames(${operation})}'
+#end
+convert_env_value_to_string(new_script_process['env'])
+#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
+parsed_output = execute(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+#else
+parsed_output = execute(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+#end
+
+## executor wrapper must define the outputs variable
+outputs = parsed_output['outputs'].items()

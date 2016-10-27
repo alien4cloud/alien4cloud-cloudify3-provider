@@ -4,10 +4,9 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
 
 import alien4cloud.paas.cloudify3.error.BadConfigurationException;
 import alien4cloud.paas.cloudify3.model.Version;
@@ -15,8 +14,8 @@ import alien4cloud.paas.cloudify3.restclient.VersionClient;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.cloudify3.restclient.auth.SSLContextManager;
 import alien4cloud.paas.exception.PluginConfigurationException;
-
-import com.google.common.collect.Lists;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 @Component("cloudify-configuration-holder")
 @Slf4j

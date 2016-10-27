@@ -5,8 +5,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,8 @@ public class CloudifyDeploymentBuilderService {
     private WorkflowsBuilderService workflowBuilderService;
     @Inject
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
+    @Inject
+    private CloudConfigurationHolder cloudConfigurationHolder;
 
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
@@ -93,7 +97,9 @@ public class CloudifyDeploymentBuilderService {
     private void setNodesToMonitor(CloudifyDeployment cloudifyDeployment) {
         String autoHeal = deploymentPropertiesService.getValueOrDefault(cloudifyDeployment.getProviderDeploymentProperties(),
                 DeploymentPropertiesNames.AUTO_HEAL);
-        if (Boolean.parseBoolean(autoHeal)) {
+        boolean isDisableDiamond = cloudConfigurationHolder.getConfiguration().getDisableDiamondMonitorAgent() == null ? false
+                : cloudConfigurationHolder.getConfiguration().getDisableDiamondMonitorAgent();
+        if (Boolean.parseBoolean(autoHeal) && !isDisableDiamond) {
             cloudifyDeployment.setNodesToMonitor(getNodesToMonitor(cloudifyDeployment.getComputes()));
         }
     }
@@ -166,8 +172,8 @@ public class CloudifyDeploymentBuilderService {
         for (AbstractStep step : orphanSteps.values()) {
             if (step instanceof NodeActivityStep) {
                 for (AbstractStep sh : workflow.values()) {
-                    if ((sh.getPrecedingSteps() != null && sh.getPrecedingSteps().contains(step.getName())) || (sh.getFollowingSteps() != null && sh
-                            .getFollowingSteps().contains(step.getName()))) {
+                    if ((sh.getPrecedingSteps() != null && sh.getPrecedingSteps().contains(step.getName()))
+                            || (sh.getFollowingSteps() != null && sh.getFollowingSteps().contains(step.getName()))) {
                         relatedSteps.put(step.getName(), step);
                     }
                 }
@@ -210,8 +216,8 @@ public class CloudifyDeploymentBuilderService {
      * build lists of {@link WorkflowStepLink} representing a link from a given step to others steps.
      * The links can be internal to a set of given steps, or externals
      *
-     * @param step          step from which to get the links
-     * @param steps         The map of steps in which the following step related to the internal link should be
+     * @param step step from which to get the links
+     * @param steps The map of steps in which the following step related to the internal link should be
      * @param externalLinks
      * @param internalLinks
      * @return
@@ -276,7 +282,7 @@ public class CloudifyDeploymentBuilderService {
      * Cloudify 3 plugin indeed maps the public network to floating ips while private network are mapped to network and subnets.
      *
      * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
-     * @param deploymentContext  The deployment context from alien 4 cloud.
+     * @param deploymentContext The deployment context from alien 4 cloud.
      */
     private void processNetworks(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
         List<PaaSNodeTemplate> allNetworks = deploymentContext.getPaaSTopology().getNetworks();
@@ -302,7 +308,7 @@ public class CloudifyDeploymentBuilderService {
      * Types have to be generated in the blueprint in correct order (based on derived from hierarchy).
      *
      * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
-     * @param deploymentContext  The deployment context from alien 4 cloud.
+     * @param deploymentContext The deployment context from alien 4 cloud.
      */
     private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
         Map<String, NodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
@@ -347,8 +353,8 @@ public class CloudifyDeploymentBuilderService {
         for (PaaSRelationshipTemplate relationship : relationships) {
             Map<String, DeploymentArtifact> artifacts = relationship.getTemplate().getArtifacts();
 
-            putArtifacts(allRelationshipArtifacts,
-                    new Relationship(relationship.getId(), relationship.getSource(), relationship.getTemplate().getTarget()), artifacts);
+            putArtifacts(allRelationshipArtifacts, new Relationship(relationship.getId(), relationship.getSource(), relationship.getTemplate().getTarget()),
+                    artifacts);
         }
     }
 

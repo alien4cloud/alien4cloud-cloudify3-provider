@@ -1,3 +1,21 @@
+#**
+Define a macro to render a python map entry of node and relationship deployment artifacts.
+A TOSCA artifact can be a directory and reference mutliple sub-artifacts.
+The generated entry map is as follows:
+File artifact:
+    artifactName: PATH_OF_FILE_RELATIVE_TO_THE_GENERATED_ARCHIVE,
+Directory artifact:
+    artifactName: [
+        {
+            relative_path: PATH_OF_FILE_1_RELATIVE_TO_THE_DIRECTORY,
+            absolute_path: PATH_OF_FILE_1_RELATIVE_TO_THE_GENERATED_ARCHIVE
+        },
+        {
+            relative_path: PATH_OF_FILE_N_RELATIVE_TO_THE_DIRECTORY,
+            absolute_path: PATH_OF_FILE_N_RELATIVE_TO_THE_GENERATED_ARCHIVE
+        }
+    ]
+*#
 #macro(deploymentArtifactEntry $artifactName $artifactPath)
 #if($util.nonNative.isArtifactDirectory($artifactPath))
 #set ( $nodeArtifactChildrenPaths = $util.nonNative.listArtifactDirectory($artifactPath) )
@@ -18,19 +36,32 @@
     "$artifactName": "$artifactPath"
 #end
 #end
+## End of deployment artifact entry macro ..
 
-#include("includes/script_wrapper_static.py")
-
+#**
+Include static wrapper python (functions etc.) in the current file.
+TODO: For smaller packages we should improve that and actually make a python package to import (from )
+*#
+#include("includes/common_wrapper_static.py")
 #if($util.nonNative.operationHasDeploymentArtifacts($operation))
 #include("includes/download_artifacts.py")
 #end
 
+#**
+TOSCA environment variables mapping as defined in specification.
+*#
 env_map = {}
 #if($util.nonNative.isOperationOwnedByNode(${operation}))
 env_map['NODE'] = ctx.node.id
 env_map['INSTANCE'] = ctx.instance.id
 env_map['INSTANCES'] = get_instance_list(ctx.node.id)
 env_map['HOST'] = get_host_node_name(ctx.instance)
+
+## Map additional environment variables that can be usefull for configuration tools artifacts (Ansible, Chef, Puppet, etc.).
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx, 'ip_address'))
+env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx)
+env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx)
+
 #elseif($util.nonNative.isOperationOwnedByRelationship(${operation}))
 env_map['TARGET_NODE'] = ctx.target.node.id
 env_map['TARGET_INSTANCE'] = ctx.target.instance.id
@@ -38,10 +69,23 @@ env_map['TARGET_INSTANCES'] = get_instance_list(ctx.target.node.id)
 env_map['SOURCE_NODE'] = ctx.source.node.id
 env_map['SOURCE_INSTANCE'] = ctx.source.instance.id
 env_map['SOURCE_INSTANCES'] = get_instance_list(ctx.source.node.id)
+
+## Test if operation should be executed on source or target
+#if($operation.operationName.matches("(pre|post)_configure_target|(add|remove)_source"))
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.target, 'ip_address'))
+env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.target)
+env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.target)
+#else
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.source, 'ip_address'))
+env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.source)
+env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.source)
+#end ## if(($operation.operationName).matches("(pre|post)_configure_target|(add|remove)_source"))
+
 #end
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 env_map['$inputEntry.key'] = $util.nonNative.formatValue(${operation.owner}, $inputEntry.value)
 #end
+
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 #if($util.nonNative.isGetAttributeFunctionPropertyValue($inputEntry.value))
 other_instances_map = _all_instances_$util.nonNative.formatValue(${operation.owner}, $inputEntry.value)
@@ -50,7 +94,6 @@ if other_instances_map is not None:
         env_map[other_instances_key + '$inputEntry.key'] = other_instances_map[other_instances_key]
 #end
 #end
-new_script_process = {'env': env_map}
 
 #if($util.nonNative.operationHasDeploymentArtifacts($operation))
 node_artifacts = {
@@ -87,25 +130,19 @@ artifacts = node_artifacts.copy()
 artifacts.update(relationship_artifacts)
 
 download_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'downloads')
-new_script_process['env'].update(download_artifacts(artifacts, download_dir))
+env_map.update(download_artifacts(artifacts, download_dir))
 #end
 
-ctx.logger.info('Operation is executed with inputs {0}'.format(inputs))
+## Add current environment variables
 if inputs.get('process', None) is not None and inputs['process'].get('env', None) is not None:
     ctx.logger.info('Operation is executed with environment variable {0}'.format(inputs['process']['env']))
-    new_script_process['env'].update(inputs['process']['env'])
+    env_map.update(inputs['process']['env'])
 
-operationOutputNames = None
-#if(${operation.getOutputs()} && !${operation.getOutputs().isEmpty()})
-operationOutputNames = '${util.nonNative.getOperationOutputNames(${operation})}'
-#end
-convert_env_value_to_string(new_script_process['env'])
-#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
-parsed_output = execute(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
-#else
-parsed_output = execute(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
-#end
-for k,v in parsed_output['outputs'].items():
+## Executor template depends on the artifact type and provides the right wrapper.
+#parse($executor_template)
+
+
+for k,v in outputs:
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))
     ctx.source.instance.runtime_properties['_a4c_OO:${operation.interfaceName}:${operation.operationName}:{0}'.format(k)] = v

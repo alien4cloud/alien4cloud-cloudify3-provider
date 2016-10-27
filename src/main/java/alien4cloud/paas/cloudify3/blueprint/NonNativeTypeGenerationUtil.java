@@ -11,13 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import alien4cloud.exception.InvalidArgumentException;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
@@ -29,8 +22,17 @@ import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.OperationOutput;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
+import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
@@ -49,10 +51,12 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
+    private ArtifactRegistryService artifactRegistryService;
 
     public NonNativeTypeGenerationUtil(MappingConfiguration mappingConfiguration, CloudifyDeployment alienDeployment, Path recipePath,
-            PropertyEvaluatorService propertyEvaluatorService) {
+            PropertyEvaluatorService propertyEvaluatorService, ArtifactRegistryService artifactRegistryService) {
         super(mappingConfiguration, alienDeployment, recipePath, propertyEvaluatorService);
+        this.artifactRegistryService = artifactRegistryService;
     }
 
     public boolean isStandardLifecycleInterface(String interfaceName) {
@@ -445,5 +449,26 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         } else {
             throw new NotSupportedException("Not supported template type " + owner.getId());
         }
+    }
+
+    /**
+     * Utility method to know where the operation should be executed (on the host node or management node).
+     * 
+     * @param operation The operation for which to check hosting.
+     * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
+     */
+    public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
+        // TODO If the operation has no host then execute on central node.
+        // If the node is compute only the create operation is executed on central node. Other operations are called on the compute instance (that we should be
+        // able to connect to after create).
+
+        // We also check the artifact as some artifacts are anyway executed on central node.
+        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService
+                .getCloudifyImplementationArtifact(operation.getImplementationArtifact().getArtifactType());
+        if (cloudifyImplementationArtifact != null) {
+            return cloudifyImplementationArtifact.hostAgentExecution();
+        }
+
+        return true;
     }
 }

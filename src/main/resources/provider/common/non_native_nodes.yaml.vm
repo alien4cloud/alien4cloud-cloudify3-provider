@@ -15,7 +15,10 @@
 #foreach($interfaceEntry in $nodeInterfaces.entrySet())
       $util.nonNative.tryToMapToCloudifyInterface($interfaceEntry.key):
 #foreach($operationEntry in ${interfaceEntry.value.operations.entrySet()})
-        $operationEntry.key: ${util.nonNative.getArtifactWrapperPath($template, $interfaceEntry.key, $operationEntry.key)}
+        $operationEntry.key:
+          implementation: ${util.nonNative.getArtifactWrapperPath($template, $interfaceEntry.key, $operationEntry.key)}
+#if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
+          executor: central_deployment_agent
 #end
 #end
 #end
@@ -33,7 +36,11 @@
 #foreach($interfaceEntry in $relationshipSourceInterfaces.entrySet())
           $util.nonNative.tryToMapToCloudifyRelationshipInterface($interfaceEntry.key):
 #foreach($operationEntry in ${interfaceEntry.value.operations.entrySet()})
-            $util.nonNative.tryToMapToCloudifyRelationshipSourceInterfaceOperation($operationEntry.key): ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
+            $util.nonNative.tryToMapToCloudifyRelationshipSourceInterfaceOperation($operationEntry.key):
+              implementation: ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
+#if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
+              executor: central_deployment_agent
+#end
 #end
 #end
 #end
@@ -43,7 +50,11 @@
 #foreach($interfaceEntry in $relationshipTargetInterfaces.entrySet())
           $util.nonNative.tryToMapToCloudifyRelationshipInterface($interfaceEntry.key):
 #foreach($operationEntry in ${interfaceEntry.value.operations.entrySet()})
-            $util.nonNative.tryToMapToCloudifyRelationshipTargetInterfaceOperation($operationEntry.key): ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
+            $util.nonNative.tryToMapToCloudifyRelationshipTargetInterfaceOperation($operationEntry.key):
+              implementation: ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
+#if(!$util.nonNative.isHostAgent($util.nonNative.getTargetNode($relationship),  $operationEntry.value))
+              executor: central_deployment_agent
+#end
 #end
 #end
 #end

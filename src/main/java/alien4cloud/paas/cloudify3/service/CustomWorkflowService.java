@@ -4,16 +4,23 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.annotation.Resource;
-
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
+import javax.inject.Inject;
 
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Component;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Deployment;
@@ -28,12 +35,6 @@ import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
-
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Handle custom workflow (non lifecycle workflow) which permit to modify the deployment at runtime
@@ -63,6 +64,8 @@ public class CustomWorkflowService extends RuntimeService {
 
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
+    @Inject
+    private ArtifactRegistryService artifactRegistryService;
 
     private Map<String, Object> buildWorkflowParameters(CloudifyDeployment deployment, BlueprintGenerationUtil util,
             NodeOperationExecRequest nodeOperationExecRequest, PaaSNodeTemplate node, Operation operation) {
@@ -99,8 +102,8 @@ public class CustomWorkflowService extends RuntimeService {
                             String resolvedKeyword = FunctionEvaluator.getPaaSTemplatesFromKeyword(node, function.getTemplateName(), deployment.getAllNodes())
                                     .iterator().next().getId();
                             try {
-                                Map<String, String> attributes = MapUtil.toString(runtimePropertiesService.evaluate(deployment.getDeploymentPaaSId(),
-                                        resolvedKeyword, function.getElementNameToFetch()).get());
+                                Map<String, String> attributes = MapUtil.toString(runtimePropertiesService
+                                        .evaluate(deployment.getDeploymentPaaSId(), resolvedKeyword, function.getElementNameToFetch()).get());
                                 if (MapUtils.isEmpty(attributes)) {
                                     throw new OperationExecutionException("Node " + node.getId() + " do not have any instance at this moment");
                                 } else if (attributes.size() > 1) {
@@ -147,7 +150,8 @@ public class CustomWorkflowService extends RuntimeService {
     public ListenableFuture<Map<String, String>> executeOperation(final CloudifyDeployment deployment,
             final NodeOperationExecRequest nodeOperationExecRequest) {
         BlueprintGenerationUtil util = new BlueprintGenerationUtil(mappingConfigurationHolder.getMappingConfiguration(), deployment,
-                blueprintService.resolveBlueprintPath(deployment.getDeploymentPaaSId()), propertyEvaluatorService, deploymentPropertiesService);
+                blueprintService.resolveBlueprintPath(deployment.getDeploymentPaaSId()), propertyEvaluatorService, deploymentPropertiesService,
+                artifactRegistryService);
         if (MapUtils.isEmpty(deployment.getAllNodes()) || !deployment.getAllNodes().containsKey(nodeOperationExecRequest.getNodeTemplateName())) {
             throw new OperationExecutionException("Node " + nodeOperationExecRequest.getNodeTemplateName() + " do not exist in the deployment");
         }

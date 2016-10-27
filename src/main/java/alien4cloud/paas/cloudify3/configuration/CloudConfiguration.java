@@ -38,6 +38,9 @@ public class CloudConfiguration {
     @NotNull
     private Integer delayBetweenInProgressDeploymentStatusPolling;
 
+    @NotNull
+    private Boolean disableDiamondMonitorAgent = false;
+
     @JsonIgnore
     public LocationConfiguration getConfigurationLocation(String locationName) {
         switch (locationName) {

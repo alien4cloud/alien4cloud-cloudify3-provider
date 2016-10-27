@@ -25,6 +25,9 @@ node_types:
         required: false
         entry_schema:
           type: string
+      agent_config:
+        type: alien.datatypes.AgentConfig
+        required: false
     attributes:
       ip_address: { get_attribute: [SELF, ip] }
       public_ip_address: { get_attribute: [SELF, public_address] }
@@ -47,6 +50,9 @@ node_types:
         required: false
         entry_schema:
           type: string
+      agent_config:
+        type: alien.datatypes.AgentConfig
+        required: false
     attributes:
       ip_address: { get_attribute: [SELF, ip] }
       public_ip_address: { get_attribute: [SELF, public_address] }
