@@ -5,6 +5,7 @@ This template is used to generate cloudify 3 recipe from alien model
 - $cloud --> contains alien4cloud.paas.cloudify3.configuration.CloudConfiguration instance
 - $deployment --> contains Alien's deployment and types
 - $util --> contains utility methods
+- $shouldAddOverridesPlugin --> contains true or false (should add the overrides plugin section or not ?)
 *#
 #parse("provider/common/non_native_nodes.yaml.vm")
 #parse("provider/common/compute_scaling_group.yaml.vm")
@@ -74,6 +75,11 @@ plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
     source: custom_wf_plugin
+#if($shouldAddOverridesPlugin)
+  overrides:
+    executor: central_deployment_agent
+    source: overrides
+#end## end if
 
 workflows:
 #foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})

@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3;
 
+import alien4cloud.utils.ClassLoaderUtil;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import alien4cloud.model.orchestrators.ArtifactSupport;
 import alien4cloud.model.orchestrators.locations.LocationSupport;
@@ -87,8 +88,10 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         AnnotationConfigApplicationContext pluginContext = new AnnotationConfigApplicationContext();
         pluginContext.setParent(factoryContext);
         pluginContext.setClassLoader(factoryContext.getClassLoader());
-        pluginContext.register(PluginContextConfiguration.class);
-        pluginContext.refresh();
+        ClassLoaderUtil.runWithContextClassLoader(factoryContext.getClassLoader(), () -> {
+            pluginContext.register(PluginContextConfiguration.class);
+            pluginContext.refresh();
+        });
         log.info("Created new Cloudify 3 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
         CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
         contextMap.put(provider, pluginContext);

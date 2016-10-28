@@ -1,9 +1,13 @@
 #foreach($volumeTemplate in ${deployment.volumes})
   ${volumeTemplate.id}:
     type: ${volumeTemplate.nodeTemplate.type}
-#if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.openstack.nodes.Volume")
     interfaces:
       cloudify.interfaces.lifecycle:
+        create:
+          implementation: overrides.openstack.wrapper.overrided_create_volume
+          inputs:
+            args: {}
+#if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.openstack.nodes.Volume")
         delete: {}
 #end## if
     properties: ${util.natives.formatProperties(3, $volumeTemplate.nodeTemplate.properties, $deployment.propertyMappings, $volumeTemplate.nodeTemplate.type)}

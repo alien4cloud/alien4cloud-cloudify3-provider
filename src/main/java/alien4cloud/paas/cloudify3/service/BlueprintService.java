@@ -15,6 +15,7 @@ import javax.annotation.Resource;
 import org.alien4cloud.tosca.model.definitions.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -139,6 +140,7 @@ public class BlueprintService {
         context.put("deployment", alienDeployment);
         context.put("newline", "\n");
         context.put("velocityResourcesPath", this.pluginRecipeResourcesPath.resolve("velocity"));
+        context.put("shouldAddOverridesPlugin", false);
 
         // Copy artifacts
         for (PaaSNodeTemplate nonNative : alienDeployment.getNonNatives()) {
@@ -225,6 +227,18 @@ public class BlueprintService {
                 generatedBlueprintDirectoryPath.resolve("plugins/custom_wf_plugin/plugin/workflows.py"), context);
         FileUtil.zip(generatedBlueprintDirectoryPath.resolve("plugins/custom_wf_plugin"),
                 generatedBlueprintDirectoryPath.resolve("plugins/custom_wf_plugin.zip"));
+
+        // plugin overrides section
+        if(Files.isDirectory(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()))) {
+            Path overridesPluginDir = generatedBlueprintDirectoryPath.resolve("plugins/overrides");
+            Files.createDirectories(overridesPluginDir);
+            FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/a4c_common"), overridesPluginDir.resolve("a4c_common"),
+                    StandardCopyOption.REPLACE_EXISTING);
+            FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()), overridesPluginDir,
+                    StandardCopyOption.REPLACE_EXISTING);
+            FileUtil.zip(overridesPluginDir, generatedBlueprintDirectoryPath.resolve("plugins/overrides.zip"));
+            context.put("shouldAddOverridesPlugin", true);
+        }
 
         // device
         FileUtil.copy(pluginRecipeResourcesPath.resolve("device-mapping-scripts"), generatedBlueprintDirectoryPath.resolve("device-mapping-scripts"),
