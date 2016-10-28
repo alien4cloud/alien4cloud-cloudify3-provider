@@ -22,6 +22,7 @@
 #end
 #end
 #end
+#end
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($template) )
 #if($util.collectionHasElement($relationshipTemplates))
     relationships:

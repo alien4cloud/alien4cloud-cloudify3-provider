@@ -20,7 +20,7 @@
         delete:
           inputs:
             service_url: ${util.common.getScalarPropertyValue($compute.nodeTemplate, "host_pool_service_endpoint")}
-#if($cloud.getDisableDiamondMonitorAgent())
+#if(!$cloud.getDisableDiamondMonitorAgent())
 #parse("provider/common/monitoring_interfaces.yaml.vm")
 #end
 #end

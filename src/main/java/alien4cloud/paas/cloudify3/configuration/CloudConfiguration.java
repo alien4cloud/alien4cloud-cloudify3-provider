@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Getter
 @Setter
 @FormProperties({ "url", "locations", "userName", "password", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
-        "delayBetweenInProgressDeploymentStatusPolling" })
+        "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent" })
 public class CloudConfiguration {
 
     @FormPropertyConstraint(pattern = "http\\:.+(?:\\d+)")

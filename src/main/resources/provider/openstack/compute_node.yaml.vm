@@ -27,7 +27,7 @@
 #parse("provider/openstack/computes/compute_node_win.yaml.vm")
 #else
     interfaces:
-#if($cloud.getDisableDiamondMonitorAgent())
+#if(!$cloud.getDisableDiamondMonitorAgent())
 #parse("provider/common/monitoring_interfaces.yaml.vm")
 #end
 #end

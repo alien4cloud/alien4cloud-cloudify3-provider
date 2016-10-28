@@ -1,13 +1,15 @@
 package alien4cloud.paas.cloudify3.service;
 
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
-import com.google.common.collect.Maps;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
+
+import com.google.common.collect.Maps;
 
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 
@@ -30,5 +32,15 @@ public class ArtifactRegistryService {
 
     public ICloudifyImplementationArtifact getCloudifyImplementationArtifact(String artifactType) {
         return artifactMap.get(artifactType);
+    }
+
+    /**
+     * Get an array of the supported artifact types.
+     * 
+     * @return An array of the supported artifact types.
+     */
+    public String[] getSupportedArtifactTypes() {
+        Set<String> artifactTypeSet = artifactMap.keySet();
+        return artifactTypeSet.toArray(new String[artifactTypeSet.size()]);
     }
 }

@@ -58,7 +58,7 @@ env_map['INSTANCES'] = get_instance_list(ctx.node.id)
 env_map['HOST'] = get_host_node_name(ctx.instance)
 
 ## Map additional environment variables that can be usefull for configuration tools artifacts (Ansible, Chef, Puppet, etc.).
-env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx, 'ip_address'))
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx, 'ip_address')
 env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx)
 env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx)
 
@@ -72,11 +72,11 @@ env_map['SOURCE_INSTANCES'] = get_instance_list(ctx.source.node.id)
 
 ## Test if operation should be executed on source or target
 #if($operation.operationName.matches("(pre|post)_configure_target|(add|remove)_source"))
-env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.target, 'ip_address'))
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.target, 'ip_address')
 env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.target)
 env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.target)
 #else
-env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.source, 'ip_address'))
+env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.source, 'ip_address')
 env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.source)
 env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.source)
 #end ## if(($operation.operationName).matches("(pre|post)_configure_target|(add|remove)_source"))
@@ -140,7 +140,6 @@ if inputs.get('process', None) is not None and inputs['process'].get('env', None
 
 ## Executor template depends on the artifact type and provides the right wrapper.
 #parse($executor_template)
-
 
 for k,v in outputs:
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))

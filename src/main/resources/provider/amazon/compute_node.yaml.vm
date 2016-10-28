@@ -31,7 +31,7 @@
             iaas: amazon
             os_mapping: ['linux']
             device_key: device
-#if($cloud.getDisableDiamondMonitorAgent())
+#if(!$cloud.getDisableDiamondMonitorAgent())
 #parse("provider/common/monitoring_interfaces.yaml.vm")
 #end
 #end
