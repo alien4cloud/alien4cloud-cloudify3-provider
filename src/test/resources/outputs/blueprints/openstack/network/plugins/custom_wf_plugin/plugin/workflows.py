@@ -63,14 +63,14 @@ def a4c_uninstall(**kwargs):
 def _a4c_install(ctx, graph, custom_context):
     #  following code can be pasted in src/test/python/workflows/tasks.py for simulation
     custom_context.register_native_delegate_wf_step('NetPub', 'NetPub_install')
-    custom_context.register_native_delegate_wf_step('InternalNetwork', 'InternalNetwork_install')
     custom_context.register_native_delegate_wf_step('Compute', 'Compute_install')
+    custom_context.register_native_delegate_wf_step('InternalNetwork', 'InternalNetwork_install')
     generate_native_node_workflows(ctx, graph, custom_context, 'install')
 def _a4c_uninstall(ctx, graph, custom_context):
     #  following code can be pasted in src/test/python/workflows/tasks.py for simulation
-    custom_context.register_native_delegate_wf_step('InternalNetwork', 'InternalNetwork_uninstall')
     custom_context.register_native_delegate_wf_step('Compute', 'Compute_uninstall')
     custom_context.register_native_delegate_wf_step('NetPub', 'NetPub_uninstall')
+    custom_context.register_native_delegate_wf_step('InternalNetwork', 'InternalNetwork_uninstall')
     generate_native_node_workflows(ctx, graph, custom_context, 'uninstall')
 
 def _get_scaling_group_name_from_node_id(ctx, node_id):
@@ -228,15 +228,15 @@ def a4c_heal(
     #types.append('tosca.nodes.Root')
     #node_InternalNetwork = _build_node(ctx, 'InternalNetwork', types, 1)
     #types = []
+    #types.append('alien.nodes.openstack.Compute')
+    #types.append('tosca.nodes.Compute')
+    #types.append('tosca.nodes.Root')
+    #node_Compute = _build_node(ctx, 'Compute', types, 1)
+    #types = []
     #types.append('alien.nodes.openstack.PublicNetwork')
     #types.append('alien.nodes.PublicNetwork')
     #types.append('tosca.nodes.Network')
     #types.append('tosca.nodes.Root')
     #node_NetPub = _build_node(ctx, 'NetPub', types, 1)
-    #types = []
-    #types.append('alien.nodes.openstack.Compute')
-    #types.append('tosca.nodes.Compute')
-    #types.append('tosca.nodes.Root')
-    #node_Compute = _build_node(ctx, 'Compute', types, 1)
     #_add_relationship(node_Compute, node_NetPub)
     #_add_relationship(node_Compute, node_InternalNetwork)

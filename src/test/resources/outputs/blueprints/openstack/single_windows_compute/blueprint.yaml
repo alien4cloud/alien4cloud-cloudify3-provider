@@ -36,12 +36,12 @@ node_templates:
   compute:
     type: alien.nodes.openstack.WindowsCompute
     properties: 
+      image: 53e6ef20-a087-44d1-9bdb-5c7f4bffad5b
+      flavor: 3
       cloudify_agent: 
         port: 5985
-        wait_started_timeout: 3600
         user: Admin
-      flavor: 3
-      image: 53e6ef20-a087-44d1-9bdb-5c7f4bffad5b
+        wait_started_timeout: 3600
     relationships:
       - target: _a4c_key_pair_for_compute
         type: cloudify.openstack.server_connected_to_keypair

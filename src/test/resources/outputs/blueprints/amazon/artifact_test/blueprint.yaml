@@ -108,7 +108,8 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/Java/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+        create:
+          implementation: wrapper/Java/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Server
         type: cloudify.relationships.contained_in
@@ -118,7 +119,8 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/Artifact_Directory_Test/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+        create:
+          implementation: wrapper/Artifact_Directory_Test/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Server
         type: cloudify.relationships.contained_in
@@ -128,9 +130,12 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
-        start: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
-        create: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+        stop:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        create:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Server
         type: cloudify.relationships.contained_in
@@ -142,18 +147,22 @@ node_templates:
       deploy: 1
     interfaces:
       custom:
-        update_war_file: wrapper/War/custom/update_war_file/_a4c_update_war_file.py
+        update_war_file:
+          implementation: wrapper/War/custom/update_war_file/_a4c_update_war_file.py
       cloudify.interfaces.lifecycle:
-        create: wrapper/War/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+        create:
+          implementation: wrapper/War/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Tomcat
         type: alien.relationships.WarHostedOnTomcatWithProperties
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+            postconfigure:
+              implementation: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
         target_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_target/_a4c_post_configure_target.py
+            postconfigure:
+              implementation: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_target/_a4c_post_configure_target.py
 
 
 

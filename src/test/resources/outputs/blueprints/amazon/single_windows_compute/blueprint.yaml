@@ -45,13 +45,13 @@ node_templates:
   compute:
     type: alien.cloudify.aws.nodes.WindowsCompute
     properties: 
-      instance_type: m3.medium
       cloudify_agent: 
-        port: 5985
-        wait_started_timeout: 3600
         password: Cl@ud1fy234!
+        port: 5985
         user: cloudify
+        wait_started_timeout: 3600
       image_id: ami-4b80bf3c
+      instance_type: m3.medium
       name: compute
     relationships:
       - type: cloudify.aws.relationships.instance_connected_to_keypair

@@ -1,35 +1,56 @@
 
 
-tosca_definitions_version: cloudify_dsl_1_2
+
+
+tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
   - http://www.getcloudify.org/spec/openstack-plugin/1.3.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
 
 node_types:
-  alien.nodes.openstack.ScalableCompute:
-    derived_from: cloudify.openstack.nodes.ScalableServer
+  alien.nodes.openstack.Compute:
+    derived_from: cloudify.openstack.nodes.Server
     properties:
       _a4c_substitute_for:
         default: []
-      _a4c_att_public_ip_address:
-        default:
-          function: get_attribute
-          parameters:
-            - SELF
-            - public_ip_address
       _a4c_att_ip_address:
         default:
           function: get_attribute
           parameters:
             - SELF
             - ip
+      _a4c_att_public_ip_address:
+        default:
+          function: get_attribute
+          parameters:
+            - TARGET
+            - cloudify.openstack.server_connected_to_floating_ip
+            - floating_ip_address
+  alien.nodes.openstack.PublicNetwork:
+    derived_from: cloudify.openstack.nodes.FloatingIP
+    properties:
+      _a4c_substitute_for:
+        default: []
+  alien.cloudify.openstack.nodes.Volume:
+    derived_from: cloudify.openstack.nodes.Volume
+    properties:
+      _a4c_substitute_for:
+        default: []
+      _a4c_att_device:
+        default:
+          function: get_attribute
+          parameters:
+            - SELF
+            - device_name
       _a4c_persistent_resources:
-        default: {"volumes.CBS2.external_id":"volume_id","volumes.CBS3.external_id":"volume_id","volumes.CBS1.external_id":"volume_id","volumes.CBS4.external_id":"volume_id"}
+        default: {"external_id":"volume_id"}
+      _a4c_device:
+        description: >
+          This property is needed as a workaround to fill the gap when the device property doesn't exist in Cloudify's plugin.
+        default: ''
 
-  tosca.nodes.SoftwareComponent:
-    derived_from: cloudify.nodes.Root
   alien.nodes.LinuxFileSystem:
     derived_from: cloudify.nodes.SoftwareComponent
 
@@ -40,47 +61,15 @@ relationships:
 node_templates:
 
   Compute:
-    type: alien.nodes.openstack.ScalableCompute
+    type: alien.nodes.openstack.Compute
     properties: 
-      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       flavor: 2
+      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
       cloudify_agent: 
         user: ubuntu
-      volumes: 
-        - resource_name: CBS2
-          deletable: false
-          volume: 
-            size: 1
-          use_external_resource: false
-        - resource_name: CBS3
-          deletable: false
-          volume: 
-            size: 1
-          use_external_resource: false
-        - resource_name: CBS1
-          deletable: false
-          volume: 
-            size: 1
-          use_external_resource: false
-        - resource_name: CBS4
-          deletable: false
-          volume: 
-            size: 1
-          use_external_resource: false
-      _a4c_substitute_for: 
-        - CBS2
-        - CBS3
-        - CBS1
-        - CBS4
-        - PublicNetwork
-      floatingips: 
-        - resource_name: PublicNetwork
-          floatingip: 
-          use_external_resource: false
-          ip_version: 4
-
-    instances:
-      deploy: 2
+    relationships:
+      - target: _a4c_floating_ip_Compute_on_PublicNetwork
+        type: cloudify.openstack.server_connected_to_floating_ip
     interfaces:
       cloudify.interfaces.monitoring_agent:
         install:
@@ -103,6 +92,53 @@ node_templates:
                  config:
                    devices: x?vd[a-z]+[0-9]*$
                NetworkCollector: {}
+  _a4c_floating_ip_Compute_on_PublicNetwork:
+    type: alien.nodes.openstack.PublicNetwork
+    properties: 
+  CBS3:
+    type: alien.cloudify.openstack.nodes.Volume
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        delete: {}
+    properties: 
+      volume: 
+        size: 1
+    relationships:
+      - target: Compute
+        type: cloudify.openstack.volume_attached_to_server
+  CBS2:
+    type: alien.cloudify.openstack.nodes.Volume
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        delete: {}
+    properties: 
+      volume: 
+        size: 1
+    relationships:
+      - target: Compute
+        type: cloudify.openstack.volume_attached_to_server
+  CBS1:
+    type: alien.cloudify.openstack.nodes.Volume
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        delete: {}
+    properties: 
+      volume: 
+        size: 1
+    relationships:
+      - target: Compute
+        type: cloudify.openstack.volume_attached_to_server
+  CBS4:
+    type: alien.cloudify.openstack.nodes.Volume
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        delete: {}
+    properties: 
+      volume: 
+        size: 1
+    relationships:
+      - target: Compute
+        type: cloudify.openstack.volume_attached_to_server
 
   LinuxFileSystem_1:
     type: alien.nodes.LinuxFileSystem
@@ -110,96 +146,97 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
-        start: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
+        stop:
+          implementation: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
-      - target: _a4c_CBS1
+      - target: Compute
+        type: cloudify.relationships.contained_in
+      - target: CBS1
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/LinuxFileSystem_1__a4c_CBS1/linuxPartitionCBS1/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
-            preconfigure: wrapper/LinuxFileSystem_1__a4c_CBS1/linuxPartitionCBS1/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
-      - target: Compute
-        type: cloudify.relationships.contained_in
-  _a4c_CBS1:
-    type: tosca.nodes.SoftwareComponent
-    instances:
-      deploy: 1
-    relationships:
-      - target: Compute
-        type: cloudify.relationships.contained_in
-  LinuxFileSystem_3:
-    type: alien.nodes.LinuxFileSystem
-    instances:
-      deploy: 1
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        stop: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
-        start: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
-    relationships:
-      - target: _a4c_CBS3
-        type: alien.relationships.LinuxPartition
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/LinuxFileSystem_3__a4c_CBS3/linuxPartitionCBS3/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
-            preconfigure: wrapper/LinuxFileSystem_3__a4c_CBS3/linuxPartitionCBS3/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
-      - target: Compute
-        type: cloudify.relationships.contained_in
+            preconfigure:
+              implementation: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure:
+              implementation: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
   LinuxFileSystem_2:
     type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
-        start: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
+        stop:
+          implementation: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
-      - target: _a4c_CBS2
+      - target: Compute
+        type: cloudify.relationships.contained_in
+      - target: CBS2
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/LinuxFileSystem_2__a4c_CBS2/linuxPartitionCBS2/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
-            preconfigure: wrapper/LinuxFileSystem_2__a4c_CBS2/linuxPartitionCBS2/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
-      - target: Compute
-        type: cloudify.relationships.contained_in
-  _a4c_CBS3:
-    type: tosca.nodes.SoftwareComponent
+            preconfigure:
+              implementation: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure:
+              implementation: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+  LinuxFileSystem_3:
+    type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        stop:
+          implementation: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
-  _a4c_CBS2:
-    type: tosca.nodes.SoftwareComponent
-    instances:
-      deploy: 1
-    relationships:
-      - target: Compute
-        type: cloudify.relationships.contained_in
+      - target: CBS3
+        type: alien.relationships.LinuxPartition
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure:
+              implementation: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
   LinuxFileSystem_4:
     type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
-        start: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
+        stop:
+          implementation: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
-      - target: _a4c_CBS4
+      - target: CBS4
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/LinuxFileSystem_4__a4c_CBS4/linuxPartitionCBS4/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
-            preconfigure: wrapper/LinuxFileSystem_4__a4c_CBS4/linuxPartitionCBS4/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
-  _a4c_CBS4:
-    type: tosca.nodes.SoftwareComponent
-    instances:
-      deploy: 1
-    relationships:
-      - target: Compute
-        type: cloudify.relationships.contained_in
+            preconfigure:
+              implementation: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure:
+              implementation: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+
+
+
+groups:
+  _a4c_Compute:
+    members: [Compute, CBS3, CBS2, CBS1, CBS4, _a4c_floating_ip_Compute_on_PublicNetwork]
+
+policies:
+  _a4c_Compute_policy:
+    type: cloudify.policies.scaling
+    targets: [_a4c_Compute]
+    properties:
+      default_instances: 2
 
 
 plugins:
@@ -223,10 +260,13 @@ workflows:
         default: 1
       scale_compute:
         description: >
-            If node is contained (transitively) within a compute node
-            and this property is 'true', operate on compute node instead
-            of 'node_id'
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
         default: true
+      ignore_failure:
+        default: false
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:

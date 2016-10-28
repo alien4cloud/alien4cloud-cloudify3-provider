@@ -45,7 +45,7 @@ while [ -z "$MATCHED_DEVICE" ] && [ $retry_count -le $max_retry ] ; do
 done
 
 if [ -z "$MATCHED_DEVICE" ] ; then
-  all_devices=$(sudo lsblk -npo KNAME,TYPE | grep disk | cut -d ' ' -f-1)
+  all_devices=$(sudo lsblk -no KNAME,TYPE | grep disk | cut -d ' ' -f-1)
   echo "Unable to match '$CFY_DEVICE' with an existing device on the machine ($(echo $all_devices))"
   exit 1
 fi
