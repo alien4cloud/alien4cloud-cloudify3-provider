@@ -46,6 +46,17 @@ topology_template:
             capability: tosca.capabilities.Attachment
             relationship: tosca.relationships.AttachTo
 
+    volume2:
+      type: alien.cloudify.aws.nodes.Volume
+      properties:
+        size: 1 Gib
+        volume_id: vol-0e872d8b
+        zone: eu-west-1b
+      requirements:
+        - attachment:
+            node: compute
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
 
     LinuxFileSystem1:
       type: alien.nodes.LinuxFileSystem

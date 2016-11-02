@@ -3,8 +3,27 @@
 #set($computeIsWindows = (${compute.nodeTemplate.type} == "alien.cloudify.aws.nodes.WindowsCompute"))
   ${compute.id}:
     type: ${compute.nodeTemplate.type}
-    properties: ${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment.propertyMappings.get($compute.nodeTemplate.type))}
+    properties: 
       name: ${compute.id}
+#if(!${util.property.hasPropertyValue($compute.nodeTemplate.properties, "zone")})## use compute zone if none is provided
+#foreach($volume in $deployment.volumes)
+#if(${util.property.hasPropertyValue($volume.nodeTemplate.properties, "zone")})## use volume zone if none is provided
+#foreach($relationship in $util.nonNative.getSourceRelationships($volume))
+#if(${relationship.indexedToscaElement.elementId}=="tosca.relationships.AttachTo" && $compute.id == $relationship.relationshipTemplate.target)
+      # Get placement properties from the volume '$volume.id'
+#if(!$compute.nodeTemplate.properties.contains("parameters"))
+      parameters:
+        placement: $volume.nodeTemplate.properties["zone"].value
+#else
+#set($compute.nodeTemplate.properties["parameters"]["placement"]=$volume.nodeTemplate.properties["zone"].value)
+#end## end if(!compute.nodeTemplate.properties.contains("parameters"))
+#end## end if AttachTo relationship
+#end## end foreach volume relationships
+#break($foreach) ## break foreach volumes (take the 'zone' value from the first volume)
+#end## end if volume has a 'zone' property
+#end## end foreach volume
+#end## end if compute hasn't a 'zone' property
+${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment.propertyMappings.get($compute.nodeTemplate.type))}
 #set($publicNetworks = ${util.network.getExternalNetworks($compute)} )
 #if($util.collectionHasElement(${publicNetworks}) || $computeIsWindows)
     relationships:
@@ -24,6 +43,8 @@
       private_key_path: ${compute.nodeTemplate.properties.get("private_key_path").value}
 #else
     interfaces:
+      cloudify.interfaces.lifecycle:
+        create: overrides.ec2.wrapper.overrided_run_instance
       alien4cloud.mapping.device:
         execute:
           implementation: device-mapping-scripts/mapping.py
