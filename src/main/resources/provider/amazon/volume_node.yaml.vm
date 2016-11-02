@@ -4,7 +4,7 @@
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: aws.ec2.ebs.create
+          implementation: overrides.ec2.wrapper.overrided_create_volume
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($volumeTemplate) )
 #if(!${util.property.hasPropertyValue($volumeTemplate.nodeTemplate.properties, "zone")})## use compute zone if none is provided
 #if($util.collectionHasElement($relationshipTemplates))
