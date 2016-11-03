@@ -50,6 +50,10 @@ node_types:
         description: >
           This property is needed as a workaround to fill the gap when the device property doesn't exist in Cloudify's plugin.
         default: ''
+      _a4c_resource_id_key:
+        description: >
+          This property is used to retrieve the real IaaS id value from Cloudify's property node.
+        default: resource_id
 
   alien.nodes.LinuxFileSystem:
     derived_from: cloudify.nodes.SoftwareComponent
@@ -99,6 +103,10 @@ node_templates:
     type: alien.cloudify.openstack.nodes.Volume
     interfaces:
       cloudify.interfaces.lifecycle:
+        create:
+          implementation: overrides.openstack.wrapper.overrided_create
+          inputs:
+            args: {}
         delete: {}
     properties: 
       volume: 
@@ -110,6 +118,10 @@ node_templates:
     type: alien.cloudify.openstack.nodes.Volume
     interfaces:
       cloudify.interfaces.lifecycle:
+        create:
+          implementation: overrides.openstack.wrapper.overrided_create
+          inputs:
+            args: {}
         delete: {}
     properties: 
       volume: 
@@ -121,6 +133,10 @@ node_templates:
     type: alien.cloudify.openstack.nodes.Volume
     interfaces:
       cloudify.interfaces.lifecycle:
+        create:
+          implementation: overrides.openstack.wrapper.overrided_create
+          inputs:
+            args: {}
         delete: {}
     properties: 
       volume: 
@@ -132,6 +148,10 @@ node_templates:
     type: alien.cloudify.openstack.nodes.Volume
     interfaces:
       cloudify.interfaces.lifecycle:
+        create:
+          implementation: overrides.openstack.wrapper.overrided_create
+          inputs:
+            args: {}
         delete: {}
     properties: 
       volume: 
@@ -146,10 +166,8 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop:
-          implementation: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
-        start:
-          implementation: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        stop: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start: wrapper/LinuxFileSystem_1/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
@@ -157,20 +175,16 @@ node_templates:
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-            postconfigure:
-              implementation: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+            preconfigure: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure: wrapper/LinuxFileSystem_1_CBS1/linuxPartitionCBS1/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
   LinuxFileSystem_2:
     type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop:
-          implementation: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
-        start:
-          implementation: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        stop: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start: wrapper/LinuxFileSystem_2/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
@@ -178,20 +192,16 @@ node_templates:
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-            postconfigure:
-              implementation: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+            preconfigure: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure: wrapper/LinuxFileSystem_2_CBS2/linuxPartitionCBS2/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
   LinuxFileSystem_3:
     type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop:
-          implementation: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
-        start:
-          implementation: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        stop: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start: wrapper/LinuxFileSystem_3/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
@@ -199,20 +209,16 @@ node_templates:
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-            postconfigure:
-              implementation: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+            preconfigure: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure: wrapper/LinuxFileSystem_3_CBS3/linuxPartitionCBS3/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
   LinuxFileSystem_4:
     type: alien.nodes.LinuxFileSystem
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop:
-          implementation: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
-        start:
-          implementation: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        stop: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start: wrapper/LinuxFileSystem_4/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
       - target: Compute
         type: cloudify.relationships.contained_in
@@ -220,10 +226,8 @@ node_templates:
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-            postconfigure:
-              implementation: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+            preconfigure: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure: wrapper/LinuxFileSystem_4_CBS4/linuxPartitionCBS4/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
 
 
 
@@ -243,6 +247,9 @@ plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
     source: custom_wf_plugin
+  overrides:
+    executor: central_deployment_agent
+    source: overrides
 
 workflows:
   a4c_install: custom_wf_plugin.plugin.workflows.a4c_install
