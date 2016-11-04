@@ -13,7 +13,7 @@
       # Get placement properties from the volume '$volume.id'
 #if(!$compute.nodeTemplate.properties.contains("parameters"))
       parameters:
-        placement: $volume.nodeTemplate.properties["zone"].value
+        placement: "$volume.nodeTemplate.properties["zone"].value"
 #else
 #set($compute.nodeTemplate.properties["parameters"]["placement"]=$volume.nodeTemplate.properties["zone"].value)
 #end## end if(!compute.nodeTemplate.properties.contains("parameters"))

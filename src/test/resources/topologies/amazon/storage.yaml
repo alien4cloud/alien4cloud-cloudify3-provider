@@ -38,8 +38,8 @@ topology_template:
       type: alien.cloudify.aws.nodes.Volume
       properties:
         size: 1 Gib
-        volume_id: vol-0e872d8c
-        zone: eu-west-1c
+        volume_id: vol-0e872d8c,vol-a64ba916
+        zone: eu-west-1c,eu-west-1b
       requirements:
         - attachment:
             node: compute
