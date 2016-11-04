@@ -24,27 +24,10 @@
 #end## end foreach volume
 #end## end if compute hasn't a 'zone' property
 ${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment.propertyMappings.get($compute.nodeTemplate.type))}
-#set($publicNetworks = ${util.network.getExternalNetworks($compute)} )
-#if($util.collectionHasElement(${publicNetworks}) || $computeIsWindows)
-    relationships:
-#foreach($externalNetwork in $publicNetworks)
-      - target: ${mapping.generatedNodePrefix}_floating_ip_${compute.id}_on_${externalNetwork.id}
-        type: cloudify.aws.relationships.instance_connected_to_elastic_ip
-#end
-#end
-#if($computeIsWindows)
-      - type: cloudify.aws.relationships.instance_connected_to_keypair
-        target: ${mapping.generatedNodePrefix}_key_pair_for_${compute.id}
-  ${mapping.generatedNodePrefix}_key_pair_for_${compute.id}:
-    type: cloudify.aws.nodes.KeyPair
-    properties:
-      resource_id: ${compute.nodeTemplate.properties.get("key_pair").value}
-      use_external_resource: true
-      private_key_path: ${compute.nodeTemplate.properties.get("private_key_path").value}
-#else
     interfaces:
       cloudify.interfaces.lifecycle:
         create: overrides.ec2.wrapper.overrided_run_instance
+#if(!$computeIsWindows)
       alien4cloud.mapping.device:
         execute:
           implementation: device-mapping-scripts/mapping.py
@@ -54,10 +37,31 @@ ${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment
             device_key: device
 #if(!$cloud.getDisableDiamondMonitorAgent())
 #parse("provider/common/monitoring_interfaces.yaml.vm")
-#end
-#end
+#end## end disable diamond
+#end## if not windows
+#set($publicNetworks = ${util.network.getExternalNetworks($compute)} )
+#if($util.collectionHasElement(${publicNetworks}) || $computeIsWindows)
+    relationships:
+#foreach($externalNetwork in $publicNetworks)
+      - target: ${mapping.generatedNodePrefix}_floating_ip_${compute.id}_on_${externalNetwork.id}
+        type: cloudify.aws.relationships.instance_connected_to_elastic_ip
+#end## end foreach
+#end## end if($util.collectionHasElement(${publicNetworks}) || $computeIsWindows)
+#if($computeIsWindows)
+      - type: cloudify.aws.relationships.instance_connected_to_keypair
+        target: ${mapping.generatedNodePrefix}_key_pair_for_${compute.id}
+
+  ${mapping.generatedNodePrefix}_key_pair_for_${compute.id}:
+    type: cloudify.aws.nodes.KeyPair
+    properties:
+      resource_id: ${compute.nodeTemplate.properties.get("key_pair").value}
+      use_external_resource: true
+      private_key_path: ${compute.nodeTemplate.properties.get("private_key_path").value}
+#end## end if windows
+
+## Add public network nodes (Elastic IPs)
 #foreach($externalNetwork in $publicNetworks)
   $util.network.generateFloatingIpNodeName(${compute.id},${externalNetwork.id}):
     type: ${externalNetwork.nodeTemplate.type}
-#end
-#end
+#end## end foreach external networks
+#end## end foreach computes
