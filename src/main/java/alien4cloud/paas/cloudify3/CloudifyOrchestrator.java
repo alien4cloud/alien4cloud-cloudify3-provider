@@ -109,7 +109,6 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, final IPaaSCallback callback) {
-
         // first of all, let's check this deployment's status
         DeploymentStatus currentStatus = statusService.getStatus(deploymentContext.getDeploymentPaaSId());
         if (!DeploymentStatus.UNDEPLOYED.equals(currentStatus)) {

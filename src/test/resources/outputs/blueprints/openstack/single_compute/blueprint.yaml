@@ -72,6 +72,9 @@ plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
     source: custom_wf_plugin
+  overrides:
+    executor: central_deployment_agent
+    source: overrides
 
 workflows:
   a4c_install: custom_wf_plugin.plugin.workflows.a4c_install

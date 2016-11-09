@@ -1,5 +1,7 @@
 package alien4cloud.paas.cloudify3;
 
+import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
+import alien4cloud.utils.ClassLoaderUtil;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import alien4cloud.model.orchestrators.ArtifactSupport;
 import alien4cloud.model.orchestrators.locations.LocationSupport;
@@ -15,6 +17,8 @@ import com.google.common.collect.Maps;
 import java.util.Collections;
 import java.util.Map;
 import javax.annotation.Resource;
+import javax.inject.Inject;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -34,6 +38,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
+    @Inject
+    private ArtifactRegistryService artifactRegistryService;
 
     private Map<IPaaSProvider, AnnotationConfigApplicationContext> contextMap = Collections
             .synchronizedMap(Maps.<IPaaSProvider, AnnotationConfigApplicationContext> newIdentityHashMap());
@@ -50,6 +56,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
         cloudConfiguration.setDelayBetweenInProgressDeploymentStatusPolling(5);
+        cloudConfiguration.setDisableDiamondMonitorAgent(false);
         LocationConfigurations locationConfigurations = new LocationConfigurations();
 
         LocationConfiguration amazon = new LocationConfiguration();
@@ -87,8 +94,10 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         AnnotationConfigApplicationContext pluginContext = new AnnotationConfigApplicationContext();
         pluginContext.setParent(factoryContext);
         pluginContext.setClassLoader(factoryContext.getClassLoader());
-        pluginContext.register(PluginContextConfiguration.class);
-        pluginContext.refresh();
+        ClassLoaderUtil.runWithContextClassLoader(factoryContext.getClassLoader(), () -> {
+            pluginContext.register(PluginContextConfiguration.class);
+            pluginContext.refresh();
+        });
         log.info("Created new Cloudify 3 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
         CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
         contextMap.put(provider, pluginContext);
@@ -119,7 +128,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     @Override
     public ArtifactSupport getArtifactSupport() {
-        return new ArtifactSupport(new String[] { "tosca.artifacts.Implementation.Bash", "alien.artifacts.BatchScript" });
+        return new ArtifactSupport(artifactRegistryService.getSupportedArtifactTypes());
     }
 
     @Override

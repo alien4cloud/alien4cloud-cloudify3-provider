@@ -39,59 +39,25 @@ node_types:
       _a4c_substitute_for:
         default: []
 
-  alien.nodes.Apache:
-    derived_from: cloudify.nodes.WebServer
-  alien.nodes.PHP:
-    derived_from: cloudify.nodes.SoftwareComponent
   alien.nodes.Wordpress:
     derived_from: cloudify.nodes.ApplicationModule
   alien.nodes.Mysql:
     derived_from: cloudify.nodes.Database
+  alien.nodes.PHP:
+    derived_from: cloudify.nodes.SoftwareComponent
+  alien.nodes.Apache:
+    derived_from: cloudify.nodes.WebServer
 
 relationships:
   alien.relationships.WordpressHostedOnApache:
     derived_from: cloudify.relationships.contained_in
-  alien.relationships.WordpressConnectToPHP:
-    derived_from: cloudify.relationships.connected_to
   alien.relationships.WordpressConnectToMysql:
+    derived_from: cloudify.relationships.connected_to
+  alien.relationships.WordpressConnectToPHP:
     derived_from: cloudify.relationships.connected_to
 
 node_templates:
 
-  DataBase:
-    type: alien.nodes.openstack.Compute
-    properties: 
-      flavor: 2
-      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
-      cloudify_agent: 
-        user: ubuntu
-    relationships:
-      - target: InternalNetwork
-        type: cloudify.relationships.connected_to
-      - target: _a4c_InternalNetwork_subnet
-        type: cloudify.relationships.depends_on
-    interfaces:
-      cloudify.interfaces.monitoring_agent:
-        install:
-          implementation: diamond.diamond_agent.tasks.install
-          inputs:
-            diamond_config:
-               interval: 1
-        start: diamond.diamond_agent.tasks.start
-        stop: diamond.diamond_agent.tasks.stop
-        uninstall: diamond.diamond_agent.tasks.uninstall
-      cloudify.interfaces.monitoring:
-        start:
-          implementation: diamond.diamond_agent.tasks.add_collectors
-          inputs:
-            collectors_config:
-               CPUCollector: {}
-               MemoryCollector: {}
-               LoadAverageCollector: {}
-               DiskUsageCollector:
-                 config:
-                   devices: x?vd[a-z]+[0-9]*$
-               NetworkCollector: {}
   Server:
     type: alien.nodes.openstack.Compute
     properties: 
@@ -133,6 +99,40 @@ node_templates:
     properties: 
       floatingip: 
         floating_network_name: net-pub
+  DataBase:
+    type: alien.nodes.openstack.Compute
+    properties: 
+      flavor: 2
+      image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+      cloudify_agent: 
+        user: ubuntu
+    relationships:
+      - target: InternalNetwork
+        type: cloudify.relationships.connected_to
+      - target: _a4c_InternalNetwork_subnet
+        type: cloudify.relationships.depends_on
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+        install:
+          implementation: diamond.diamond_agent.tasks.install
+          inputs:
+            diamond_config:
+               interval: 1
+        start: diamond.diamond_agent.tasks.start
+        stop: diamond.diamond_agent.tasks.stop
+        uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+               CPUCollector: {}
+               MemoryCollector: {}
+               LoadAverageCollector: {}
+               DiskUsageCollector:
+                 config:
+                   devices: x?vd[a-z]+[0-9]*$
+               NetworkCollector: {}
   InternalNetwork:
     type: alien.nodes.openstack.PrivateNetwork
     properties:
@@ -150,16 +150,45 @@ node_templates:
       - target: InternalNetwork
         type: cloudify.relationships.contained_in
 
-  Apache:
-    type: alien.nodes.Apache
+  Wordpress:
+    type: alien.nodes.Wordpress
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        start: wrapper/Apache/tosca.interfaces.node.lifecycle.Standard/start/artifacts/apache-type/scripts/_a4c_start_apache.py
-        create: wrapper/Apache/tosca.interfaces.node.lifecycle.Standard/create/artifacts/apache-type/scripts/_a4c_install_apache.py
+        create:
+          implementation: wrapper/Wordpress/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Server
+      - target: Apache
+        type: alien.relationships.WordpressHostedOnApache
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_Apache/wordpressHostedOnApacheApache/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+      - target: Mysql
+        type: alien.relationships.WordpressConnectToMysql
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_Mysql/wordpressConnectToMysqlMysql/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+      - target: PHP
+        type: alien.relationships.WordpressConnectToPHP
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_PHP/wordpressConnectToPHPPHP/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+  Mysql:
+    type: alien.nodes.Mysql
+    instances:
+      deploy: 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: wrapper/Mysql/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        create:
+          implementation: wrapper/Mysql/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+    relationships:
+      - target: DataBase
         type: cloudify.relationships.contained_in
   PHP:
     type: alien.nodes.PHP
@@ -167,43 +196,23 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/PHP/tosca.interfaces.node.lifecycle.Standard/create/artifacts/php-type/scripts/_a4c_install_php.py
+        create:
+          implementation: wrapper/PHP/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Server
         type: cloudify.relationships.contained_in
-  Wordpress:
-    type: alien.nodes.Wordpress
+  Apache:
+    type: alien.nodes.Apache
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/Wordpress/tosca.interfaces.node.lifecycle.Standard/create/artifacts/wordpress-type/scripts/_a4c_install_wordpress.py
+        start:
+          implementation: wrapper/Apache/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        create:
+          implementation: wrapper/Apache/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: PHP
-        type: alien.relationships.WordpressConnectToPHP
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure: wrapper/Wordpress_PHP/wordpressConnectToPHPPHP/artifacts/wordpress-type/scripts/_a4c_install_php_module.py
-      - target: Apache
-        type: alien.relationships.WordpressHostedOnApache
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure: wrapper/Wordpress_Apache/wordpressHostedOnApacheApache/artifacts/wordpress-type/scripts/_a4c_config_wordpress.py
-      - target: Mysql
-        type: alien.relationships.WordpressConnectToMysql
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure: wrapper/Wordpress_Mysql/wordpressConnectToMysqlMysql/artifacts/wordpress-type/scripts/_a4c_config_wordpress_for_mysql.py
-  Mysql:
-    type: alien.nodes.Mysql
-    instances:
-      deploy: 1
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        start: wrapper/Mysql/tosca.interfaces.node.lifecycle.Standard/start/artifacts/mysql-type/scripts/_a4c_start_mysql.py
-        create: wrapper/Mysql/tosca.interfaces.node.lifecycle.Standard/create/artifacts/mysql-type/scripts/_a4c_install_mysql.py
-    relationships:
-      - target: DataBase
+      - target: Server
         type: cloudify.relationships.contained_in
 
 

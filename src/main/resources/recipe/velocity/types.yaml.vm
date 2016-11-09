@@ -4,6 +4,7 @@
   ${nativeType.elementId}:
     derived_from: ${util.natives.mapToCloudifyType($nativeType)}
 #set($getPersistentResourceId = ${util.natives.getPersistentResourceId($nativeType.tags)})
+#set($resourceIdKey = ${util.natives.getResourceIdKey($nativeType.tags)})
 #set($attributeMappings = ${util.natives.getAttributesMapping($nativeType.attributes)})
 ##if(${util.mapHasEntries($attributeMappings)} || $persistentResourceMapping)
     properties:
@@ -21,6 +22,16 @@
 #if($getPersistentResourceId)
       _a4c_persistent_resources:
         default: $getPersistentResourceId
+#end
+#if($util.common.isFromType('tosca.nodes.BlockStorage',$nativeType))
+      _a4c_device:
+        description: >
+          This property is needed as a workaround to fill the gap when the device property doesn't exist in Cloudify's plugin.
+        default: ''
+      _a4c_resource_id_key:
+        description: >
+          This property is used to retrieve the real IaaS id value from Cloudify's property node.
+        default: $resourceIdKey
 #end
 ##end
 #end

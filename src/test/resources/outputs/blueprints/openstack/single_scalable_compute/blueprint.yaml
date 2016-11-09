@@ -46,6 +46,10 @@ node_types:
             - device_name
       _a4c_persistent_resources:
         default: {"external_id":"volume_id"}
+      _a4c_device:
+        description: >
+          This property is needed as a workaround to fill the gap when the device property doesn't exist in Cloudify's plugin.
+        default: ''
 
   alien.nodes.LinuxFileSystem:
     derived_from: cloudify.nodes.SoftwareComponent
@@ -111,17 +115,21 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/alien-extended-storage-types/scripts/_a4c_unmount.py
-        start: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/start/artifacts/alien-extended-storage-types/scripts/_a4c_mount.py
+        stop:
+          implementation: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/LinuxFileSystem1/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
     relationships:
+      - target: Compute3
+        type: cloudify.relationships.contained_in
       - target: Volume1
         type: alien.relationships.LinuxPartition
         source_interfaces:
           cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/artifacts/alien-extended-storage-types/scripts/_a4c_mkfs.py
-            preconfigure: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/artifacts/alien-extended-storage-types/scripts/_a4c_fdisk.py
-      - target: Compute3
-        type: cloudify.relationships.contained_in
+            preconfigure:
+              implementation: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+            postconfigure:
+              implementation: wrapper/LinuxFileSystem1_Volume1/linuxPartitionVolume1/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
 
 
 

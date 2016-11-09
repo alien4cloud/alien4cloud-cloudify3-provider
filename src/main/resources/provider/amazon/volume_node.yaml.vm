@@ -4,20 +4,20 @@
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: aws.ec2.ebs.create
+          implementation: overrides.ec2.wrapper.overrided_create_volume
+          inputs:
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($volumeTemplate) )
-#if(!${util.property.hasPropertyValue($volumeTemplate.nodeTemplate.properties, "zone")})## use compute zone if none is provided
-#if($util.collectionHasElement($relationshipTemplates))
+#if($util.collectionHasElement($relationshipTemplates))## use compute zone no matter what
 #foreach($relationship in $relationshipTemplates)
 #if(${relationship.indexedToscaElement.elementId}=="tosca.relationships.AttachTo")
 #set( $attachTarget = $relationship.relationshipTemplate.target )
-          inputs:
             args:
               zone: { get_attribute: [$attachTarget, placement] }
-#end## if
+#end## if(${relationship.indexedToscaElement.elementId}=="tosca.relationships.AttachTo")
 #end## foreach($relationship in $relationshipTemplates)
+#else## else from if $util.collectionHasElement($relationshipTemplates)
+            args: {} ## if no AttachTo relationhip, can't retrieve zone from a compute but still need an empty args for the operation
 #end## if $util.collectionHasElement($relationshipTemplates)
-#end## if hasPropertyValue($volumeTemplate.nodeTemplate.properties, "zone")})
 #if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.aws.nodes.Volume")
         delete: {}
 #end## if

@@ -220,13 +220,14 @@ def a4c_heal(
 #following code can be pasted in src/test/python/workflows/context.py for simulation
 #def _build_nodes(ctx):
     #types = []
+    #types.append('alien.cloudify.aws.nodes.Compute')
+    #types.append('tosca.nodes.Compute')
+    #types.append('tosca.nodes.Root')
+    #node_Compute = _build_node(ctx, 'Compute', types, 1)
+    #types = []
     #types.append('alien.nodes.aws.PublicNetwork')
     #types.append('alien.nodes.PublicNetwork')
     #types.append('tosca.nodes.Network')
     #types.append('tosca.nodes.Root')
     #node_NetPub = _build_node(ctx, 'NetPub', types, 1)
-    #types = []
-    #types.append('alien.cloudify.aws.nodes.Compute')
-    #types.append('tosca.nodes.Compute')
-    #types.append('tosca.nodes.Root')
-    #node_Compute = _build_node(ctx, 'Compute', types, 1)
+    #_add_relationship(node_Compute, node_NetPub)

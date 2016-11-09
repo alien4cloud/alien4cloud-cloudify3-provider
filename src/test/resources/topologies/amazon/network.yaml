@@ -23,6 +23,6 @@ topology_template:
         user: ubuntu
       requirements:
         - network:
-          node: NetPub
-          capability: tosca.capabilities.Connectivity
-          relationship: tosca.relationships.Network
+            node: NetPub
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network

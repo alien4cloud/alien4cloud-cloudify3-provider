@@ -45,8 +45,9 @@ node_templates:
   compute:
     type: alien.cloudify.aws.nodes.Compute
     properties: 
-      instance_type: t2.small
       image_id: ami-47a23a30
+      instance_type: t2.small
+      user: ubuntu
       name: compute
     interfaces:
       alien4cloud.mapping.device:

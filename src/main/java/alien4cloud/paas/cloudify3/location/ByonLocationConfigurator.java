@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Sets;
@@ -16,13 +14,6 @@ import alien4cloud.orchestrators.plugin.ILocationResourceAccessor;
 
 @Component
 public class ByonLocationConfigurator extends AbstractLocationConfigurator {
-    @Inject
-    private ResourceGenerator resourceGenerator;
-
-    public static final String COMPUTE_TYPE = "alien.nodes.byon.Compute";
-    public static final String IMAGE_TYPE = "alien.nodes.byon.Image";
-    public static final String FLAVOR_TYPE = "alien.nodes.byon.Flavor";
-
     @Override
     protected String[] getLocationArchivePaths() {
         return new String[] { "provider/byon/configuration" };

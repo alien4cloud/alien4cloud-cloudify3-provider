@@ -1,9 +1,11 @@
 
 
-tosca_definitions_version: cloudify_dsl_1_2
+
+
+tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
   - http://www.getcloudify.org/spec/aws-plugin/1.3.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
 
@@ -41,20 +43,20 @@ node_types:
         type: cloudify.datatypes.AgentConfig
         default:
           port: 5985
-  alien.nodes.WarWithLifeCycleScript:
-    derived_from: cloudify.nodes.Root
+  alien.nodes.Java:
+    derived_from: cloudify.nodes.SoftwareComponent
   alien.nodes.TestArtifactDirectory:
     derived_from: cloudify.nodes.SoftwareComponent
   alien.nodes.Tomcat:
     derived_from: cloudify.nodes.WebServer
-  alien.nodes.Java:
-    derived_from: cloudify.nodes.SoftwareComponent
+  alien.nodes.WarWithLifeCycleScript:
+    derived_from: cloudify.nodes.Root
 
 relationships:
-  alien.relationships.WarHostedOnTomcatWithProperties:
-    derived_from: cloudify.relationships.contained_in
   alien.relationships.RunOnJVM:
     derived_from: cloudify.relationships.depends_on
+  alien.relationships.WarHostedOnTomcatWithProperties:
+    derived_from: cloudify.relationships.contained_in
 
 node_templates:
 
@@ -63,6 +65,7 @@ node_templates:
     properties: 
       image_id: ami-47a23a30
       instance_type: t2.small
+      user: ubuntu
       name: Server
     relationships:
       - target: _a4c_floating_ip_Server_on_NetPub
@@ -99,31 +102,25 @@ node_templates:
   _a4c_floating_ip_Server_on_NetPub:
     type: alien.nodes.aws.PublicNetwork
 
-  War:
-    type: alien.nodes.WarWithLifeCycleScript
+  Java:
+    type: alien.nodes.Java
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/War/tosca.interfaces.node.lifecycle.Standard/create/artifacts/artifact-test-types/scripts/_a4c_create.py
-      custom:
-        update_war_file: wrapper/War/custom/update_war_file/artifacts/tomcat-war-types/scripts/_a4c_tomcat_install_war.py
+        create:
+          implementation: wrapper/Java/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Tomcat
-        type: alien.relationships.WarHostedOnTomcatWithProperties
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/artifacts/artifact-test-types/scripts/_a4c_tomcat_install_war.py
-        target_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            postconfigure: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/artifacts/artifact-test-types/scripts/_a4c_configureProperties.py
+      - target: Server
+        type: cloudify.relationships.contained_in
   Artifact_Directory_Test:
     type: alien.nodes.TestArtifactDirectory
     instances:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: wrapper/Artifact_Directory_Test/tosca.interfaces.node.lifecycle.Standard/create/artifacts/artifact-test-types/scripts/_a4c_assertDirectoryCopied.py
+        create:
+          implementation: wrapper/Artifact_Directory_Test/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
       - target: Server
         type: cloudify.relationships.contained_in
@@ -133,24 +130,42 @@ node_templates:
       deploy: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        stop: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/stop/artifacts/tomcat-war-types/scripts/_a4c_tomcat_stop.py
-        start: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/start/artifacts/tomcat-war-types/scripts/_a4c_tomcat_start.py
-        create: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/create/artifacts/tomcat-war-types/scripts/_a4c_tomcat_install.py
+        stop:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/stop/_a4c_stop.py
+        start:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
+        create:
+          implementation: wrapper/Tomcat/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Java
-        type: alien.relationships.RunOnJVM
       - target: Server
         type: cloudify.relationships.contained_in
-  Java:
-    type: alien.nodes.Java
+      - target: Java
+        type: alien.relationships.RunOnJVM
+  War:
+    type: alien.nodes.WarWithLifeCycleScript
     instances:
       deploy: 1
     interfaces:
+      custom:
+        update_war_file:
+          implementation: wrapper/War/custom/update_war_file/_a4c_update_war_file.py
       cloudify.interfaces.lifecycle:
-        create: wrapper/Java/tosca.interfaces.node.lifecycle.Standard/create/artifacts/tomcat-war-types/scripts/_a4c_java_install.py
+        create:
+          implementation: wrapper/War/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Server
-        type: cloudify.relationships.contained_in
+      - target: Tomcat
+        type: alien.relationships.WarHostedOnTomcatWithProperties
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            postconfigure:
+              implementation: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_source/_a4c_post_configure_source.py
+        target_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            postconfigure:
+              implementation: wrapper/War_Tomcat/warHostedOnTomcatWithPropertiesTomcat/tosca.interfaces.relationship.Configure/post_configure_target/_a4c_post_configure_target.py
+
+
+
 
 
 plugins:
@@ -174,10 +189,13 @@ workflows:
         default: 1
       scale_compute:
         description: >
-            If node is contained (transitively) within a compute node
-            and this property is 'true', operate on compute node instead
-            of 'node_id'
+            If a node name is passed as the `scalable_entity_name` parameter
+            and that node is contained (transitively) within a compute node
+            and this property is 'true', operate on the compute node instead
+            of the specified node.
         default: true
+      ignore_failure:
+        default: false
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:

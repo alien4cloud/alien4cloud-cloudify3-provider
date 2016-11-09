@@ -101,4 +101,8 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
         return TagUtil.getTagValue(tags, CustomTags.PERSISTENT_RESOURCE_TAG);
     }
 
+    public String getResourceIdKey(List<Tag> tags) {
+        return TagUtil.getTagValue(tags, CustomTags.RESOURCE_ID_KEY_TAG);
+    }
+
 }

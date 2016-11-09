@@ -13,10 +13,7 @@
 
     <aop:aspectj-autoproxy proxy-target-class="true"/>
 
-    <context:component-scan base-package="
-        org.alien4cloud.*,
-		alien4cloud.*,
-		org.elasticsearch.mapping">
+    <context:component-scan base-package="org.alien4cloud.*, alien4cloud.*, org.elasticsearch.mapping">
         <!-- alien4cloud.security.* to exclude ldap package is not working in component-scan -->
         <context:exclude-filter type="regex" expression="alien4cloud\.paas\.cloudify3\.PluginContextConfiguration"/>
         <context:exclude-filter type="regex" expression="alien4cloud\.rest\..*"/>
