@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import com.google.common.collect.Lists;
 
 import alien4cloud.paas.cloudify3.error.BadConfigurationException;
+import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.model.Version;
+import alien4cloud.paas.cloudify3.restclient.BlueprintClient;
 import alien4cloud.paas.cloudify3.restclient.VersionClient;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.cloudify3.restclient.auth.SSLContextManager;
@@ -29,6 +31,10 @@ public class CloudConfigurationHolder {
 
     @Resource
     @Setter
+    private BlueprintClient blueprintClient;
+
+    @Resource
+    @Setter
     private AuthenticationInterceptor authenticationInterceptor;
 
     @Resource
@@ -44,7 +50,10 @@ public class CloudConfigurationHolder {
                 authenticationInterceptor.setPassword(newConfiguration.getPassword());
                 sslContextManager.disableSSLVerification(configuration.getDisableSSLVerification() != null && configuration.getDisableSSLVerification());
                 Version version = versionClient.read();
-                log.info("Configure PaaS provider for Cloudify version " + version.getVersion());
+                Blueprint[] blueprints = blueprintClient.list();
+                int numberOfBlueprints = blueprints != null ? blueprints.length : 0;
+                log.info(
+                        "Configure PaaS provider for Cloudify version " + version.getVersion() + ", manager has " + numberOfBlueprints + " active deployments");
             }
         });
     }
