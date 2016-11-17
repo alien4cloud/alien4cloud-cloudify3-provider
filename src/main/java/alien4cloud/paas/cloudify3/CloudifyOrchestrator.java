@@ -8,11 +8,14 @@ import java.util.Map;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
@@ -41,11 +44,7 @@ import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The cloudify 3 PaaS Provider implementation
@@ -110,10 +109,10 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, final IPaaSCallback callback) {
         // first of all, let's check this deployment's status
-        DeploymentStatus currentStatus = statusService.getStatus(deploymentContext.getDeploymentPaaSId());
+        DeploymentStatus currentStatus = statusService.getStatusFromCloudify(deploymentContext.getDeploymentPaaSId());
         if (!DeploymentStatus.UNDEPLOYED.equals(currentStatus)) {
-            log.warn("Not possible to undeploy {} for alien deployment {}: deployment is currently in it's init stage.",
-                    deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+            log.warn("Not possible to deploy {} for alien deployment {}: deployment is active on Cloudify.", deploymentContext.getDeploymentPaaSId(),
+                    deploymentContext.getDeploymentId());
             callback.onFailure(new PaaSAlreadyDeployedException("Deployment " + deploymentContext.getDeploymentPaaSId()
                     + " is active (must undeploy first) or is in unknown state (must wait for status available)"));
             return;
