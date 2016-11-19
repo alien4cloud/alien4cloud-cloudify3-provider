@@ -151,7 +151,7 @@ public class DeploymentService extends RuntimeService {
      * @return
      */
     public ListenableFuture<?> undeploy(final PaaSDeploymentContext deploymentContext) {
-        DeploymentStatus currentStatus = statusService.getStatusFromCloudify(deploymentContext.getDeploymentPaaSId());
+        DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
 
         // we shouldn't trigger undeployment if it's in its init stage
         if (DeploymentStatus.INIT_DEPLOYMENT.equals(currentStatus)) {

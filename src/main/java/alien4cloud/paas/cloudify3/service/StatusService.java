@@ -299,6 +299,28 @@ public class StatusService {
     }
 
     /**
+     * Get fresh status, only INIT_DEPLOYMENT will be sent back from cache, else retrieve the status from cloudify.
+     * This is called to secure deploy and undeploy, to be sure that we have the most fresh status and not the one from cache
+     * 
+     * @param deploymentPaaSId id of the deployment to check
+     * @return the deployment status
+     */
+    public DeploymentStatus getFreshStatus(String deploymentPaaSId) {
+        try {
+            cacheLock.readLock().lock();
+            DeploymentStatus statusFromCache = getStatusFromCache(deploymentPaaSId);
+            if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache) {
+                // The deployment is being created
+                return statusFromCache;
+            }
+        } finally {
+            cacheLock.readLock().unlock();
+        }
+        // This will refresh the status of the application from cloudify
+        return getStatusFromCloudify(deploymentPaaSId);
+    }
+
+    /**
      * Get the status from cloudify by querying the manager. If the deployment not found in the cache then will begin to monitor it.
      * 
      * @param deploymentPaaSId the deployment id

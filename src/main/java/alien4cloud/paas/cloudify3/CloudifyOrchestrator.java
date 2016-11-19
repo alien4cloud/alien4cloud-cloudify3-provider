@@ -109,7 +109,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, final IPaaSCallback callback) {
         // first of all, let's check this deployment's status
-        DeploymentStatus currentStatus = statusService.getStatusFromCloudify(deploymentContext.getDeploymentPaaSId());
+        DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
         if (!DeploymentStatus.UNDEPLOYED.equals(currentStatus)) {
             log.warn("Not possible to deploy {} for alien deployment {}: deployment is active on Cloudify.", deploymentContext.getDeploymentPaaSId(),
                     deploymentContext.getDeploymentId());
