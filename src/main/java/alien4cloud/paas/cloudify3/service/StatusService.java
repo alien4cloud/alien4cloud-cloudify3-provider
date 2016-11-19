@@ -325,9 +325,11 @@ public class StatusService {
     private DeploymentStatus getStatus(String deploymentPaaSId) {
         try {
             cacheLock.readLock().lock();
-            if (isApplicationMonitored(deploymentPaaSId)) {
-                // This deployment is currently monitored so the cache can be used
-                return getStatusFromCache(deploymentPaaSId);
+            DeploymentStatus statusFromCache = getStatusFromCache(deploymentPaaSId);
+            if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
+                // The deployment is being created means that currently it's not monitored, it's in transition
+                // The deployment is currently monitored so the cache can be used
+                return statusFromCache;
             }
         } finally {
             cacheLock.readLock().unlock();
