@@ -16,7 +16,11 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import alien4cloud.paas.cloudify3.model.*;
+import alien4cloud.paas.cloudify3.model.Blueprint;
+import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.model.Execution;
+import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.restclient.BlueprintClient;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -147,7 +151,7 @@ public class DeploymentService extends RuntimeService {
      * @return
      */
     public ListenableFuture<?> undeploy(final PaaSDeploymentContext deploymentContext) {
-        DeploymentStatus currentStatus = statusService.getStatus(deploymentContext.getDeploymentPaaSId());
+        DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
 
         // we shouldn't trigger undeployment if it's in its init stage
         if (DeploymentStatus.INIT_DEPLOYMENT.equals(currentStatus)) {
@@ -179,8 +183,7 @@ public class DeploymentService extends RuntimeService {
 
         // Add a callback to handled failures and provide alien with the correct events.
         // TODO should we check the status of the deployment before we mark it as undeployed ?
-        addFailureCallback(undeploymentFuture, "Undeployment", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId(),
-                DeploymentStatus.UNDEPLOYED);
+        addFailureCallback(undeploymentFuture, "Undeployment", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId(), null);
         return undeploymentFuture;
     }
 
@@ -245,7 +248,12 @@ public class DeploymentService extends RuntimeService {
             @Override
             public void onFailure(Throwable t) {
                 log.error(operationName + " of deployment " + deploymentPaaSId + " with alien's deployment id " + deploymentId + " has failed", t);
-                statusService.registerDeploymentStatus(deploymentPaaSId, status);
+                if (status != null) {
+                    // User wants to send back an intermediary status before the real one then sends it
+                    statusService.registerDeploymentStatus(deploymentPaaSId, status);
+                }
+                // Send the real status later, status service takes care of not sending anything if the status has not changed
+                statusService.registerDeploymentStatus(deploymentPaaSId, statusService.getStatusFromCloudify(deploymentPaaSId));
             }
         });
     }
