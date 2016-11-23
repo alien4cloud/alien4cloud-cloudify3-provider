@@ -16,7 +16,8 @@
 #end## if(${relationship.indexedToscaElement.elementId}=="tosca.relationships.AttachTo")
 #end## foreach($relationship in $relationshipTemplates)
 #else## else from if $util.collectionHasElement($relationshipTemplates)
-            args: {} ## if no AttachTo relationhip, can't retrieve zone from a compute but still need an empty args for the operation
+            args: {}
+## if no AttachTo relationhip, can't retrieve zone from a compute but still need an empty args for the operation
 #end## if $util.collectionHasElement($relationshipTemplates)
 #if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.aws.nodes.Volume")
         delete: {}

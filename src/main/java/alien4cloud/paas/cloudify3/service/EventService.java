@@ -1,14 +1,13 @@
 package alien4cloud.paas.cloudify3.service;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
+import alien4cloud.paas.cloudify3.restclient.NodeClient;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -217,10 +216,20 @@ public class EventService {
                 // query API
                 // TODO make that Async
                 NodeInstance instance = nodeInstanceClient.read(cloudifyEvent.getContext().getNodeId());
-                String attributeValue = (String) MapUtil.get(instance.getRuntimeProperties(), eventAlienPersistent.getPersistentResourceId());
-                alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getContext().getNodeName(), cloudifyEvent.getContext().getNodeId(),
-                        eventAlienPersistent.getPersistentAlienAttribute(), attributeValue);
-
+                Map<String, Object> persistentProperties = new HashMap<String, Object>(eventAlienPersistent.getPersistentProperties().size());
+                for(Map.Entry<String, String> entry: eventAlienPersistent.getPersistentProperties().entrySet()) {
+                    if(!instance.getRuntimeProperties().containsKey(entry.getKey())) {
+                        // This is a workaround to ignore events from existing volumes especially on aws.
+                        // Cloudify don't have a 'zone' runtime properties when using existing volumes.
+                        // As it is existing volumes, we already has the persistent properties in A4C.
+                        // So we just ignore the event for conveniency
+                        log.warn("Ignore event. Couldn't find the key <{}> in the runtime properties of node instance <{}>", entry.getKey(), instance.getId());
+                        return null;
+                    }
+                    String attributeValue = (String) MapUtil.get(instance.getRuntimeProperties(), entry.getKey());
+                    persistentProperties.put(entry.getValue(), attributeValue);
+                }
+                alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getContext().getNodeName(), cloudifyEvent.getContext().getNodeId(), persistentProperties);
             } catch (Exception e) {
                 log.warn("Problem processing persistent event " + cloudifyEvent.getId(), e);
                 return null;
