@@ -1,15 +1,5 @@
 package alien4cloud.paas.cloudify3;
 
-import alien4cloud.model.components.CSARSource;
-import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
-import alien4cloud.orchestrators.plugin.model.PluginArchive;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
-import alien4cloud.paas.cloudify3.util.CSARUtil;
-import org.alien4cloud.tosca.catalog.index.ArchiveIndexer;
-import alien4cloud.tosca.parser.ParsingError;
-import alien4cloud.utils.FileUtil;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
 import javax.inject.Inject;
+
+import org.alien4cloud.tosca.catalog.index.ArchiveIndexer;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -26,6 +19,17 @@ import org.junit.BeforeClass;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import alien4cloud.model.components.CSARSource;
+import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
+import alien4cloud.orchestrators.plugin.model.PluginArchive;
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.util.CSARUtil;
+import alien4cloud.tosca.parser.ParsingError;
+import alien4cloud.utils.FileUtil;
 
 public abstract class AbstractTest {
 

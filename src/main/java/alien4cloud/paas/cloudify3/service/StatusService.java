@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3.service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +50,7 @@ import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.rest.utils.JsonUtil;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -421,10 +423,37 @@ public class StatusService {
                         log.error("Unable to stringify runtime properties", e);
                     }
                     instanceInformation.setRuntimeProperties(runtimeProperties);
+
+                    // FIXME Ugly workaround to handle docker/kubernetes endpoint attributes
                     Node node = nodeMap.get(instance.getNodeId());
                     if (node != null && runtimeProperties != null) {
-                        instanceInformation.setAttributes(runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap));
+                        Map<String, String> attributes = runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap);
+                        instanceInformation.setAttributes(attributes);
+                        if (node.isTypeOf("cloudify.kubernetes.Microservice")) {
+                            String serviceJson = attributes.get("service");
+                            try {
+                                Map<String, Object> map = JsonUtil.toMap(serviceJson);
+                                String clusterIP = (String) map.get("clusterIP");
+                                String endpointPort = null;
+                                List<Object> ports = (List<Object>) map.get("ports");
+                                if (ports != null && !ports.isEmpty()) {
+                                    Map<String, Object> portMap = (Map<String, Object>) (((List<Object>) map.get("ports")).get(0));
+                                    if (portMap != null && portMap.get("nodePort") != null) {
+                                        endpointPort = portMap.get("nodePort").toString();
+                                    } else if (portMap.get("port") != null) {
+                                        endpointPort = portMap.get("port").toString();
+                                    }
+                                }
+                                instanceInformation.getAttributes().put("endpoint", String.format("%s:%s", clusterIP, endpointPort));
+                                instanceInformation.getAttributes().put("endpoint_port", endpointPort);
+                                instanceInformation.getAttributes().put("endpoint_ip", clusterIP);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
+                    // FIXME End ugly workaround
+
                     nodeInformation.put(instanceId, instanceInformation);
                 }
                 String floatingIpPrefix = mappingConfigurationHolder.getMappingConfiguration().getGeneratedNodePrefix() + "_floating_ip_";

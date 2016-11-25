@@ -314,13 +314,22 @@ public class CloudifyDeploymentBuilderService {
         Map<String, NodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
         Map<String, RelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
         for (PaaSNodeTemplate nonNative : deploymentContext.getPaaSTopology().getNonNatives()) {
+            // FIXME ugly workaround for docker/kubernetes. Ignore if the non native type is a docker type
+            if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
+                continue;
+            }
             nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
             List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();
             for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {
                 if (!NormativeRelationshipConstants.DEPENDS_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())
                         && !NormativeRelationshipConstants.HOSTED_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())) {
-                    nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
-                            relationshipTemplate.getIndexedToscaElement());
+                    // FIXME kubernetes. If the source of the relationship is a docker node, ignore it
+                    PaaSNodeTemplate sourceNodeTemplate = deploymentContext.getPaaSTopology().getAllNodes().get(relationshipTemplate.getSource());
+                    if (!ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER,
+                            sourceNodeTemplate.getIndexedToscaElement())) {
+                        nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
+                                relationshipTemplate.getIndexedToscaElement());
+                    }
                 }
             }
         }

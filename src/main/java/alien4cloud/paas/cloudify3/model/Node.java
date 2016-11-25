@@ -10,12 +10,8 @@ import lombok.Setter;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Getter
-@Setter
-@EqualsAndHashCode
-@JsonIgnoreProperties(ignoreUnknown = true)
-@SuppressWarnings("PMD.UnusedPrivateField")
-public class Node extends AbstractCloudifyModel {
+@Getter @Setter @EqualsAndHashCode @JsonIgnoreProperties(ignoreUnknown = true) @SuppressWarnings("PMD.UnusedPrivateField") public class Node
+        extends AbstractCloudifyModel {
 
     private String id;
 
@@ -36,4 +32,16 @@ public class Node extends AbstractCloudifyModel {
     private String type;
 
     private List<Relationship> relationships;
+
+    public boolean isTypeOf(String type) {
+        if (this.type != null && this.type.equals(type)) {
+            return true;
+        }
+        for (String parentType : typeHierarchy) {
+            if (parentType != null && parentType.equals(type)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
