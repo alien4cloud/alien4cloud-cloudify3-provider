@@ -366,6 +366,10 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                         unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink')
                         _set_send_node_event_on_error_handler(unlink_task_source, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                         sequence.add(unlink_task_source)
+                        unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink')
+                        _set_send_node_event_on_error_handler(unlink_task_target, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
+                        sequence.add(unlink_task_target)
+
 
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
         task = instance.execute_operation(operation_fqname)
