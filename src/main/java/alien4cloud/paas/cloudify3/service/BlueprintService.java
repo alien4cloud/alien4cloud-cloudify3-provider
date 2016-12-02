@@ -246,7 +246,7 @@ public class BlueprintService {
                 generatedBlueprintDirectoryPath.resolve("plugins/custom_wf_plugin.zip"));
 
         // plugin overrides section
-        if(Files.isDirectory(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()))) {
+        if (Files.isDirectory(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()))) {
             Path overridesPluginDir = generatedBlueprintDirectoryPath.resolve("plugins/overrides");
             Files.createDirectories(overridesPluginDir);
             FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/a4c_common"), overridesPluginDir.resolve("a4c_common"),
@@ -342,7 +342,7 @@ public class BlueprintService {
         }
 
         // Generate the blueprint at the end
-            VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
         return generatedBlueprintFilePath;
     }
 

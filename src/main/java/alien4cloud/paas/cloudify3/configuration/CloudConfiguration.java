@@ -50,6 +50,8 @@ public class CloudConfiguration {
             return locations.getOpenstack();
         case "byon":
             return locations.getByon();
+        case "kubernetes":
+            return locations.getKubernetes();
         }
         throw new NotFoundException("Location " + locationName + " not found");
     }

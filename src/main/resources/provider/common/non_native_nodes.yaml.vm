@@ -9,6 +9,13 @@
     type: $template.indexedToscaElement.elementId
     instances:
       deploy: 1
+#set( $nodeProperties = $util.nonNative.getNodeProperties($template) )
+#if($util.nonNative.mapHasEntries($nodeProperties))
+    properties:
+#foreach($property in $nodeProperties.entrySet())
+      $property.key: $property.value
+#end## foreach($property in $nodeProperties.entrySet())
+#end## if($util.nonNative.mapHasEntries($nodeProperties))
 #set( $nodeInterfaces = $util.nonNative.getNodeInterfaces($template) )
 #if($util.nonNative.mapHasEntries($nodeInterfaces))
     interfaces:

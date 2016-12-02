@@ -1,0 +1,73 @@
+tosca_definitions_version: alien_dsl_1_3_0
+description: Alien4Cloud generated service template
+template_name: hybrid
+template_version: 0.1.0-SNAPSHOT
+template_author: admin
+
+imports:
+  - nodecellar-docker-type:1.0.0-SNAPSHOT
+  - mongod-type:1.0.0-SNAPSHOT
+  - docker-types:1.0.0-SNAPSHOT
+  - tosca-normative-types:1.0.0-SNAPSHOT
+  - openstack-types:$projectVersion
+  - cloudify3-common-types:$projectVersion
+
+topology_template:
+  node_templates:
+    Nodecellar:
+      type: alien.nodes.Application.Docker.Nodecellar
+      properties:
+        docker_run_cmd: cd /nodecellar && nodejs server.js
+        docker_env_vars:
+          LOG_LEVEL:
+        dev_prop: test-prop
+        cpu_share: 1.0
+        mem_share: 128
+      requirements:
+        - mongo_db:
+            node: Mongod
+            capability: alien.capabilities.endpoint.Mongo
+            relationship: tosca.relationships.ConnectsTo
+      capabilities:
+        nodecellar_app:
+          properties:
+            port: 3000
+            protocol: tcp
+            initiator: source
+            secure: false
+            network_name: PRIVATE
+            docker_bridge_port_mapping: 0
+    Mongod:
+      type: alien.nodes.Mongod
+      properties:
+        db_port: 27017
+      requirements:
+        - host:
+            node: Compute
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        endpoint:
+          properties:
+            protocol: tcp
+            initiator: source
+            secure: false
+            network_name: PRIVATE
+    Compute:
+      type: alien.nodes.openstack.Compute
+      properties:
+        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
+        flavor: 2
+        user: ubuntu
+      capabilities:
+        endpoint:
+          properties:
+            protocol: tcp
+            initiator: source
+            secure: true
+            network_name: PRIVATE
+        scalable:
+          properties:
+            max_instances: 1
+            min_instances: 1
+            default_instances: 1

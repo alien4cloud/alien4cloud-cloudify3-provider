@@ -1,0 +1,75 @@
+tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
+
+template_name: cloudify-kubernetes-types
+template_author: Alien4cloud
+template_version: ${project.version}
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN12
+  - cloudify3-common-types:${project.version}
+
+node_types:
+
+  alien.cloudify.kubernetes.nodes.Microservice:
+    derived_from: tosca.nodes.Container.Application
+    tags:
+      _a4c_c3_derived_from: cloudify.kubernetes.Microservice
+    properties:
+      # cloudify.kubernetes.Base properties
+      ssh_keyfilename:
+        type: string
+        description: file name that holds ssh key for passwordless operation
+        default: ''
+      ssh_username:
+        type: string
+        description: ssh user
+        default: ''
+      ssh_password:
+        type: string
+        description: ssh password when not using passwordless operation
+        default: ''
+      ssh_port:
+        type: integer
+        description: ssh port.  defaults to 22
+        default: 22
+      install_docker:
+        type: boolean
+        description: install docker
+        default: false
+      install:
+        type: boolean
+        description: install kubernetes
+        default: true
+
+      # cloudify.kubernetes.Microservice properties
+      name:
+        type: string
+        description: the name of the service
+      image:
+        type: string
+        description: the image to run
+        default: ''
+      port:
+        type: integer
+        description: the port for the service
+        default: -1
+      target_port:
+        type: integer
+        description: the target port to map
+        default: -1
+      protocol:
+        type: string
+        description: the service protocol { TCP|UDP }  TCP default
+        default: TCP
+      replicas:
+        type: integer
+        description: the number of instances to run
+        default: 1
+      run_overrides:
+        type: string
+        description: json overrides for kubectl run
+        default: ''
+      expose_overrides:
+        type: string
+        description: json overrides for kubectl expose
+        default: ''

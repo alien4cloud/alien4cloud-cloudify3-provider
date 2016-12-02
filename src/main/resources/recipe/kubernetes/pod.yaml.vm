@@ -1,0 +1,39 @@
+#set($pod_name=$dockerType.id.toLowerCase())
+#foreach( $capa in $dockerType.template.capabilities.values() )
+#if($capa.type=="alien.capabilities.endpoint.Docker")
+#set($dockerEndpoint=$capa)
+#end
+#end
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: ${pod_name}
+spec:
+  replicas: 1
+  selector:
+    app: ${pod_name}
+  template:
+    metadata:
+      name: ${pod_name}
+      labels:
+        app: ${pod_name}
+    spec:
+      containers:
+      - name: ${pod_name}
+#set($imageref=${dockerType.interfaces["tosca.interfaces.node.lifecycle.Standard"].operations["create"].implementationArtifact.artifactRef})
+        image: ${imageref}
+#if( $dockerType.template.properties["docker_run_cmd"] )
+        command: ["/bin/bash", "-c", "$dockerType.template.properties["docker_run_cmd"].value" ]
+#end
+#if( $dockerEndpoint )
+        ports:
+        - containerPort: ${dockerEndpoint.properties["port"].value}
+          hostIP: 0.0.0.0
+#end
+#if(!$envMap.isEmpty())
+        env:
+#foreach( $var in $envMap.entrySet() )
+        - name: $var.key
+          value: '$var.value'
+#end
+#end
