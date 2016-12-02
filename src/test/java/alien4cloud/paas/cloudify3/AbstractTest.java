@@ -55,6 +55,8 @@ public abstract class AbstractTest {
 
     public static final String NODECELLAR_TOPOLOGY = "nodecellar_docker";
 
+    public static final String NODECELLAR_TOPOLOGY_HYBRID = "nodecellar_docker_hybrid";
+
     public static final String VERSION;
 
     protected static final Set<String> LOCATIONS = Sets.newHashSet();
@@ -70,7 +72,7 @@ public abstract class AbstractTest {
 
     private static boolean isInitialized = false;
 
-    private static boolean forceReloadCSARs = true;
+    private static boolean forceReloadCSARs = false;
 
     @Inject
     private CSARUtil csarUtil;

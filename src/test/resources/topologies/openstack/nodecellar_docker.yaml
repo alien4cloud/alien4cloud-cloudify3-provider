@@ -1,16 +1,13 @@
-tosca_definitions_version: alien_dsl_1_3_0
+tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
 description: Alien4Cloud generated service template
-template_name: hybrid
+template_name: nodecellardocker
 template_version: 0.1.0-SNAPSHOT
 template_author: admin
 
 imports:
-  - nodecellar-docker-type:1.0.0-SNAPSHOT
-  - mongod-type:1.0.0-SNAPSHOT
-  - docker-types:1.0.0-SNAPSHOT
+  - nodecellar-docker-types:1.1.0-SNAPSHOT
+  - docker-types:1.1.0-SNAPSHOT
   - tosca-normative-types:1.0.0-SNAPSHOT
-  - openstack-types:$projectVersion
-  - cloudify3-common-types:$projectVersion
 
 topology_template:
   node_templates:
@@ -18,15 +15,14 @@ topology_template:
       type: alien.nodes.Application.Docker.Nodecellar
       properties:
         docker_run_cmd: cd /nodecellar && nodejs server.js
-        docker_env_vars:
-          LOG_LEVEL:
-        dev_prop: test-prop
-        cpu_share: 1.0
         mem_share: 128
+        docker_env_vars:
+          LOG_LEVEL: INFO
+        cpu_share: 1.0
       requirements:
         - mongo_db:
-            node: Mongod
-            capability: alien.capabilities.endpoint.Mongo
+            node: Mongo
+            capability: alien.capabilities.endpoint.docker.Mongo
             relationship: tosca.relationships.ConnectsTo
       capabilities:
         nodecellar_app:
@@ -35,39 +31,19 @@ topology_template:
             protocol: tcp
             initiator: source
             secure: false
-            network_name: PRIVATE
             docker_bridge_port_mapping: 0
-    Mongod:
-      type: alien.nodes.Mongod
+            network_name: PRIVATE
+    Mongo:
+      type: alien.nodes.Application.Docker.Mongo
       properties:
-        db_port: 27017
-      requirements:
-        - host:
-            node: Compute
-            capability: tosca.capabilities.Container
-            relationship: tosca.relationships.HostedOn
+        mem_share: 128
+        cpu_share: 1.0
       capabilities:
-        endpoint:
+        mongo_db:
           properties:
+            port: 27017
             protocol: tcp
             initiator: source
             secure: false
+            docker_bridge_port_mapping: 0
             network_name: PRIVATE
-    Compute:
-      type: alien.nodes.openstack.Compute
-      properties:
-        image: 02ddfcbb-9534-44d7-974d-5cfd36dfbcab
-        flavor: 2
-        user: ubuntu
-      capabilities:
-        endpoint:
-          properties:
-            protocol: tcp
-            initiator: source
-            secure: true
-            network_name: PRIVATE
-        scalable:
-          properties:
-            max_instances: 1
-            min_instances: 1
-            default_instances: 1

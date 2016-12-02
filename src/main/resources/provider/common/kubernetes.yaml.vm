@@ -31,13 +31,13 @@
       cloudify.interfaces.lifecycle:
         create:
           inputs:
-            deployment_id: $cloud.locations.kubernetes.kubernetesDeploymentId
+            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
         start:
           inputs:
-            deployment_id: $cloud.locations.kubernetes.kubernetesDeploymentId
+            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
         stop:
           inputs:
-            deployment_id: $cloud.locations.kubernetes.kubernetesDeploymentId
+            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
 
 #foreach($node in $docker_types)
   ${node.id}:

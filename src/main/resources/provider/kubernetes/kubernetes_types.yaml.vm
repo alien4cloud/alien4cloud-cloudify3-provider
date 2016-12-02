@@ -1,2 +1,0 @@
-  alien.cloudify.kubernetes.nodes.Microservice:
-    derived_from: cloudify.kubernetes.Microservice

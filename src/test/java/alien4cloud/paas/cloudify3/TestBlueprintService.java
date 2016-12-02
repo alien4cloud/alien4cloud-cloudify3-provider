@@ -137,6 +137,11 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     }
 
     @Test
+    public void testGenerateDockerNodecellarHybrid() {
+        testGeneratedBlueprintFile(NODECELLAR_TOPOLOGY_HYBRID);
+    }
+
+    @Test
     public void testGenerateTomcat() {
         testGeneratedBlueprintFile(TOMCAT_TOPOLOGY);
     }

@@ -18,9 +18,9 @@ import alien4cloud.model.orchestrators.locations.LocationSupport;
 import alien4cloud.orchestrators.plugin.IOrchestratorPluginFactory;
 import alien4cloud.paas.IPaaSProvider;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.configuration.KubernetesConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfigurations;
-import alien4cloud.paas.cloudify3.location.KubernetesLocationConfigurator;
 import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
 import alien4cloud.utils.ClassLoaderUtil;
@@ -31,10 +31,13 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
     public static final String CFY_VERSION = "3.4";
-    public static final String CFY_DIAMOND_VERSION = "1.3.1";
+
     public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
+
+    public static final String CFY_DIAMOND_VERSION = "1.3.1";
+    public static final String CFY_FABRIC_VERSION = "1.4.1";
 
     @Resource
     private ApplicationContext factoryContext;
@@ -72,10 +75,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         LocationConfiguration openstack = new LocationConfiguration();
         openstack.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/cloudify/" + CFY_VERSION + "/types.yaml",
                 "http://www.getcloudify.org/spec/openstack-plugin/" + CFY_OPENSTACK_PLUGIN_VERSION + "/plugin.yaml",
-                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml",
-                "http://www.getcloudify.org/spec/fabric-plugin/1.4.1/plugin.yaml",
-                "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml",
-                "plugins/cloudify-proxy-plugin/plugin.yaml"));
+                "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml"));
         openstack.setDsl(CFY_DSL_1_3);
         locationConfigurations.setOpenstack(openstack);
 
@@ -86,9 +86,16 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         byon.setDsl(CFY_DSL_1_3);
         locationConfigurations.setByon(byon);
 
-        locationConfigurations.setKubernetes(KubernetesLocationConfigurator.getDefaultConfiguration());
-
         cloudConfiguration.setLocations(locationConfigurations);
+
+        // Kubernetes Configuration
+        KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
+        kubernetesConfiguration.setImports(Lists.newArrayList(
+                "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
+                "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml",
+                "plugins/cloudify-proxy-plugin/plugin.yaml"));
+        cloudConfiguration.setKubernetes(kubernetesConfiguration);
+
         return cloudConfiguration;
     }
 
@@ -131,7 +138,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     @Override
     public LocationSupport getLocationSupport() {
         // TODO dynamically search in spring context for locations support
-        return new LocationSupport(false, new String[] { "openstack", "amazon", "byon", "kubernetes" });
+        return new LocationSupport(false, new String[] { "openstack", "amazon", "byon" });
     }
 
     @Override

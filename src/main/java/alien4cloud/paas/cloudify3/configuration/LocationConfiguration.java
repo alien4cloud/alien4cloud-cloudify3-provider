@@ -8,12 +8,10 @@ import alien4cloud.ui.form.annotation.FormProperties;
 
 @Getter
 @Setter
-@FormProperties({ "dsl", "imports", "kubernetesDeploymentId" })
+@FormProperties({ "dsl", "imports" })
 public class LocationConfiguration {
 
     private String dsl;
 
     private List<String> imports;
-
-    private String kubernetesDeploymentId = "kubonly";
 }

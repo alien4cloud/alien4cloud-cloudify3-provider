@@ -12,6 +12,4 @@ public class LocationConfigurations {
     private LocationConfiguration amazon;
 
     private LocationConfiguration byon;
-
-    private LocationConfiguration kubernetes;
 }

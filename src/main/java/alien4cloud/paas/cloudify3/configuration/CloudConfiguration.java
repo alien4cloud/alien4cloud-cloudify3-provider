@@ -2,19 +2,19 @@ package alien4cloud.paas.cloudify3.configuration;
 
 import javax.validation.constraints.NotNull;
 
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import alien4cloud.exception.NotFoundException;
 import alien4cloud.ui.form.annotation.FormProperties;
 import alien4cloud.ui.form.annotation.FormPropertyConstraint;
 import alien4cloud.ui.form.annotation.FormPropertyDefinition;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
 @FormProperties({ "url", "locations", "userName", "password", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
-        "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent" })
+        "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent", "kubernetes" })
 public class CloudConfiguration {
 
     @FormPropertyConstraint(pattern = "http\\:.+(?:\\d+)")
@@ -41,6 +41,8 @@ public class CloudConfiguration {
     @NotNull
     private Boolean disableDiamondMonitorAgent = false;
 
+    private KubernetesConfiguration kubernetes;
+
     @JsonIgnore
     public LocationConfiguration getConfigurationLocation(String locationName) {
         switch (locationName) {
@@ -50,8 +52,6 @@ public class CloudConfiguration {
             return locations.getOpenstack();
         case "byon":
             return locations.getByon();
-        case "kubernetes":
-            return locations.getKubernetes();
         }
         throw new NotFoundException("Location " + locationName + " not found");
     }
