@@ -13,6 +13,11 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
@@ -24,13 +29,7 @@ import com.google.common.io.Closeables;
 
 import alien4cloud.component.repository.ArtifactLocalRepository;
 import alien4cloud.component.repository.ArtifactRepositoryConstants;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
-import alien4cloud.paas.cloudify3.location.AmazonLocationConfigurator;
-import alien4cloud.paas.cloudify3.location.ByonLocationConfigurator;
 import alien4cloud.paas.cloudify3.location.OpenstackLocationConfigurator;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.util.ApplicationUtil;
@@ -61,15 +60,11 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     @Resource
     private PropertyEvaluatorService propertyEvaluatorService;
 
-    /**
-     * Set true to this boolean when the blueprint has changed and you want to re-register
-     */
+    // Set true to this boolean when the blueprint has changed and you want to re-register
     @Getter
-    protected boolean record = true;
+    protected boolean record = false;
 
-    /**
-     * Set true to this boolean so the blueprint will be uploaded to the manager to verify
-     */
+    // Set true to this boolean so the blueprint will be uploaded to the manager to verify
     @Getter
     protected boolean verifyBlueprintUpload = false;
 
@@ -83,17 +78,22 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     public void postConstruct() {
         LOCATIONS.add("openstack");
         locationsConfigurators.put("openstack", applicationContext.getBean(OpenstackLocationConfigurator.class));
-        LOCATIONS.add("amazon");
-        locationsConfigurators.put("amazon", applicationContext.getBean(AmazonLocationConfigurator.class));
-        LOCATIONS.add("byon");
-        locationsConfigurators.put("byon", applicationContext.getBean(ByonLocationConfigurator.class));
+        // LOCATIONS.add("amazon");
+        // locationsConfigurators.put("amazon", applicationContext.getBean(AmazonLocationConfigurator.class));
+        // LOCATIONS.add("byon");
+        // locationsConfigurators.put("byon", applicationContext.getBean(ByonLocationConfigurator.class));
+        // LOCATIONS.add("kubernetes");
+        // locationsConfigurators.put("kubernetes", applicationContext.getBean(OpenstackLocationConfigurator.class));
     }
 
     @Override
+    @Before
     public void before() throws Exception {
         super.before();
-        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/artifact-test"));
-        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/support-hss"));
+        // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/artifact-test"));
+        // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/support-hss"));
+        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/nodecellar-docker-types"));
+        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/mongo-types"));
     }
 
     @Test
@@ -129,6 +129,16 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     @Test
     public void testGenerateBlockStorage() {
         testGeneratedBlueprintFile(STORAGE_TOPOLOGY);
+    }
+
+    @Test
+    public void testGenerateDockerNodecellar() {
+        testGeneratedBlueprintFile(NODECELLAR_TOPOLOGY);
+    }
+
+    @Test
+    public void testGenerateDockerNodecellarHybrid() {
+        testGeneratedBlueprintFile(NODECELLAR_TOPOLOGY_HYBRID);
     }
 
     @Test

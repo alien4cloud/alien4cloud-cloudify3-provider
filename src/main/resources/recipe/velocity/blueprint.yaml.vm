@@ -15,16 +15,42 @@ imports:
 #foreach($import in $cloud.getConfigurationLocation($deployment.locationType).getImports())
   - $import
 #end
+#if($docker_types)
+#foreach($import in $cloud.getKubernetes().getImports())
+  - $import
+#end## foreach
+#end## end if docker_types
 
 node_types:
 #parse("types.yaml.vm")
+
+#if($docker_types)
+#parse("provider/common/kubernetes_types.yaml.vm")
+#end## if($docker_types)
 
 #if($util.collectionHasElement($deployment.nonNativesTypes))
 #foreach($nonNativeType in ${deployment.nonNativesTypes})
   ${nonNativeType.elementId}:
     derived_from: $util.nonNative.getDerivedFromType($nonNativeType.derivedFrom)
-#end
-#end
+#set( $nodeProperties = $nonNativeType.getProperties() )
+#if($util.nonNative.mapHasEntries($nodeProperties))
+    properties:
+#foreach($property in $nodeProperties.entrySet())
+      $property.key:
+#if($property.value.type != "string" && $property.value.type != "integer" && $property.value.type != "float" && $property.value.type != "boolean" )
+        type: string
+#else
+        type: $property.value.type
+#end## if($property.value.type == "version")
+#if($property.value.default)
+        default: $property.value.default.value
+#end## if($property.value.defaultValue)
+        required: $property.value.required
+#end## foreach($property in $nodeProperties.entrySet())
+#end## if($util.nonNative.mapHasEntries($nodeProperties))
+#end## foreach
+#end## if($util.collectionHasElement($deployment.nonNativesTypes))
+
 #parse("provider/common/monitor_type.yaml.vm")
 
 #if($util.collectionHasElement($deployment.nonNativesRelationshipTypes))
@@ -38,11 +64,16 @@ relationships:
 #end
 
 node_templates:
+
+#if($docker_types)
+#parse("provider/common/kubernetes.yaml.vm")
+#end
+#if($deployment.locationType != "kubernetes")
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
-
 #nonNativeNodes($deployment.nonNatives)
+#end## #if($deployment.locationType != "kubernetes")
 
 #parse("provider/common/monitor_node.yaml.vm")
 

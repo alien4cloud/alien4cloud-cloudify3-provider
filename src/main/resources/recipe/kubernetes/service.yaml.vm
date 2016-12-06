@@ -1,0 +1,17 @@
+#set($pod_name=$dockerType.id.toLowerCase())
+#foreach( $capa in $dockerType.template.capabilities.values() )
+#if($capa.getType().contains("capabilities.endpoint"))
+#set($dockerEndpoint=$capa)
+#end
+#end
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${pod_name}-service
+spec:
+  selector:
+    app: ${pod_name}
+  ports:
+    - protocol: TCP
+      port: ${dockerEndpoint.properties["port"].value}
+  type: NodePort

@@ -139,7 +139,9 @@ if inputs.get('process', None) is not None and inputs['process'].get('env', None
     env_map.update(inputs['process']['env'])
 
 ## Executor template depends on the artifact type and provides the right wrapper.
+#if($executor_template)
 #parse($executor_template)
+#end
 
 for k,v in outputs:
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))

@@ -1,24 +1,27 @@
 package alien4cloud.paas.cloudify3.util;
 
-import alien4cloud.common.AlienConstants;
-import alien4cloud.git.RepositoryManager;
-import org.alien4cloud.tosca.model.Csar;
-import alien4cloud.security.model.Role;
-import org.alien4cloud.tosca.catalog.ArchiveUploadService;
-import alien4cloud.tosca.parser.ParsingError;
-import alien4cloud.tosca.parser.ParsingErrorLevel;
-import alien4cloud.tosca.parser.ParsingResult;
-import alien4cloud.utils.FileUtil;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 import javax.annotation.Resource;
-import alien4cloud.model.components.CSARSource;
-import lombok.extern.slf4j.Slf4j;
+
+import org.alien4cloud.tosca.catalog.ArchiveUploadService;
+import org.alien4cloud.tosca.model.Csar;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+
+import alien4cloud.common.AlienConstants;
+import alien4cloud.git.RepositoryManager;
+import alien4cloud.model.components.CSARSource;
+import alien4cloud.security.model.Role;
+import alien4cloud.tosca.parser.ParsingError;
+import alien4cloud.tosca.parser.ParsingErrorLevel;
+import alien4cloud.tosca.parser.ParsingResult;
+import alien4cloud.utils.FileUtil;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -34,14 +37,18 @@ public class CSARUtil {
     public static final String WORDPRESS_TYPE_PATH = SAMPLES_TYPES_NAME + "/wordpress";
     public static final String TOMCAT_TYPE_PATH = SAMPLES_TYPES_NAME + "/tomcat-war";
 
-    public static final Path ARTIFACTS_DIRECTORY = Paths.get("./target/csars");
+    public static final Path ARTIFACTS_DIRECTORY = Paths.get("target/csars");
 
     public static final Path TOSCA_NORMATIVE_TYPES = ARTIFACTS_DIRECTORY.resolve(TOSCA_NORMATIVE_TYPES_NAME);
     public static final String URL_FOR_NORMATIVES = "https://github.com/alien4cloud/tosca-normative-types.git";
     public static final String URL_FOR_STORAGE = "https://github.com/alien4cloud/alien4cloud-extended-types.git";
+    public static final String URL_FOR_DOCKER = "https://github.com/alien4cloud/docker-tosca-types.git";
     public static final String ALIEN4CLOUD_STORAGE_TYPES = "alien4cloud-extended-types";
     public static final String ALIEN_EXTENDED_STORAGE_TYPES = "alien-extended-storage-types";
     public static final String ALIEN_EXTENDED_BASE_TYPES = "alien-base-types";
+    public static final String DOCKER_TYPES_NAME = "docker-tosca-types";
+    public static final String DOCKER_TYPES_PATH = DOCKER_TYPES_NAME + "/docker-types";
+    public static final String NODECELLAR_TYPES_PATH = DOCKER_TYPES_NAME + "/nodecellar-sample-types";
 
     @Resource
     private ArchiveUploadService archiveUploadService;
@@ -108,6 +115,14 @@ public class CSARUtil {
         uploadCSAR(Paths.get(ClassLoader.getSystemResource("components/support-hss").toURI()));
     }
 
+    public void uploadDockerTypes() throws Exception {
+        uploadCSAR(ARTIFACTS_DIRECTORY.resolve(DOCKER_TYPES_PATH));
+    }
+
+    public void uploadNodeCellarTypes() throws Exception {
+        uploadCSAR(ARTIFACTS_DIRECTORY.resolve(NODECELLAR_TYPES_PATH));
+    }
+
     public void uploadCustomApache() throws Exception {
         Path apache = Paths.get("./src/test/resources/components/apache");
         if (Files.exists(apache)) {
@@ -119,6 +134,7 @@ public class CSARUtil {
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_SAMPLES, "master", SAMPLES_TYPES_NAME);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "master", TOSCA_NORMATIVE_TYPES_NAME);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_STORAGE, "master", ALIEN4CLOUD_STORAGE_TYPES);
+        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_DOCKER, "master", DOCKER_TYPES_NAME);
         uploadNormativeTypes();
         uploadStorage();
         uploadTomcat();
@@ -129,5 +145,8 @@ public class CSARUtil {
         uploadArtifactTest();
         uploadCustomFS();
         uploadCustomApache();
+        uploadDockerTypes();
+        // uploadNodeCellarTypes();
+
     }
 }
