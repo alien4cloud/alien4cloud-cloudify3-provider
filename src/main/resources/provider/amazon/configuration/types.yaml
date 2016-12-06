@@ -2,11 +2,11 @@ tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
 
 template_name: cloudify-amazon-types
 template_author: Alien4cloud
-template_version: 1.3.0
+template_version: 1.3.1-SNAPSHOT
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN12
-  - cloudify3-common-types:1.3.0
+  - cloudify3-common-types:1.3.1-SNAPSHOT
 
 data_types:
 
