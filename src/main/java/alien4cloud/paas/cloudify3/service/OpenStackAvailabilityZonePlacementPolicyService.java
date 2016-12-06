@@ -4,26 +4,26 @@ import java.util.*;
 
 import javax.inject.Inject;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
-
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.PropertyValue;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import alien4cloud.model.orchestrators.locations.Location;
-import alien4cloud.model.orchestrators.locations.LocationResourceTemplate;
 import org.alien4cloud.tosca.model.templates.AbstractPolicy;
 import org.alien4cloud.tosca.model.templates.HaPolicy;
 import org.alien4cloud.tosca.model.templates.NodeGroup;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+
+import alien4cloud.model.orchestrators.locations.Location;
+import alien4cloud.model.orchestrators.locations.LocationResourceTemplate;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.plugin.ILocationResourceAccessor;
 import alien4cloud.paas.cloudify3.error.AZAssignmentException;
 import alien4cloud.paas.model.PaaSInstancePersistentResourceMonitorEvent;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.utils.MapUtil;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Workaround to enable back ha policy support in openstack.
@@ -146,8 +146,8 @@ public class OpenStackAvailabilityZonePlacementPolicyService {
         Map<String, Object> volumeMap = ((ComplexPropertyValue) volumePropertyValue).getValue();
         volumeMap.put(AZ_KEY, availabilityZone);
 
-        PaaSInstancePersistentResourceMonitorEvent event = new PaaSInstancePersistentResourceMonitorEvent(paaSNodeTemplate.getId(), null, handlerPropertyKey,
-                volumeMap);
+        PaaSInstancePersistentResourceMonitorEvent event = new PaaSInstancePersistentResourceMonitorEvent(paaSNodeTemplate.getId(), null,
+                MapUtil.newHashMap(new String[] { handlerPropertyKey }, new Object[] { volumeMap }));
         event.setDate(new Date().getTime());
         event.setDeploymentId(deploymentId);
         eventService.registerEvent(event);
