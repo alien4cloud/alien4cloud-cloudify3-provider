@@ -182,20 +182,25 @@ def _set_send_node_evt_on_failed_unlink_handlers(instance, tasks_with_targets):
 
 
 def build_persistent_event_tasks(instance):
-    persistent_property = instance.node.properties.get('_a4c_persistent_resources', None)
-    if persistent_property != None:
+    persistent_properties = instance.node.properties.get('_a4c_persistent_resources', None)
+    if persistent_properties != None:
         # send event to send resource id to alien
         tasks = []
         @task_config(send_task_events=False)
         def send_event_task(message):
             _send_event(instance, 'workflow_node', 'a4c_persistent_event', message, None, None, None)
 
-        for key, value in persistent_property.iteritems():
-            persistent_cloudify_attribute = key
-            persistent_alien_attribute = value
-            kwargs={'message':build_pre_event(PersistentResourceEvent(persistent_cloudify_attribute, persistent_alien_attribute))}
-            tasks.append(instance.ctx.local_task(local_task=send_event_task, node=instance, info=kwargs.get('message', ''), kwargs=kwargs))
+        # for key, value in persistent_property.iteritems():
+        #     persistent_cloudify_attribute = key
+        #     persistent_alien_attribute = value
+        #     kwargs={'message':build_pre_event(PersistentResourceEvent(persistent_cloudify_attribute, persistent_alien_attribute))}
+        #     tasks.append(instance.ctx.local_task(local_task=send_event_task, node=instance, info=kwargs.get('message', ''), kwargs=kwargs))
+        # return tasks
+
+        kwargs={'message':build_pre_event(PersistentResourceEvent(persistent_properties))}
+        tasks.append(instance.ctx.local_task(local_task=send_event_task, node=instance, info=kwargs.get('message', ''), kwargs=kwargs))
         return tasks
+
     else:
         return None
 
