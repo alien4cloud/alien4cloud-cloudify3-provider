@@ -3,7 +3,7 @@ This template is used to generate cloudify 3 recipe from alien model
 - $mapping --> contains global alien --> cloudify mapping
 - $providerMapping --> contains IaaS provider specific mapping configuration
 - $cloud --> contains alien4cloud.paas.cloudify3.configuration.CloudConfiguration instance
-- $deployment --> contains Alien's deployment and types
+- $deployment --> contains Alien's deployment and types (alien4cloud.paas.cloudify3.service.model.CloudifyDeployment)
 - $util --> contains utility methods
 - $shouldAddOverridesPlugin --> contains true or false (should add the overrides plugin section or not ?)
 *#
@@ -47,11 +47,12 @@ node_templates:
 #parse("provider/common/monitor_node.yaml.vm")
 
 #* Handle scaling groups *#
+#set( $computes = $util.natives.getAllComputes() )
 #if($util.common.doesVelocityFileExists("${velocityResourcesPath}/provider/${deployment.locationType}/compute_scaling_group.yaml.vm"))
 #parse("provider/${deployment.locationType}/compute_scaling_group.yaml.vm")
-#buildSpecificScalableComputeGroups($deployment.computes)
+#buildSpecificScalableComputeGroups($computes)
 #else
-#buildScalableComputeGroups($deployment.computes)
+#buildScalableComputeGroups($computes)
 #end## if exist
 #if(!$_a4c_scalable_computes.isEmpty())
 groups:
@@ -66,7 +67,7 @@ policies:
     type: cloudify.policies.scaling
     targets: [$group.key]
     properties:
-      default_instances: #printDefaultInstancesFromGroup($deployment.computes $group.value)
+      default_instances: #printDefaultInstancesFromGroup($computes $group.value)
 #end## foreach groups
 #end## if(!$_a4c_scalable_computes.isEmpty())
 #* End of scaling groups *#

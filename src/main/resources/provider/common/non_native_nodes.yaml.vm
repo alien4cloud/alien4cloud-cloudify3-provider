@@ -9,6 +9,10 @@
     type: $template.indexedToscaElement.elementId
     instances:
       deploy: 1
+#set( $properties = $util.nonNative.isolateCloudifyProperties($template) )
+#if($util.nonNative.mapHasEntries($properties))      
+    properties: ${util.natives.formatProperties(3, $properties, $deployment.propertyMappings, $template.nodeTemplate.type)}
+#end
 #set( $nodeInterfaces = $util.nonNative.getNodeInterfaces($template) )
 #if($util.nonNative.mapHasEntries($nodeInterfaces))
     interfaces:

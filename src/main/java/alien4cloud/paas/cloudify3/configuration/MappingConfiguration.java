@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.configuration;
 
 import java.util.Map;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -24,6 +25,9 @@ public class MappingConfiguration {
     private String implementationArtifactDirectoryName;
 
     private Map<String, String> normativeTypes;
+
+    // cloudify type -> property names
+    private Map<String, Set<String>> cloudifyProperties;
 
     private Relationships relationships;
 

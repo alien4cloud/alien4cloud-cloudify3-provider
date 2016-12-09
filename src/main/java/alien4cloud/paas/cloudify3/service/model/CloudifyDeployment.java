@@ -54,6 +54,9 @@ public class CloudifyDeployment {
 
     private Map<String, PaaSNodeTemplate> allNodes;
 
+    /** Nodes that are custom resources (provided as types but native by nature). */
+    private Map<String, PaaSNodeTemplate> customResources;
+
     private Map<String, List<PaaSNodeTemplate>> groups;
 
     /**
@@ -76,4 +79,5 @@ public class CloudifyDeployment {
      * * {elementType -> {propertyNamePath -> IPropertyMapping}}
      */
     private Map<String, Map<String, List<IPropertyMapping>>> propertyMappings;
+
 }

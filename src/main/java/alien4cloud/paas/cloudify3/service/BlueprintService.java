@@ -13,6 +13,11 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.model.orchestrators.locations.Location;
+import alien4cloud.model.orchestrators.locations.LocationResources;
+import alien4cloud.orchestrators.locations.services.ILocationResourceService;
+import alien4cloud.orchestrators.locations.services.LocationMatchingConfigurationService;
+import alien4cloud.orchestrators.locations.services.LocationService;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
@@ -23,6 +28,7 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
@@ -72,6 +78,13 @@ public class BlueprintService {
     /** Registry of implementation artifacts supported by the plugin. */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+
+    @Inject
+    @Lazy(true)
+    private ILocationResourceService locationResourceService;
+
+    @Inject
+    private LocationService locationService;
 
     private Path recipeDirectoryPath;
 
