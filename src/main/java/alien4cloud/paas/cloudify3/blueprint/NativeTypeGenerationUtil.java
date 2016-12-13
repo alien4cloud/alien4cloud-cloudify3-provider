@@ -1,6 +1,10 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
 import alien4cloud.model.common.Tag;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.normative.NormativeComputeConstants;
+import com.google.common.collect.Lists;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
@@ -103,6 +107,20 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public String getResourceIdKey(List<Tag> tags) {
         return TagUtil.getTagValue(tags, CustomTags.RESOURCE_ID_KEY_TAG);
+    }
+
+    /**
+     * @return all computes, natives (managed by cfy) and custom.
+     */
+    public List<PaaSNodeTemplate> getAllComputes() {
+        List<PaaSNodeTemplate> result = Lists.newArrayList(this.alienDeployment.getComputes());
+        for (PaaSNodeTemplate node : this.alienDeployment.getCustomResources().values()) {
+            boolean isCompute = ToscaUtils.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+            if (isCompute) {
+                result.add(node);
+            }
+        }
+        return result;
     }
 
 }

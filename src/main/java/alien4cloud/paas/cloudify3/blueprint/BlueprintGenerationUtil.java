@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.blueprint;
 
 import java.nio.file.Path;
 
+import alien4cloud.orchestrators.locations.services.LocationResourceTypes;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;

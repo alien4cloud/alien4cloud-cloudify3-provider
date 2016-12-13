@@ -1,16 +1,19 @@
 package alien4cloud.paas.cloudify3.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.RelationshipType;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -18,10 +21,12 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import alien4cloud.model.components.IndexedModelUtils;
-import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.model.types.RelationshipType;
+import alien4cloud.model.orchestrators.locations.Location;
+import alien4cloud.model.orchestrators.locations.LocationResources;
+import alien4cloud.orchestrators.locations.services.ILocationResourceService;
+import alien4cloud.orchestrators.locations.services.LocationService;
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.error.SingleLocationRequiredException;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -54,6 +59,13 @@ public class CloudifyDeploymentBuilderService {
     @Inject
     private CloudConfigurationHolder cloudConfigurationHolder;
 
+    @Inject
+    @Lazy(true)
+    private ILocationResourceService locationResourceService;
+
+    @Inject
+    private LocationService locationService;
+
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
      *
@@ -65,19 +77,39 @@ public class CloudifyDeploymentBuilderService {
         CloudifyDeployment cloudifyDeployment = new CloudifyDeployment();
 
         processNetworks(cloudifyDeployment, deploymentContext);
-        processNonNativeTypes(cloudifyDeployment, deploymentContext);
         processDeploymentArtifacts(cloudifyDeployment, deploymentContext);
 
-        List<NodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getComputes());
+        // this is a set of all node type provided by all the locations this deployment is related on
+        Set<String> locationProvidedTypes = Sets.newHashSet();
+        for (Location location : deploymentContext.getLocations().values()) {
+            LocationResources locationResources = locationResourceService.getLocationResources(location);
+            locationProvidedTypes.addAll(locationResources.getNodeTypes().keySet());
+        }
+
+        List<NodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(
+                excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
 
         cloudifyDeployment.setDeploymentPaaSId(deploymentContext.getDeploymentPaaSId());
         cloudifyDeployment.setDeploymentId(deploymentContext.getDeploymentId());
         cloudifyDeployment.setLocationType(getLocationType(deploymentContext));
-        cloudifyDeployment.setComputes(deploymentContext.getPaaSTopology().getComputes());
+        cloudifyDeployment.setComputes(excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         cloudifyDeployment.setVolumes(deploymentContext.getPaaSTopology().getVolumes());
         cloudifyDeployment.setNonNatives(deploymentContext.getPaaSTopology().getNonNatives());
+
+        Map<String, PaaSNodeTemplate> customResources = extractCustomNativeType(deploymentContext.getPaaSTopology().getAllNodes(), locationProvidedTypes);
+        cloudifyDeployment.setCustomResources(customResources);
+        Collection<PaaSNodeTemplate> customNatives = customResources.values();
+        if (!customNatives.isEmpty()) {
+            if (cloudifyDeployment.getNonNatives() == null) {
+                List<PaaSNodeTemplate> nonNatives = Lists.newArrayList(customNatives);
+                cloudifyDeployment.setNonNatives(nonNatives);
+            } else {
+                cloudifyDeployment.getNonNatives().addAll(customNatives);
+            }
+        }
+        processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives(), cloudifyDeployment.getAllNodes());
         cloudifyDeployment.setNativeTypes(nativeTypes);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
@@ -92,6 +124,58 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
         return cloudifyDeployment;
+    }
+
+    // private List<PaaSNodeTemplate> extractCustomNativeType(Collection<PaaSNodeTemplate> nodes) {
+    // List<PaaSNodeTemplate> result = Lists.newArrayList();
+    // for (PaaSNodeTemplate node : nodes) {
+    // if (isCustomNativeType(node)) {
+    // result.add(node);
+    // }
+    // }
+    // return result;
+    // }
+
+    private Map<String, PaaSNodeTemplate> extractCustomNativeType(Map<String, PaaSNodeTemplate> nodes, Set<String> locationProvidedTypes) {
+        Map<String, PaaSNodeTemplate> result = Maps.newHashMap();
+        for (Map.Entry<String, PaaSNodeTemplate> entry : nodes.entrySet()) {
+            if (isCustomResource(entry.getValue(), locationProvidedTypes)) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * A custom resource is a template that:
+     * <ul>
+     * <li>is not of a type provided by the location</li>
+     * <li>AND doesn't have a host</li>
+     * </ul>
+     * 
+     * @param node
+     * @return true is the node is considered as a custom template.
+     */
+    private boolean isCustomResource(PaaSNodeTemplate node, Set<String> locationProvidedTypes) {
+        if (node.getParent() != null) {
+            // if the node template has a parent, it can't be considered as a custom resource.
+            return false;
+        }
+        if (locationProvidedTypes.contains(node.getTemplate().getType())) {
+            // if the type of the template is provided by the location, it can't be considered as a custom resource.
+            return false;
+        }
+        return true;
+    }
+
+    private List<PaaSNodeTemplate> excludeCustomNativeTypes(Collection<PaaSNodeTemplate> nodes, Set<String> locationProvidedTypes) {
+        List<PaaSNodeTemplate> result = Lists.newArrayList();
+        for (PaaSNodeTemplate node : nodes) {
+            if (!isCustomResource(node, locationProvidedTypes)) {
+                result.add(node);
+            }
+        }
+        return result;
     }
 
     private void setNodesToMonitor(CloudifyDeployment cloudifyDeployment) {
@@ -308,27 +392,30 @@ public class CloudifyDeploymentBuilderService {
      * Types have to be generated in the blueprint in correct order (based on derived from hierarchy).
      *
      * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
-     * @param deploymentContext The deployment context from alien 4 cloud.
+     * @param nonNativeNodes The list of non native types.
+     * @param allNodes A map containing all the nodes of the deployment.
      */
-    private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, PaaSTopologyDeploymentContext deploymentContext) {
+    private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, List<PaaSNodeTemplate> nonNativeNodes, Map<String, PaaSNodeTemplate> allNodes) {
         Map<String, NodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
         Map<String, RelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
-        for (PaaSNodeTemplate nonNative : deploymentContext.getPaaSTopology().getNonNatives()) {
-            // FIXME Workaround for docker/kubernetes. Ignore if the non native type is a docker type
-            if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
-                continue;
-            }
-            nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
-            List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();
-            for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {
-                if (!NormativeRelationshipConstants.DEPENDS_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())
-                        && !NormativeRelationshipConstants.HOSTED_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())) {
-                    // FIXME kubernetes. If the source of the relationship is a docker node, ignore it
-                    PaaSNodeTemplate sourceNodeTemplate = deploymentContext.getPaaSTopology().getAllNodes().get(relationshipTemplate.getSource());
-                    if (!ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER,
-                            sourceNodeTemplate.getIndexedToscaElement())) {
-                        nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
-                                relationshipTemplate.getIndexedToscaElement());
+        if (nonNativeNodes != null) {
+            for (PaaSNodeTemplate nonNative : nonNativeNodes) {
+                // FIXME Workaround for docker/kubernetes. Ignore if the non native type is a docker type
+                if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
+                    continue;
+                }
+                nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
+                List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();
+                for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {
+                    if (!NormativeRelationshipConstants.DEPENDS_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())
+                            && !NormativeRelationshipConstants.HOSTED_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())) {
+                        // FIXME kubernetes. If the source of the relationship is a docker node, ignore it
+                        PaaSNodeTemplate sourceNodeTemplate = allNodes.get(relationshipTemplate.getSource());
+                        if (!ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER,
+                                sourceNodeTemplate.getIndexedToscaElement())) {
+                            nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
+                                    relationshipTemplate.getIndexedToscaElement());
+                        }
                     }
                 }
             }

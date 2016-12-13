@@ -160,11 +160,17 @@ ${entity}.runtime_properties['${attributeEntry.key}'] = ${util.nonNative.formatF
 ${entity}.runtime_properties['${attributeEntry.key}'] = ${util.nonNative.formatConcatPropertyValue($context, $owner, $attributeEntry.value)}
 #else
 ${entity}.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.value.value}'
-#end
-#end
+#end## if($util.nonNative.isFunctionPropertyValue($attributeEntry.value))
+#end## foreach($attributeEntry in ${attributes.entrySet()})
+#if($util.nonNative.isCustomResource($owner) && $util.nonNative.isCompute($owner))
+if ${entity}.runtime_properties['ip_address']:
+  ${entity}.runtime_properties['ip'] = ${entity}.runtime_properties['ip_address']
+if ${entity}.runtime_properties['public_ip_address']:
+  ${entity}.runtime_properties['public_ip'] = ${entity}.runtime_properties['public_ip_address']
+#end## if
 ${entity}.update()
-#end
-#end
+#end## if($attributes)
+#end## macro
 
 #setAttributes(${operation.owner}, "ctx.instance", $util.nonNative.getNodeAttributes(${operation.owner}), "")
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))

@@ -28,11 +28,14 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import alien4cloud.orchestrators.locations.services.ILocationResourceService;
+import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
@@ -82,6 +85,13 @@ public class BlueprintService {
     /** Registry of implementation artifacts supported by the plugin. */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+
+    @Inject
+    @Lazy(true)
+    private ILocationResourceService locationResourceService;
+
+    @Inject
+    private LocationService locationService;
 
     private Path recipeDirectoryPath;
 
