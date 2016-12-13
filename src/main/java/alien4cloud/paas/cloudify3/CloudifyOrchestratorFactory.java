@@ -92,8 +92,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
         kubernetesConfiguration.setImports(Lists.newArrayList(
                 "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
-                "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml",
-                "plugins/cloudify-proxy-plugin/plugin.yaml"));
+                "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml"));
         cloudConfiguration.setKubernetes(kubernetesConfiguration);
 
         return cloudConfiguration;

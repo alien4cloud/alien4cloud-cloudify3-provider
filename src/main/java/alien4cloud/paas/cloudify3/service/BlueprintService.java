@@ -275,12 +275,6 @@ public class BlueprintService {
             }
         }
 
-        // Copy kubernetes plugins
-        FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-kubernetes-plugin/cloudify-kubernetes-plugin.zip"),
-                generatedBlueprintDirectoryPath.resolve("plugins"));
-        FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-proxy-plugin/cloudify-proxy-plugin.zip"),
-                generatedBlueprintDirectoryPath.resolve("plugins"));
-
         // Docker types
         List<PaaSNodeTemplate> dockerTypes = new ArrayList<PaaSNodeTemplate>();
         Map<String, Map<String, Object>> docker_envs = new HashMap<String, Map<String, Object>>();
@@ -326,15 +320,19 @@ public class BlueprintService {
                 Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
                 Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-service.yaml");
                 VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
-                // for(Capability capa : nonNative.getTemplate().getCapabilities().values()) {
-                // ToscaUtils.isFromType(ALIEN_CAPABILITIES_ENDPOINT_DOCKER, capa.getType());
-                // }
             }
         }
-        // FIXME ugly remove docker types from non native types list
+        // FIXME remove docker types from non native types list
         alienDeployment.getNonNatives().removeAll(dockerTypes);
         if (!dockerTypes.isEmpty()) {
             context.put("docker_types", dockerTypes);
+
+            // Copy kubernetes plugins
+            FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-kubernetes-plugin/cloudify-kubernetes-plugin.zip"),
+                    generatedBlueprintDirectoryPath.resolve("plugins"));
+            Path scriptsDir = generatedBlueprintDirectoryPath.resolve("scripts");
+            Files.createDirectories(scriptsDir);
+            Files.copy(pluginRecipeResourcesPath.resolve("kubernetes/configure_kubernetes_proxy.py"), scriptsDir.resolve("configure_kubernetes_proxy.py"));
 
         }
         if (!docker_envs.isEmpty()) {

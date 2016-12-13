@@ -5,8 +5,8 @@ template_version: 0.1.0-SNAPSHOT
 template_author: admin
 
 imports:
-  - tosca-normative-types:1.0.0-SNAPSHOT
-  - openstack-types:$projectVersion
+  - tosca-normative-types:1.0.0-ALIEN12
+  - openstack-types:1.3.0
 
 topology_template:
   node_templates:

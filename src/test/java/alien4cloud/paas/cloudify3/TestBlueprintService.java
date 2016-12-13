@@ -82,14 +82,13 @@ public class TestBlueprintService extends AbstractTestBlueprint {
         // locationsConfigurators.put("amazon", applicationContext.getBean(AmazonLocationConfigurator.class));
         // LOCATIONS.add("byon");
         // locationsConfigurators.put("byon", applicationContext.getBean(ByonLocationConfigurator.class));
-        // LOCATIONS.add("kubernetes");
-        // locationsConfigurators.put("kubernetes", applicationContext.getBean(OpenstackLocationConfigurator.class));
     }
 
     @Override
     @Before
     public void before() throws Exception {
         super.before();
+        cloudConfigurationHolder.getConfiguration().getKubernetes().setKubernetesUrl("http://kubernetes_master_host:8080");
         // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/artifact-test"));
         // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/support-hss"));
         csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/nodecellar-docker-types"));

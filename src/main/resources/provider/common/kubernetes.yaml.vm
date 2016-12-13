@@ -24,20 +24,17 @@
 #end## macro(isFromType $expectedType $indexedToscaElement)
   kubernetes_proxy:
     type: cloudify.nodes.DeploymentProxy
-    properties:
-      inherit_outputs:
-        - 'kubernetes_info'
     interfaces:
       cloudify.interfaces.lifecycle:
-        create:
+        configure:
+          implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
-        start:
-          inputs:
-            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
-        stop:
-          inputs:
-            deployment_id: $cloud.getKubernetes().kubernetesDeploymentId
+            tasks_file: scripts/configure_kubernetes_proxy.py
+            task_name: configure_master_ip
+            task_properties:
+              master_ip: $cloud.getKubernetes().kubernetesUrl
+            fabric_env:
+              host_string: 127.0.0.1
 
 #foreach($node in $docker_types)
   ${node.id}:
