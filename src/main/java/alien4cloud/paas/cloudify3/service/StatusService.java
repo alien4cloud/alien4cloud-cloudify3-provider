@@ -432,13 +432,13 @@ public class StatusService {
                     if (node != null && runtimeProperties != null) {
                         Map<String, String> attributes = runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap);
                         instanceInformation.setAttributes(attributes);
+                        String masterIP = (String) attributes.get("master_ip");
                         if (ToscaUtils.isFromType("cloudify.kubernetes.Microservice", node.getType(), Lists.newArrayList(node.getTypeHierarchy()))
                                 && attributes.containsKey("service")) {
                             String serviceJson = attributes.get("service");
                             if (StringUtils.isNotBlank(serviceJson)) {
                                 try {
                                     Map<String, Object> map = JsonUtil.toMap(serviceJson);
-                                    String clusterIP = (String) map.get("clusterIP");
                                     String endpointPort = null;
                                     List<Object> ports = (List<Object>) map.get("ports");
                                     if (ports != null && !ports.isEmpty()) {
@@ -449,9 +449,9 @@ public class StatusService {
                                             endpointPort = portMap.get("port").toString();
                                         }
                                     }
-                                    instanceInformation.getAttributes().put("endpoint", String.format("%s:%s", clusterIP, endpointPort));
+                                    instanceInformation.getAttributes().put("endpoint", String.format("%s:%s", masterIP, endpointPort));
                                     instanceInformation.getAttributes().put("endpoint_port", endpointPort);
-                                    instanceInformation.getAttributes().put("endpoint_ip", clusterIP);
+                                    instanceInformation.getAttributes().put("endpoint_ip", masterIP);
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
