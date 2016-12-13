@@ -449,7 +449,7 @@ public class StatusService {
                                             endpointPort = portMap.get("port").toString();
                                         }
                                     }
-                                    instanceInformation.getAttributes().put("endpoint", String.format("%s:%s", masterIP, endpointPort));
+                                    instanceInformation.getAttributes().put("endpoint", String.format("http://%s:%s", masterIP, endpointPort));
                                     instanceInformation.getAttributes().put("endpoint_port", endpointPort);
                                     instanceInformation.getAttributes().put("endpoint_ip", masterIP);
                                 } catch (IOException e) {

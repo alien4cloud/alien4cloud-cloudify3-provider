@@ -32,7 +32,12 @@
             tasks_file: scripts/configure_kubernetes_proxy.py
             task_name: configure_master_ip
             task_properties:
-              master_ip: $cloud.getKubernetes().kubernetesUrl
+#if($cloud.getKubernetes().kubernetesUrl && !$cloud.getKubernetes().kubernetesUrl.startsWith("http"))
+#set($kubernetesMasterIP="http://" + $cloud.getKubernetes().kubernetesUrl)
+#else
+#set($kubernetesMasterIP=$cloud.getKubernetes().kubernetesUrl)
+#end## add http:// if needed
+              master_ip: $kubernetesMasterIP
             fabric_env:
               host_string: 127.0.0.1
 
