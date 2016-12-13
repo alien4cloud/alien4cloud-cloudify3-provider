@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,7 +49,6 @@ import alien4cloud.paas.cloudify3.util.VelocityUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.plugin.model.ManagedPlugin;
-import alien4cloud.tosca.ToscaUtils;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -286,67 +284,61 @@ public class BlueprintService {
         }
 
         // Docker types
-        List<PaaSNodeTemplate> dockerTypes = new ArrayList<PaaSNodeTemplate>();
         Map<String, Map<String, Object>> docker_envs = new HashMap<String, Map<String, Object>>();
-        for (PaaSNodeTemplate nonNative : alienDeployment.getNonNatives()) {
-            if (ToscaUtils.isFromType(TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
-                dockerTypes.add(nonNative);
+        for (PaaSNodeTemplate nonNative : alienDeployment.getDockerTypes()) {
 
-                // Retrieve env maps from the properties
-                Map<String, Object> envMap = new LinkedHashMap<String, Object>();
-                if (nonNative.getTemplate().getProperties().get("docker_env_vars") != null) {
-                    envMap.putAll(((ComplexPropertyValue) nonNative.getTemplate().getProperties().get("docker_env_vars")).getValue());
-                }
+            // Retrieve env maps from the properties
+            Map<String, Object> envMap = new LinkedHashMap<String, Object>();
+            if (nonNative.getTemplate().getProperties().get("docker_env_vars") != null) {
+                envMap.putAll(((ComplexPropertyValue) nonNative.getTemplate().getProperties().get("docker_env_vars")).getValue());
+            }
 
-                // Retrieve the env maps from the interface (from create operation)
-                Map<String, IValue> inputs = (Map<String, IValue>) nonNative.getInterfaces().get("tosca.interfaces.node.lifecycle.Standard").getOperations()
-                        .get("create").getInputParameters();
-                if (inputs != null) {
-                    for (Map.Entry<String, IValue> entry : inputs.entrySet()) {
-                        String key = entry.getKey();
-                        String value = null;
-                        if (entry.getValue() instanceof ScalarPropertyValue) {
-                            value = ((ScalarPropertyValue) entry.getValue()).getValue();
-                        } else {
-                            value = entry.getValue().toString();
-                        }
-                        if (key.startsWith("ENV")) {
-                            envMap.put(key.replaceFirst("^ENV_", ""), value);
-                        }
+            // Retrieve the env maps from the interface (from create operation)
+            Map<String, IValue> inputs = (Map<String, IValue>) nonNative.getInterfaces().get("tosca.interfaces.node.lifecycle.Standard").getOperations()
+                    .get("create").getInputParameters();
+            if (inputs != null) {
+                for (Map.Entry<String, IValue> entry : inputs.entrySet()) {
+                    String key = entry.getKey();
+                    String value = null;
+                    if (entry.getValue() instanceof ScalarPropertyValue) {
+                        value = ((ScalarPropertyValue) entry.getValue()).getValue();
+                    } else {
+                        value = entry.getValue().toString();
+                    }
+                    if (key.startsWith("ENV")) {
+                        envMap.put(key.replaceFirst("^ENV_", ""), value);
                     }
                 }
-
-                Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap" }, new Object[] { nonNative, envMap });
-                if (!envMap.isEmpty()) {
-                    docker_envs.put(nonNative.getId(), envMap);
-                }
-
-                // Generate pod file
-                Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");
-                Path podTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-pod.yaml");
-                VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
-
-                // Generate service file
-                Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
-                Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-service.yaml");
-                VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
             }
-        }
-        // FIXME remove docker types from non native types list
-        alienDeployment.getNonNatives().removeAll(dockerTypes);
-        if (!dockerTypes.isEmpty()) {
-            context.put("docker_types", dockerTypes);
 
-            // Copy kubernetes plugins
+            Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap" }, new Object[] { nonNative, envMap });
+            if (!envMap.isEmpty()) {
+                docker_envs.put(nonNative.getId(), envMap);
+            }
+
+            // Generate pod file
+            Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");
+            Path podTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-pod.yaml");
+            VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
+
+            // Generate service file
+            Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
+            Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-service.yaml");
+            VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
+
+        }
+
+        if (!alienDeployment.getDockerTypes().isEmpty()) {
+            // Copy kubernetes plugins & resources
             FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-kubernetes-plugin/cloudify-kubernetes-plugin.zip"),
                     generatedBlueprintDirectoryPath.resolve("plugins"));
             Path scriptsDir = generatedBlueprintDirectoryPath.resolve("scripts");
             Files.createDirectories(scriptsDir);
             Files.copy(pluginRecipeResourcesPath.resolve("kubernetes/configure_kubernetes_proxy.py"), scriptsDir.resolve("configure_kubernetes_proxy.py"));
 
-        }
-        if (!docker_envs.isEmpty()) {
-            context.put("docker_envs", docker_envs);
+            if (!docker_envs.isEmpty()) {
+                context.put("docker_envs", docker_envs);
+            }
         }
 
         // Generate the blueprint at the end

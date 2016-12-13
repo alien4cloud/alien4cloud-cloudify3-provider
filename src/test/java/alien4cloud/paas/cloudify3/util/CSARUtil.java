@@ -131,20 +131,20 @@ public class CSARUtil {
     }
 
     public void uploadAll() throws Exception {
-        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_SAMPLES, "master", SAMPLES_TYPES_NAME);
-        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "master", TOSCA_NORMATIVE_TYPES_NAME);
-        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_STORAGE, "master", ALIEN4CLOUD_STORAGE_TYPES);
+//        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_SAMPLES, "master", SAMPLES_TYPES_NAME);
+        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "1.2.0", TOSCA_NORMATIVE_TYPES_NAME);
+        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_STORAGE, "1.2.0", ALIEN4CLOUD_STORAGE_TYPES);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_DOCKER, "master", DOCKER_TYPES_NAME);
         uploadNormativeTypes();
-        uploadStorage();
-        uploadTomcat();
-        uploadApacheTypes();
-        uploadMySqlTypes();
-        uploadPHPTypes();
-        uploadWordpress();
-        uploadArtifactTest();
-        uploadCustomFS();
-        uploadCustomApache();
+//        uploadStorage();
+//        uploadTomcat();
+//        uploadApacheTypes();
+//        uploadMySqlTypes();
+//        uploadPHPTypes();
+//        uploadWordpress();
+//        uploadArtifactTest();
+//        uploadCustomFS();
+//        uploadCustomApache();
         uploadDockerTypes();
         // uploadNodeCellarTypes();
 

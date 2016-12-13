@@ -69,8 +69,7 @@ public class CloudifyDeploymentBuilderService {
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
      *
-     * @param deploymentContext
-     *            the deployment context
+     * @param deploymentContext the deployment context
      * @return the cloudify deployment
      */
     public CloudifyDeployment buildCloudifyDeployment(PaaSTopologyDeploymentContext deploymentContext) {
@@ -98,6 +97,12 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setVolumes(deploymentContext.getPaaSTopology().getVolumes());
         cloudifyDeployment.setNonNatives(deploymentContext.getPaaSTopology().getNonNatives());
 
+        // Filter docker types
+        List<PaaSNodeTemplate> dockerTypes = extractDockerType(deploymentContext.getPaaSTopology().getNonNatives());
+        cloudifyDeployment.setDockerTypes(dockerTypes);
+        cloudifyDeployment.getNonNatives().removeAll(dockerTypes); // TODO Not needed thanks to custom resources filtering ?
+
+        // Filter custom resources
         Map<String, PaaSNodeTemplate> customResources = extractCustomNativeType(deploymentContext.getPaaSTopology().getAllNodes(), locationProvidedTypes);
         cloudifyDeployment.setCustomResources(customResources);
         Collection<PaaSNodeTemplate> customNatives = customResources.values();
@@ -109,7 +114,8 @@ public class CloudifyDeploymentBuilderService {
                 cloudifyDeployment.getNonNatives().addAll(customNatives);
             }
         }
-        processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives(), cloudifyDeployment.getAllNodes());
+
+        processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
         cloudifyDeployment.setNativeTypes(nativeTypes);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
@@ -126,15 +132,15 @@ public class CloudifyDeploymentBuilderService {
         return cloudifyDeployment;
     }
 
-    // private List<PaaSNodeTemplate> extractCustomNativeType(Collection<PaaSNodeTemplate> nodes) {
-    // List<PaaSNodeTemplate> result = Lists.newArrayList();
-    // for (PaaSNodeTemplate node : nodes) {
-    // if (isCustomNativeType(node)) {
-    // result.add(node);
-    // }
-    // }
-    // return result;
-    // }
+    private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
+        List<PaaSNodeTemplate> result = Lists.newArrayList();
+        for (PaaSNodeTemplate value : nodes) {
+            if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, value.getIndexedToscaElement())) {
+                result.add(value);
+            }
+        }
+        return result;
+    }
 
     private Map<String, PaaSNodeTemplate> extractCustomNativeType(Map<String, PaaSNodeTemplate> nodes, Set<String> locationProvidedTypes) {
         Map<String, PaaSNodeTemplate> result = Maps.newHashMap();
@@ -152,7 +158,7 @@ public class CloudifyDeploymentBuilderService {
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
      * </ul>
-     * 
+     *
      * @param node
      * @return true is the node is considered as a custom template.
      */
@@ -163,6 +169,10 @@ public class CloudifyDeploymentBuilderService {
         }
         if (locationProvidedTypes.contains(node.getTemplate().getType())) {
             // if the type of the template is provided by the location, it can't be considered as a custom resource.
+            return false;
+        }
+        if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, node.getIndexedToscaElement())) {
+            // Docker Container types are not custom resources
             return false;
         }
         return true;
@@ -393,29 +403,19 @@ public class CloudifyDeploymentBuilderService {
      *
      * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
      * @param nonNativeNodes The list of non native types.
-     * @param allNodes A map containing all the nodes of the deployment.
      */
-    private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, List<PaaSNodeTemplate> nonNativeNodes, Map<String, PaaSNodeTemplate> allNodes) {
+    private void processNonNativeTypes(CloudifyDeployment cloudifyDeployment, List<PaaSNodeTemplate> nonNativeNodes) {
         Map<String, NodeType> nonNativesTypesMap = Maps.newLinkedHashMap();
         Map<String, RelationshipType> nonNativesRelationshipsTypesMap = Maps.newLinkedHashMap();
         if (nonNativeNodes != null) {
             for (PaaSNodeTemplate nonNative : nonNativeNodes) {
-                // FIXME Workaround for docker/kubernetes. Ignore if the non native type is a docker type
-                if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, nonNative.getIndexedToscaElement())) {
-                    continue;
-                }
                 nonNativesTypesMap.put(nonNative.getIndexedToscaElement().getElementId(), nonNative.getIndexedToscaElement());
                 List<PaaSRelationshipTemplate> relationshipTemplates = nonNative.getRelationshipTemplates();
                 for (PaaSRelationshipTemplate relationshipTemplate : relationshipTemplates) {
                     if (!NormativeRelationshipConstants.DEPENDS_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())
                             && !NormativeRelationshipConstants.HOSTED_ON.equals(relationshipTemplate.getIndexedToscaElement().getElementId())) {
-                        // FIXME kubernetes. If the source of the relationship is a docker node, ignore it
-                        PaaSNodeTemplate sourceNodeTemplate = allNodes.get(relationshipTemplate.getSource());
-                        if (!ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER,
-                                sourceNodeTemplate.getIndexedToscaElement())) {
-                            nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
-                                    relationshipTemplate.getIndexedToscaElement());
-                        }
+                        nonNativesRelationshipsTypesMap.put(relationshipTemplate.getIndexedToscaElement().getElementId(),
+                                relationshipTemplate.getIndexedToscaElement());
                     }
                 }
             }

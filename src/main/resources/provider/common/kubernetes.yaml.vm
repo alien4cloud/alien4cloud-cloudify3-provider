@@ -41,7 +41,7 @@
             fabric_env:
               host_string: 127.0.0.1
 
-#foreach($node in $docker_types)
+#foreach($node in $deployment.dockerTypes)
   ${node.id}:
     type: alien.cloudify.kubernetes.nodes.Microservice
     properties:
@@ -81,4 +81,4 @@
 #end## foreach($relationshipTemplate in $node.relationshipTemplates)
 #end## if($node.relationshipTemplates)
 
-#end## foreach($node in $docker_types)
+#end## foreach($node in $deployment.dockerTypes)

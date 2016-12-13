@@ -134,7 +134,7 @@ public class PropertyEvaluatorService {
                     if (node.getId().equals(relationshipTemplate.getSource()) && requirementName.equals(relationshipTemplate.getTemplate().getRequirementName())) {
                         if (relationshipTemplate.instanceOf("tosca.relationships.ConnectsTo")) {
                             if ("port".equalsIgnoreCase(propertyName) || "ip_address".equalsIgnoreCase(propertyName)) {
-                                // FIXME ugly workaround. If the property is 'ip_address', change it to 'ip' (cfy3)
+                                // FIXME workaround. If the property is 'ip_address', change it to 'ip' (cfy3)
                                 if("ip_address".equalsIgnoreCase(propertyName)) {
                                     PaaSNodeTemplate target = allNodes.get(relationshipTemplate.getTemplate().getTarget());
                                     if(ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, target.getIndexedToscaElement())){
