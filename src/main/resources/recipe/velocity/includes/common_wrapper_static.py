@@ -26,6 +26,8 @@ def get_attribute_user(ctx):
         return get_attribute(ctx, 'user')
     if get_attribute(ctx, 'cloudify_agent'):
         return get_attribute(ctx, 'cloudify_agent').get('user', None)
+    if get_attribute(ctx, 'agent_config'):
+        return get_attribute(ctx, 'agent_config').get('user', None)
     return None
 
 def get_attribute_key(ctx):
@@ -33,6 +35,8 @@ def get_attribute_key(ctx):
         return get_attribute(ctx, 'key')
     if get_attribute(ctx, 'cloudify_agent'):
         return get_attribute(ctx, 'cloudify_agent').get('key', None)
+    if get_attribute(ctx, 'agent_config'):
+        return get_attribute(ctx, 'agent_config').get('key', None)        
     return None
 
 def get_host(entity):

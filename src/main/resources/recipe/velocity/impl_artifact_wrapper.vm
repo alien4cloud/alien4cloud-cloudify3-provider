@@ -161,9 +161,9 @@ ${entity}.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.value.
 #end## if($util.nonNative.isFunctionPropertyValue($attributeEntry.value))
 #end## foreach($attributeEntry in ${attributes.entrySet()})
 #if($util.nonNative.isCustomResource($owner) && $util.nonNative.isCompute($owner))
-if ${entity}.runtime_properties['ip_address']:
+if ${entity}.runtime_properties.get('ip_address', None) is not None:
   ${entity}.runtime_properties['ip'] = ${entity}.runtime_properties['ip_address']
-if ${entity}.runtime_properties['public_ip_address']:
+if ${entity}.runtime_properties.get('public_ip_address', None) is not None:
   ${entity}.runtime_properties['public_ip'] = ${entity}.runtime_properties['public_ip_address']
 #end## if
 ${entity}.update()
