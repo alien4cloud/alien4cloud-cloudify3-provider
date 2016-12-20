@@ -1,0 +1,40 @@
+tosca_definitions_version: alien_dsl_1_3_0
+description: MongoDB installation.
+template_name: mongod-type
+template_version: 1.0.0-SNAPSHOT
+template_author: FastConnect
+
+imports:
+  - "tosca-normative-types:1.0.0-ALIEN12"
+  - "nodecellar-docker-types:1.1.0-SNAPSHOT"
+
+node_types:
+  alien.nodes.Mongod:
+    derived_from: tosca.nodes.DBMS
+    description: >
+      A node to install Mongodb.
+    capabilities:
+      endpoint: alien.capabilities.endpoint.Mongo
+    tags:
+      icon: /images/mongodb.jpg
+    properties:
+      port:
+        type: integer
+        default: 27017
+        constraints:
+          - in_range: [8000,65535]
+      db_port:
+        type: integer
+        default: 27017
+        constraints:
+          - in_range: [8000,65535]
+    interfaces:
+      Standard:
+        create: scripts/install-mongo.sh
+        configure:
+          inputs:
+            DB_IP: { get_attribute: [HOST, ip_address] }
+            DB_PORT: { get_property: [SELF, db_port] }
+          implementation: scripts/configure-mongo.sh
+        start: scripts/start-mongo.sh
+        stop: scripts/stop-mongo.sh

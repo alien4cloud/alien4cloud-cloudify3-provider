@@ -3,7 +3,7 @@ This template is used to generate cloudify 3 recipe from alien model
 - $mapping --> contains global alien --> cloudify mapping
 - $providerMapping --> contains IaaS provider specific mapping configuration
 - $cloud --> contains alien4cloud.paas.cloudify3.configuration.CloudConfiguration instance
-- $deployment --> contains Alien's deployment and types
+- $deployment --> contains Alien's deployment and types (alien4cloud.paas.cloudify3.service.model.CloudifyDeployment)
 - $util --> contains utility methods
 - $shouldAddOverridesPlugin --> contains true or false (should add the overrides plugin section or not ?)
 *#
@@ -15,16 +15,42 @@ imports:
 #foreach($import in $cloud.getConfigurationLocation($deployment.locationType).getImports())
   - $import
 #end
+#if($util.collectionHasElement($deployment.dockerTypes))
+#foreach($import in $cloud.getKubernetes().getImports())
+  - $import
+#end## foreach
+#end## if($util.collectionHasElement($deployment.dockerTypes))
 
 node_types:
 #parse("types.yaml.vm")
+
+#if($util.collectionHasElement($deployment.dockerTypes))
+#parse("provider/common/kubernetes_types.yaml.vm")
+#end## if($util.collectionHasElement($deployment.dockerTypes))
 
 #if($util.collectionHasElement($deployment.nonNativesTypes))
 #foreach($nonNativeType in ${deployment.nonNativesTypes})
   ${nonNativeType.elementId}:
     derived_from: $util.nonNative.getDerivedFromType($nonNativeType.derivedFrom)
-#end
-#end
+#set( $nodeProperties = $nonNativeType.getProperties() )
+#if($util.nonNative.mapHasEntries($nodeProperties))
+    properties:
+#foreach($property in $nodeProperties.entrySet())
+      $property.key:
+#if($property.value.type != "string" && $property.value.type != "integer" && $property.value.type != "float" && $property.value.type != "boolean" )
+        type: string
+#else
+        type: $property.value.type
+#end## if($property.value.type == "version")
+#if($property.value.default)
+        default: $property.value.default.value
+#end## if($property.value.defaultValue)
+        required: $property.value.required
+#end## foreach($property in $nodeProperties.entrySet())
+#end## if($util.nonNative.mapHasEntries($nodeProperties))
+#end## foreach
+#end## if($util.collectionHasElement($deployment.nonNativesTypes))
+
 #parse("provider/common/monitor_type.yaml.vm")
 
 #if($util.collectionHasElement($deployment.nonNativesRelationshipTypes))
@@ -38,20 +64,26 @@ relationships:
 #end
 
 node_templates:
+
+#if($util.collectionHasElement($deployment.dockerTypes))
+#parse("provider/common/kubernetes.yaml.vm")
+#end## #if($util.collectionHasElement($deployment.dockerTypes))
+#if($deployment.locationType != "kubernetes")
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
-
 #nonNativeNodes($deployment.nonNatives)
+#end## #if($deployment.locationType != "kubernetes")
 
 #parse("provider/common/monitor_node.yaml.vm")
 
 #* Handle scaling groups *#
+#set( $computes = $util.natives.getAllComputes() )
 #if($util.common.doesVelocityFileExists("${velocityResourcesPath}/provider/${deployment.locationType}/compute_scaling_group.yaml.vm"))
 #parse("provider/${deployment.locationType}/compute_scaling_group.yaml.vm")
-#buildSpecificScalableComputeGroups($deployment.computes)
+#buildSpecificScalableComputeGroups($computes)
 #else
-#buildScalableComputeGroups($deployment.computes)
+#buildScalableComputeGroups($computes)
 #end## if exist
 #if(!$_a4c_scalable_computes.isEmpty())
 groups:
@@ -66,7 +98,7 @@ policies:
     type: cloudify.policies.scaling
     targets: [$group.key]
     properties:
-      default_instances: #printDefaultInstancesFromGroup($deployment.computes $group.value)
+      default_instances: #printDefaultInstancesFromGroup($computes $group.value)
 #end## foreach groups
 #end## if(!$_a4c_scalable_computes.isEmpty())
 #* End of scaling groups *#

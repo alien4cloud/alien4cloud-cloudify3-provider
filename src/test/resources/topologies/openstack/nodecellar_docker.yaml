@@ -1,0 +1,49 @@
+tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
+description: Alien4Cloud generated service template
+template_name: nodecellardocker
+template_version: 0.1.0-SNAPSHOT
+template_author: admin
+
+imports:
+  - nodecellar-docker-types:1.1.0-SNAPSHOT
+  - docker-types:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN12
+
+topology_template:
+  node_templates:
+    Nodecellar:
+      type: alien.nodes.Application.Docker.Nodecellar
+      properties:
+        docker_run_cmd: cd /nodecellar && nodejs server.js
+        mem_share: 128
+        docker_env_vars:
+          LOG_LEVEL: INFO
+        cpu_share: 1.0
+      requirements:
+        - mongo_db:
+            node: Mongo
+            capability: alien.capabilities.endpoint.docker.Mongo
+            relationship: tosca.relationships.ConnectsTo
+      capabilities:
+        nodecellar_app:
+          properties:
+            port: 3000
+            protocol: tcp
+            initiator: source
+            secure: false
+            docker_bridge_port_mapping: 0
+            network_name: PRIVATE
+    Mongo:
+      type: alien.nodes.Application.Docker.Mongo
+      properties:
+        mem_share: 128
+        cpu_share: 1.0
+      capabilities:
+        mongo_db:
+          properties:
+            port: 27017
+            protocol: tcp
+            initiator: source
+            secure: false
+            docker_bridge_port_mapping: 0
+            network_name: PRIVATE

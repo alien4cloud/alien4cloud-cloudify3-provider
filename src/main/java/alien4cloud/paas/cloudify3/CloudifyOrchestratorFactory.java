@@ -1,37 +1,43 @@
 package alien4cloud.paas.cloudify3;
 
-import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
-import alien4cloud.utils.ClassLoaderUtil;
+import java.util.Collections;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import alien4cloud.model.orchestrators.ArtifactSupport;
 import alien4cloud.model.orchestrators.locations.LocationSupport;
 import alien4cloud.orchestrators.plugin.IOrchestratorPluginFactory;
 import alien4cloud.paas.IPaaSProvider;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.configuration.KubernetesConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfigurations;
+import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import java.util.Collections;
-import java.util.Map;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
+import alien4cloud.utils.ClassLoaderUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @Slf4j
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
     public static final String CFY_VERSION = "3.4";
-    public static final String CFY_DIAMOND_VERSION = "1.3.1";
+
     public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
+
+    public static final String CFY_DIAMOND_VERSION = "1.3.1";
+    public static final String CFY_FABRIC_VERSION = "1.4.1";
 
     @Resource
     private ApplicationContext factoryContext;
@@ -81,6 +87,14 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         locationConfigurations.setByon(byon);
 
         cloudConfiguration.setLocations(locationConfigurations);
+
+        // Kubernetes Configuration
+        KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
+        kubernetesConfiguration.setImports(Lists.newArrayList(
+                "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
+                "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml"));
+        cloudConfiguration.setKubernetes(kubernetesConfiguration);
+
         return cloudConfiguration;
     }
 

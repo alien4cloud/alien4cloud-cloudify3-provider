@@ -24,14 +24,20 @@ def convert_env_value_to_string(envDict):
 def get_attribute_user(ctx):
     if get_attribute(ctx, 'user'):
         return get_attribute(ctx, 'user')
-    else:
-        return get_attribute(ctx, 'cloudify_agent')['user']
+    if get_attribute(ctx, 'cloudify_agent'):
+        return get_attribute(ctx, 'cloudify_agent').get('user', None)
+    if get_attribute(ctx, 'agent_config'):
+        return get_attribute(ctx, 'agent_config').get('user', None)
+    return None
 
 def get_attribute_key(ctx):
     if get_attribute(ctx, 'key'):
         return get_attribute(ctx, 'key')
-    else:
-        return get_attribute(ctx, 'cloudify_agent')['key']
+    if get_attribute(ctx, 'cloudify_agent'):
+        return get_attribute(ctx, 'cloudify_agent').get('key', None)
+    if get_attribute(ctx, 'agent_config'):
+        return get_attribute(ctx, 'agent_config').get('key', None)        
+    return None
 
 def get_host(entity):
     if entity.instance.relationships:

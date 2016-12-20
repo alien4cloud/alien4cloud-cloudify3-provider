@@ -1,0 +1,84 @@
+#**
+  This macro define if we should add overrides for the pods.yaml file.
+*#
+#macro(shouldOverride $nodeId $env)
+#set($doOverride=false)
+#if($env.containsKey($nodeId) && !$env.get($nodeId).isEmpty()) 
+#foreach($val in $env.get($nodeId).values())
+#if($val.startsWith("get_property"))
+#set($doOverride=true)
+#end## if($val.startsWith())
+#end##foreach
+#end## if
+#end## macro(shouldOverride $nodeId $env)
+#**
+  This macro check if a type is a docker type
+*#
+#macro(isDockerType $indexedToscaElement)
+#set($dockerType="tosca.nodes.Container.Application.DockerContainer")
+#if($dockerType==($indexedToscaElement.elementId) || $indexedToscaElement.getDerivedFrom().contains($dockerType))
+#set($isDockerType=true)
+#else
+#set($isDockerType=false)
+#end## if
+#end## macro(isFromType $expectedType $indexedToscaElement)
+  kubernetes_proxy:
+    type: cloudify.nodes.DeploymentProxy
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file: scripts/configure_kubernetes_proxy.py
+            task_name: configure_master_ip
+            task_properties:
+#if($cloud.getKubernetes().kubernetesUrl && !$cloud.getKubernetes().kubernetesUrl.startsWith("http"))
+#set($kubernetesMasterIP="http://" + $cloud.getKubernetes().kubernetesUrl)
+#else
+#set($kubernetesMasterIP=$cloud.getKubernetes().kubernetesUrl)
+#end## add http:// if needed
+              master_ip: $kubernetesMasterIP
+            fabric_env:
+              host_string: 127.0.0.1
+
+#foreach($node in $deployment.dockerTypes)
+  ${node.id}:
+    type: alien.cloudify.kubernetes.nodes.Microservice
+    properties:
+      name: ${node.id}
+      ssh_username: ubuntu
+      ssh_keyfilename: /root/.ssh/kubernetes-master-vm-key.pem
+      config_files:
+        - file: ./${node.id}-pod.yaml
+#shouldOverride($node.id $docker_envs)
+#if($doOverride)
+          overrides:
+## The following $env_index is used to get the correct env array position in the target pod.yaml file.
+#set($env_index=0)
+#foreach($entry in $docker_envs.get($node.id).entrySet())
+#if($entry.getValue().startsWith("get_property"))
+#set($values=$entry.getValue().split(","))
+#isDockerType($deployment.getAllNodes().get($values[1]).getIndexedToscaElement())
+#if($isDockerType)
+            - "['spec']['template']['spec']['containers'][0]['env'][$env_index]['value'] = '@{get_service, $values[1], $values[2]}'"
+#else
+            - "['spec']['template']['spec']['containers'][0]['env'][$env_index]['value'] = '@{$values[1], $values[2]}'"
+#end## if($isDockerType)
+#end## if($entry.getValue().startsWith("get_property"))
+#set($env_index=$env_index+1)
+#end## foreach($entry in $docker_envs.get($node.id).values())
+#end## if($doOverride)
+        - file: ./${node.id}-service.yaml
+    relationships:
+      - type: cloudify.kubernetes.relationships.connected_to_master
+        target: kubernetes_proxy
+#if($node.relationshipTemplates)
+#foreach($relationshipTemplate in $node.relationshipTemplates)
+#if($relationshipTemplate.source == $node.id)
+      - type: $mapping.normativeTypes[$relationshipTemplate.template.type]
+        target: $relationshipTemplate.template.target
+#end## if($relationshipTemplate.source == $node.id)
+#end## foreach($relationshipTemplate in $node.relationshipTemplates)
+#end## if($node.relationshipTemplates)
+
+#end## foreach($node in $deployment.dockerTypes)

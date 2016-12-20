@@ -12,6 +12,7 @@ implementation_artifact_directory_name: _a4c_impl_artifact
 
 normative_types:
   tosca.nodes.Root: cloudify.nodes.Root
+  tosca.nodes.Compute: cloudify.nodes.Compute
   tosca.nodes.SoftwareComponent: cloudify.nodes.SoftwareComponent
   tosca.nodes.WebServer: cloudify.nodes.WebServer
   tosca.nodes.DBMS: cloudify.nodes.DBMS
@@ -21,6 +22,14 @@ normative_types:
   tosca.relationships.DependsOn: cloudify.relationships.depends_on
   tosca.relationships.HostedOn: cloudify.relationships.contained_in
   tosca.relationships.ConnectsTo: cloudify.relationships.connected_to
+
+cloudify_properties:
+  cloudify.nodes.Compute:
+    - ip
+    - os_family
+    - agent_config
+    - install_agent
+    - cloudify_agent
 
 relationships:
   life_cycle:

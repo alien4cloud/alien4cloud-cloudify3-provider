@@ -10,18 +10,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
-import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
-import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.OperationOutput;
-import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import alien4cloud.orchestrators.locations.services.LocationResourceTypes;
+import alien4cloud.tosca.normative.NormativeComputeConstants;
+import org.alien4cloud.tosca.model.definitions.*;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -458,7 +451,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
      */
     public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
-        // TODO If the operation has no host then execute on central node.
+
+        if (isCustomResource(node)) {
+            return false;
+        }
         // If the node is compute only the create operation is executed on central node. Other operations are called on the compute instance (that we should be
         // able to connect to after create).
 
@@ -471,4 +467,39 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
         return true;
     }
+
+    /**
+     * In the node properties, isolate those related to cloudify type inherited properties.
+     */
+    public Map<String, AbstractPropertyValue> isolateCloudifyProperties(PaaSNodeTemplate node) {
+        String cloudifyType = this.getDerivedFromType(node.getIndexedToscaElement().getDerivedFrom());
+        Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
+        Map<String, AbstractPropertyValue> result = Maps.newHashMap();
+        if (cloudifyProperies != null) {
+            for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
+                if (cloudifyProperies.contains(e.getKey())) {
+                    result.put(e.getKey(), e.getValue());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * A custom resource is a template that:
+     * <ul>
+     *     <li>is not of a type provided by the location</li>
+     *     <li>AND doesn't have a host</li>
+     * </ul>
+     * @param node
+     * @return true is the node is considered as a custom template.
+     */
+    public boolean isCustomResource(PaaSNodeTemplate node) {
+        return this.alienDeployment.getCustomResources().containsValue(node);
+    }
+
+    public boolean isCompute(PaaSNodeTemplate node) {
+        return ToscaUtils.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+    }
+
 }

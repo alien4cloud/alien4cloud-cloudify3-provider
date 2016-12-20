@@ -139,7 +139,9 @@ if inputs.get('process', None) is not None and inputs['process'].get('env', None
     env_map.update(inputs['process']['env'])
 
 ## Executor template depends on the artifact type and provides the right wrapper.
+#if($executor_template)
 #parse($executor_template)
+#end
 
 for k,v in outputs:
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))
@@ -158,11 +160,17 @@ ${entity}.runtime_properties['${attributeEntry.key}'] = ${util.nonNative.formatF
 ${entity}.runtime_properties['${attributeEntry.key}'] = ${util.nonNative.formatConcatPropertyValue($context, $owner, $attributeEntry.value)}
 #else
 ${entity}.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.value.value}'
-#end
-#end
+#end## if($util.nonNative.isFunctionPropertyValue($attributeEntry.value))
+#end## foreach($attributeEntry in ${attributes.entrySet()})
+#if($util.nonNative.isCustomResource($owner) && $util.nonNative.isCompute($owner))
+if ${entity}.runtime_properties.get('ip_address', None) is not None:
+  ${entity}.runtime_properties['ip'] = ${entity}.runtime_properties['ip_address']
+if ${entity}.runtime_properties.get('public_ip_address', None) is not None:
+  ${entity}.runtime_properties['public_ip'] = ${entity}.runtime_properties['public_ip_address']
+#end## if
 ${entity}.update()
-#end
-#end
+#end## if($attributes)
+#end## macro
 
 #setAttributes(${operation.owner}, "ctx.instance", $util.nonNative.getNodeAttributes(${operation.owner}), "")
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))

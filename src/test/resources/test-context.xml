@@ -76,7 +76,7 @@
         <property name="poolSize" value="1"/>
     </bean>
 
-    <bean id="alien-plugin-context" class="alien4cloud.plugin.model.ManagedPlugin">
+    <bean id="alien-plugin-context" class="alien4cloud.plugin.model.ManagedPlugin" primary="true">
         <constructor-arg value="target/alien/plugin"/>
     </bean>
 </beans>

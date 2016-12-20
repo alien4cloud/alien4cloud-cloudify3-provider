@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,21 +15,26 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
+import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import alien4cloud.orchestrators.locations.services.ILocationResourceService;
+import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
@@ -43,6 +50,7 @@ import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
+import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -53,6 +61,9 @@ import lombok.extern.slf4j.Slf4j;
 @Component("cloudify-blueprint-service")
 @Slf4j
 public class BlueprintService {
+
+    public static final String TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER = "tosca.nodes.Container.Application.DockerContainer";
+    public static final String ALIEN_CAPABILITIES_ENDPOINT_DOCKER = "alien.capabilities.endpoint.Docker";
 
     @Resource
     private CloudConfigurationHolder cloudConfigurationHolder;
@@ -72,6 +83,13 @@ public class BlueprintService {
     /** Registry of implementation artifacts supported by the plugin. */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+
+    @Inject
+    @Lazy(true)
+    private ILocationResourceService locationResourceService;
+
+    @Inject
+    private LocationService locationService;
 
     private Path recipeDirectoryPath;
 
@@ -236,7 +254,7 @@ public class BlueprintService {
                 generatedBlueprintDirectoryPath.resolve("plugins/custom_wf_plugin.zip"));
 
         // plugin overrides section
-        if(Files.isDirectory(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()))) {
+        if (Files.isDirectory(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()))) {
             Path overridesPluginDir = generatedBlueprintDirectoryPath.resolve("plugins/overrides");
             Files.createDirectories(overridesPluginDir);
             FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/a4c_common"), overridesPluginDir.resolve("a4c_common"),
@@ -262,6 +280,64 @@ public class BlueprintService {
         if (CollectionUtils.isNotEmpty(blueprintGeneratorExtensions)) {
             for (BlueprintGeneratorExtension blueprintGeneratorExtension : blueprintGeneratorExtensions) {
                 blueprintGeneratorExtension.blueprintGenerationHook(pluginRecipeResourcesPath, generatedBlueprintDirectoryPath, context);
+            }
+        }
+
+        // Docker types
+        Map<String, Map<String, Object>> docker_envs = new HashMap<String, Map<String, Object>>();
+        for (PaaSNodeTemplate nonNative : alienDeployment.getDockerTypes()) {
+
+            // Retrieve env maps from the properties
+            Map<String, Object> envMap = new LinkedHashMap<String, Object>();
+            if (nonNative.getTemplate().getProperties().get("docker_env_vars") != null) {
+                envMap.putAll(((ComplexPropertyValue) nonNative.getTemplate().getProperties().get("docker_env_vars")).getValue());
+            }
+
+            // Retrieve the env maps from the interface (from create operation)
+            Map<String, IValue> inputs = (Map<String, IValue>) nonNative.getInterfaces().get("tosca.interfaces.node.lifecycle.Standard").getOperations()
+                    .get("create").getInputParameters();
+            if (inputs != null) {
+                for (Map.Entry<String, IValue> entry : inputs.entrySet()) {
+                    String key = entry.getKey();
+                    String value = null;
+                    if (entry.getValue() instanceof ScalarPropertyValue) {
+                        value = ((ScalarPropertyValue) entry.getValue()).getValue();
+                    } else {
+                        value = entry.getValue().toString();
+                    }
+                    if (key.startsWith("ENV")) {
+                        envMap.put(key.replaceFirst("^ENV_", ""), value);
+                    }
+                }
+            }
+
+            Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap" }, new Object[] { nonNative, envMap });
+            if (!envMap.isEmpty()) {
+                docker_envs.put(nonNative.getId(), envMap);
+            }
+
+            // Generate pod file
+            Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");
+            Path podTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-pod.yaml");
+            VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
+
+            // Generate service file
+            Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
+            Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-service.yaml");
+            VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
+
+        }
+
+        if (!alienDeployment.getDockerTypes().isEmpty()) {
+            // Copy kubernetes plugins & resources
+            FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-kubernetes-plugin/cloudify-kubernetes-plugin.zip"),
+                    generatedBlueprintDirectoryPath.resolve("plugins"));
+            Path scriptsDir = generatedBlueprintDirectoryPath.resolve("scripts");
+            Files.createDirectories(scriptsDir);
+            Files.copy(pluginRecipeResourcesPath.resolve("kubernetes/configure_kubernetes_proxy.py"), scriptsDir.resolve("configure_kubernetes_proxy.py"));
+
+            if (!docker_envs.isEmpty()) {
+                context.put("docker_envs", docker_envs);
             }
         }
 
@@ -355,6 +431,7 @@ public class BlueprintService {
             Map<String, Operation> operations = interfaceEntry.getValue().getOperations();
             for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
                 ImplementationArtifact artifact = operationEntry.getValue().getImplementationArtifact();
+
                 if (artifact != null) {
                     String relativePathToArtifact;
                     if (node instanceof PaaSNodeTemplate) {
@@ -367,7 +444,9 @@ public class BlueprintService {
                     } else {
                         throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
                     }
-                    copyArtifact(artifactsDir, relativePathToArtifact, artifact);
+                    if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
+                        copyArtifact(artifactsDir, relativePathToArtifact, artifact);
+                    }
                 }
             }
         }
