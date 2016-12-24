@@ -7,7 +7,7 @@ import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 
 import com.google.common.collect.Lists;
 
@@ -22,7 +22,7 @@ public class NetworkGenerationUtil extends NativeTypeGenerationUtil {
         List<PaaSNodeTemplate> computeNetworks = compute.getNetworkNodes();
         List<PaaSNodeTemplate> selectedNetworks = Lists.newArrayList();
         for (PaaSNodeTemplate computeNetwork : computeNetworks) {
-            if (ToscaUtils.isFromType(networkType, computeNetwork.getIndexedToscaElement())) {
+            if (ToscaNormativeUtil.isFromType(networkType, computeNetwork.getIndexedToscaElement())) {
                 selectedNetworks.add(computeNetwork);
             }
         }

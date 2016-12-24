@@ -44,7 +44,7 @@ import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.NormativeRelationshipConstants;
 import lombok.extern.slf4j.Slf4j;
 
@@ -135,7 +135,7 @@ public class CloudifyDeploymentBuilderService {
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
         List<PaaSNodeTemplate> result = Lists.newArrayList();
         for (PaaSNodeTemplate value : nodes) {
-            if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, value.getIndexedToscaElement())) {
+            if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, value.getIndexedToscaElement())) {
                 result.add(value);
             }
         }
@@ -171,7 +171,7 @@ public class CloudifyDeploymentBuilderService {
             // if the type of the template is provided by the location, it can't be considered as a custom resource.
             return false;
         }
-        if (ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, node.getIndexedToscaElement())) {
+        if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, node.getIndexedToscaElement())) {
             // Docker Container types are not custom resources
             return false;
         }
@@ -383,9 +383,9 @@ public class CloudifyDeploymentBuilderService {
         List<PaaSNodeTemplate> publicNetworks = Lists.newArrayList();
         List<PaaSNodeTemplate> privateNetworks = Lists.newArrayList();
         for (PaaSNodeTemplate network : allNetworks) {
-            if (ToscaUtils.isFromType("alien.nodes.PublicNetwork", network.getIndexedToscaElement())) {
+            if (ToscaNormativeUtil.isFromType("alien.nodes.PublicNetwork", network.getIndexedToscaElement())) {
                 publicNetworks.add(network);
-            } else if (ToscaUtils.isFromType("alien.nodes.PrivateNetwork", network.getIndexedToscaElement())) {
+            } else if (ToscaNormativeUtil.isFromType("alien.nodes.PrivateNetwork", network.getIndexedToscaElement())) {
                 privateNetworks.add(network);
             } else {
                 throw new InvalidArgumentException(

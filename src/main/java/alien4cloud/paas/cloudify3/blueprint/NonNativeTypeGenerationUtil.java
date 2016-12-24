@@ -12,7 +12,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import alien4cloud.orchestrators.locations.services.LocationResourceTypes;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.NormativeComputeConstants;
 import org.alien4cloud.tosca.model.definitions.*;
 import org.alien4cloud.tosca.model.types.NodeType;
@@ -38,7 +39,6 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.topology.TopologyUtils;
-import alien4cloud.tosca.ToscaUtils;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -341,7 +341,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public PaaSNodeTemplate getHost(PaaSNodeTemplate node) {
-        return ToscaUtils.getMandatoryHostTemplate(node);
+        return PaaSUtils.getMandatoryHostTemplate(node);
     }
 
     public boolean relationshipHasDeploymentArtifacts(PaaSRelationshipTemplate relationshipTemplate) {
@@ -529,7 +529,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isCompute(PaaSNodeTemplate node) {
-        return ToscaUtils.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+        return ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
     }
 
 }

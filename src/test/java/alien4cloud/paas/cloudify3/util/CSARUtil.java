@@ -13,13 +13,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import alien4cloud.common.AlienConstants;
 import alien4cloud.git.RepositoryManager;
 import alien4cloud.model.components.CSARSource;
 import alien4cloud.security.model.Role;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.tosca.parser.ParsingErrorLevel;
 import alien4cloud.tosca.parser.ParsingResult;
+import alien4cloud.utils.AlienConstants;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 

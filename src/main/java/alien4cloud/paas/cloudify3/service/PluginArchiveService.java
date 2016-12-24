@@ -4,19 +4,18 @@ import java.nio.file.Path;
 
 import javax.inject.Inject;
 
-import alien4cloud.common.AlienConstants;
-import lombok.extern.slf4j.Slf4j;
-
+import org.alien4cloud.tosca.catalog.ArchiveParser;
 import org.springframework.stereotype.Component;
 
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
 import alien4cloud.paas.cloudify3.error.BadConfigurationException;
 import alien4cloud.plugin.model.ManagedPlugin;
-import org.alien4cloud.tosca.catalog.ArchiveParser;
 import alien4cloud.tosca.model.ArchiveRoot;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.tosca.parser.ParsingException;
 import alien4cloud.tosca.parser.ParsingResult;
+import alien4cloud.utils.AlienConstants;
+import lombok.extern.slf4j.Slf4j;
 
 @Component("plugin-archive-service")
 @Slf4j

@@ -2,7 +2,7 @@ package alien4cloud.paas.cloudify3.blueprint;
 
 import alien4cloud.model.common.Tag;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.NormativeComputeConstants;
 import com.google.common.collect.Lists;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
@@ -115,7 +115,7 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
     public List<PaaSNodeTemplate> getAllComputes() {
         List<PaaSNodeTemplate> result = Lists.newArrayList(this.alienDeployment.getComputes());
         for (PaaSNodeTemplate node : this.alienDeployment.getCustomResources().values()) {
-            boolean isCompute = ToscaUtils.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+            boolean isCompute = ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
             if (isCompute) {
                 result.add(node);
             }
