@@ -1,0 +1,13 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/4.0m10/types.yaml
+  - http://www.getcloudify.org/spec/aws-plugin/1.4.3/plugin.yaml
+
+node_templates:
+  manager_host:
+    type: cloudify.aws.nodes.Instance
+    properties:
+      image_id: ami-4c4b003b
+      instance_type: m3.medium
+      install_agent: false

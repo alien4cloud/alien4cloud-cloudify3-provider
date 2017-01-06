@@ -30,14 +30,14 @@ import lombok.extern.slf4j.Slf4j;
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
-    public static final String CFY_VERSION = "3.4";
+    public static final String CFY_VERSION = "4.0m10";
 
-    public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
+    public static final String CFY_AWS_PLUGIN_VERSION = "1.4.3";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
 
-    public static final String CFY_DIAMOND_VERSION = "1.3.1";
-    public static final String CFY_FABRIC_VERSION = "1.4.1";
+    public static final String CFY_DIAMOND_VERSION = "1.3.4";
+    public static final String CFY_FABRIC_VERSION = "1.4.2";
 
     @Resource
     private ApplicationContext factoryContext;
@@ -59,6 +59,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public CloudConfiguration getDefaultConfiguration() {
         CloudConfiguration cloudConfiguration = new CloudConfiguration();
         cloudConfiguration.setUrl("http://yourManagerIP");
+        cloudConfiguration.setApiVersion("v3");
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
         cloudConfiguration.setDelayBetweenInProgressDeploymentStatusPolling(5);
@@ -90,8 +91,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
         // Kubernetes Configuration
         KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
-        kubernetesConfiguration.setImports(Lists.newArrayList(
-                "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
+        kubernetesConfiguration.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/fabric-plugin/" + CFY_FABRIC_VERSION + "/plugin.yaml",
                 "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml"));
         cloudConfiguration.setKubernetes(kubernetesConfiguration);
 

@@ -5,9 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,11 +13,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import com.google.common.base.Function;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import alien4cloud.paas.cloudify3.model.Blueprint;
+import alien4cloud.paas.cloudify3.model.ListBlueprintResponse;
+import alien4cloud.paas.cloudify3.model.ListResponse;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.utils.FileUtil;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -37,7 +40,8 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("List blueprint");
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), Blueprint[].class));
+        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListBlueprintResponse.class)),
+                (Function<ListBlueprintResponse, Blueprint[]>) ListResponse::getItems);
     }
 
     @SneakyThrows

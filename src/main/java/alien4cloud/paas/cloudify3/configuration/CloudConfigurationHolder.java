@@ -38,6 +38,7 @@ public class CloudConfigurationHolder {
     private AuthenticationInterceptor authenticationInterceptor;
 
     @Resource
+    @Setter
     private SSLContextManager sslContextManager;
 
     private List<ICloudConfigurationChangeListener> listeners = Lists.newArrayList();
