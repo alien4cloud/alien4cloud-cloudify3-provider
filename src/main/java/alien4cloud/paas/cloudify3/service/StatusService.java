@@ -53,7 +53,7 @@ import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
-import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -433,7 +433,7 @@ public class StatusService {
                         Map<String, String> attributes = runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap);
                         instanceInformation.setAttributes(attributes);
                         String masterIP = (String) attributes.get("master_ip");
-                        if (ToscaUtils.isFromType("cloudify.kubernetes.Microservice", node.getType(), Lists.newArrayList(node.getTypeHierarchy()))
+                        if (ToscaNormativeUtil.isFromType("cloudify.kubernetes.Microservice", node.getType(), Lists.newArrayList(node.getTypeHierarchy()))
                                 && attributes.containsKey("service")) {
                             String serviceJson = attributes.get("service");
                             if (StringUtils.isNotBlank(serviceJson)) {

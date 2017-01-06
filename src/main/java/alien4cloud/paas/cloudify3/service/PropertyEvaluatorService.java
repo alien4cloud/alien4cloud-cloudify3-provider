@@ -19,7 +19,7 @@ import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.tosca.ToscaUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 
 @Component("property-evaluator-service")
@@ -137,7 +137,7 @@ public class PropertyEvaluatorService {
                                 // FIXME workaround. If the property is 'ip_address', change it to 'ip' (cfy3)
                                 if("ip_address".equalsIgnoreCase(propertyName)) {
                                     PaaSNodeTemplate target = allNodes.get(relationshipTemplate.getTemplate().getTarget());
-                                    if(ToscaUtils.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, target.getIndexedToscaElement())){
+                                    if(ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, target.getIndexedToscaElement())){
                                         propertyName = "clusterIP";
                                     } else {
                                         propertyName = "ip";

@@ -12,9 +12,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import alien4cloud.orchestrators.locations.services.LocationResourceTypes;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.NormativeComputeConstants;
 import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.types.NodeType;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -37,7 +39,6 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.topology.TopologyUtils;
-import alien4cloud.tosca.ToscaUtils;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -340,7 +341,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public PaaSNodeTemplate getHost(PaaSNodeTemplate node) {
-        return ToscaUtils.getMandatoryHostTemplate(node);
+        return PaaSUtils.getMandatoryHostTemplate(node);
     }
 
     public boolean relationshipHasDeploymentArtifacts(PaaSRelationshipTemplate relationshipTemplate) {
@@ -469,18 +470,47 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     /**
-     * In the node properties, isolate those related to cloudify type inherited properties.
+     * In the node properties, isolate:
+     * <ul>
+     *     <li>those related to cloudify type inherited properties.</li>
+     *     <li>properties that can be serailized as string (for kubernetes)</li>
+     * </ul>
      */
-    public Map<String, AbstractPropertyValue> isolateCloudifyProperties(PaaSNodeTemplate node) {
+    public Map<String, AbstractPropertyValue> getCloudifyAndSimpleProperties(PaaSNodeTemplate node) {
         String cloudifyType = this.getDerivedFromType(node.getIndexedToscaElement().getDerivedFrom());
         Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
+        Map<String, String> propertyValuesAsString = this.getNodeProperties(node);
         Map<String, AbstractPropertyValue> result = Maps.newHashMap();
         if (cloudifyProperies != null) {
             for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
                 if (cloudifyProperies.contains(e.getKey())) {
+                    // for custom native nodes we add inherited cloudify properties
+                    result.put(e.getKey(), e.getValue());
+                } else if (propertyValuesAsString.containsKey(e.getKey())) {
+                    // for kubernetes we add simple scalar properties
+                    result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * In the node propertiy definitions, exclude those inherited from cloudify type.
+     */
+    public Map<String, PropertyDefinition> excludeCloudifyPropertyDefinitions(NodeType nodeType) {
+        String cloudifyType = this.getDerivedFromType(nodeType.getDerivedFrom());
+        Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
+
+        Map<String, PropertyDefinition> result = Maps.newHashMap();
+        if (cloudifyProperies != null && !cloudifyProperies.isEmpty()) {
+            for (Entry<String, PropertyDefinition> e : nodeType.getProperties().entrySet()) {
+                if (!cloudifyProperies.contains(e.getKey())) {
                     result.put(e.getKey(), e.getValue());
                 }
             }
+        } else {
+            result.putAll(nodeType.getProperties());
         }
         return result;
     }
@@ -499,7 +529,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isCompute(PaaSNodeTemplate node) {
-        return ToscaUtils.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+        return ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
     }
 
 }

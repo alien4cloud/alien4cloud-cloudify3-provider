@@ -32,7 +32,7 @@ node_types:
 #foreach($nonNativeType in ${deployment.nonNativesTypes})
   ${nonNativeType.elementId}:
     derived_from: $util.nonNative.getDerivedFromType($nonNativeType.derivedFrom)
-#set( $nodeProperties = $nonNativeType.getProperties() )
+#set( $nodeProperties = $util.nonNative.excludeCloudifyPropertyDefinitions($nonNativeType) )
 #if($util.nonNative.mapHasEntries($nodeProperties))
     properties:
 #foreach($property in $nodeProperties.entrySet())
@@ -45,7 +45,7 @@ node_types:
 #if($property.value.default)
         default: $property.value.default.value
 #end## if($property.value.defaultValue)
-        required: $property.value.required
+        required: false
 #end## foreach($property in $nodeProperties.entrySet())
 #end## if($util.nonNative.mapHasEntries($nodeProperties))
 #end## foreach

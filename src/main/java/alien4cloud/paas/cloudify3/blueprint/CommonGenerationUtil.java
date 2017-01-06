@@ -5,7 +5,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
-import alien4cloud.tosca.ToscaUtils;
+
+import alien4cloud.tosca.ToscaNormativeUtil;
+
 import org.apache.commons.lang3.StringUtils;
 
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
@@ -56,7 +58,7 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement){
-       return ToscaUtils.isFromType(type, indexedInheritableToscaElement);
+       return ToscaNormativeUtil.isFromType(type, indexedInheritableToscaElement);
     }
 
     public boolean doesVelocityFileExists(String velocityFilePath) {
