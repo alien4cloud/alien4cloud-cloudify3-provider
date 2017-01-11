@@ -7,6 +7,8 @@ import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -44,7 +46,7 @@ public abstract class AbstractEventClient extends AbstractClient {
         request.put("_offset", from);
         request.put("_size", batchSize);
         request.put("_sort", "-@timestamp");
-        if (executionId != null && !executionId.isEmpty()) {
+        if (StringUtils.isNotBlank(executionId)) {
             request.put("context.execution_id", executionId);
         }
         request.putAll(createEventsQuery());

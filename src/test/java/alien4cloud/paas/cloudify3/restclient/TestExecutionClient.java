@@ -1,17 +1,29 @@
 package alien4cloud.paas.cloudify3.restclient;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+
+import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import alien4cloud.paas.cloudify3.model.CloudifyLifeCycle;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
 import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.service.EventService;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -95,8 +107,10 @@ public class TestExecutionClient extends AbstractRestClientTest {
             sleep();
             Assert.assertNotNull(executionClient.read(installExecution.getId()));
             waitForAllExecutionToFinish(blueprintId);
+
             Event[] installEvents = deploymentEventClient.getBatch(installExecution.getId(), installExecution.getCreatedAt(), 0, Integer.MAX_VALUE);
             Assert.assertTrue(installEvents.length > 0);
+            assertLifecycleEvents(installEvents, CloudifyLifeCycle.CREATE, CloudifyLifeCycle.START);
 
             Node[] nodes = nodeClient.list(blueprintId, null);
             Assert.assertEquals(1, nodes.length);
@@ -112,11 +126,27 @@ public class TestExecutionClient extends AbstractRestClientTest {
             Assert.assertNotNull(nodeInstance.getRuntimeProperties());
             Assert.assertFalse(nodeInstance.getRuntimeProperties().isEmpty());
         } finally {
-            executionClient.start(blueprintId, "uninstall", null, false, false);
-            sleep();
-            waitForAllExecutionToFinish(blueprintId);
-            deploymentClient.delete(blueprintId);
-            blueprintClient.delete(blueprintId);
+            processUninstall(blueprintId);
+        }
+    }
+
+    private void processUninstall(String blueprintId) {
+        Execution uninstallExecution = executionClient.start(blueprintId, "uninstall", null, false, false);
+        sleep();
+        Assert.assertNotNull(executionClient.read(uninstallExecution.getId()));
+        waitForAllExecutionToFinish(blueprintId);
+        Event[] events = deploymentEventClient.getBatch(uninstallExecution.getId(), uninstallExecution.getCreatedAt(), 0, Integer.MAX_VALUE);
+        deploymentClient.delete(blueprintId);
+        blueprintClient.delete(blueprintId);
+        Assert.assertTrue(events.length > 0);
+        assertLifecycleEvents(events, CloudifyLifeCycle.STOP, CloudifyLifeCycle.DELETE);
+    }
+
+    private void assertLifecycleEvents(Event[] events, String... lifeCycles) {
+        // System.out.println(ArrayUtils.toString(events));
+        List<Event> list = Lists.newArrayList(events);
+        for (String lifeCycle : lifeCycles) {
+            Assert.assertEquals(1, list.stream().filter(event -> Objects.equals(event.getContext().getOperation(), lifeCycle)).count());
         }
     }
 }

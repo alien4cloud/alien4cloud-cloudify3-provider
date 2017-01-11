@@ -9,5 +9,5 @@ node_templates:
     type: cloudify.aws.nodes.Instance
     properties:
       image_id: ami-4c4b003b
-      instance_type: m3.medium
+      instance_type: t2.micro
       install_agent: false

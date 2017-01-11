@@ -19,7 +19,7 @@ public class TestBlueprintClient extends AbstractRestClientTest {
     }
 
     @Test
-    public void testDeployment() {
+    public void test() {
         String blueprintId = "testRest";
         Blueprint[] blueprints = blueprintClient.list();
         try {
