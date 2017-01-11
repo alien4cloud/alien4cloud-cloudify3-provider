@@ -115,7 +115,15 @@ plugins:
 
 workflows:
 #foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})
-  a4c_${wfEntry.key}: custom_wf_plugin.plugin.workflows.a4c_${wfEntry.key}
+  a4c_${wfEntry.key}:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_${wfEntry.key}
+    parameters:
+      cloudify_user:
+        description: The user to connect to Cloudify REST API
+        default:
+      cloudify_password:
+        description: The password to connect to Cloudify REST API
+        default:
 #end
   a4c_scale:
     mapping: custom_wf_plugin.plugin.workflows.a4c_scale
@@ -137,6 +145,12 @@ workflows:
         default: true
       ignore_failure:
         default: false
+      cloudify_user:
+        description: The user to connect to Cloudify REST API
+        default:
+      cloudify_password:
+        description: The password to connect to Cloudify REST API
+        default:
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:
@@ -145,3 +159,9 @@ workflows:
       diagnose_value:
         description: Diagnosed reason of failure
         default: Not provided
+      cloudify_user:
+        description: The user to connect to Cloudify REST API
+        default:
+      cloudify_password:
+        description: The password to connect to Cloudify REST API
+        default:

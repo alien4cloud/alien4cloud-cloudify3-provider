@@ -200,11 +200,13 @@ public class CustomWorkflowService extends RuntimeService {
                 + nodeInstance.getNodeId();
     }
 
-    public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta) {
+    public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta, String cloudifyUsername, String cloudifyPassword) {
         Map<String, Object> scaleParameters = Maps.newHashMap();
         scaleParameters.put("node_id", nodeId);
         scaleParameters.put("delta", delta);
         scaleParameters.put("scale_compute", true);
+        scaleParameters.put("cloudify_user", cloudifyUsername);
+        scaleParameters.put("cloudify_password", cloudifyPassword);
         return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
     }
 

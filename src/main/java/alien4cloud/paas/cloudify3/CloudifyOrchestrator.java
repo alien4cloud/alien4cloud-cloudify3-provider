@@ -211,7 +211,9 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback callback) {
-        FutureUtil.associateFutureToPaaSCallback(customWorkflowService.scale(deploymentContext.getDeploymentPaaSId(), nodeTemplateId, instances), callback);
+        CloudConfiguration config = cloudConfigurationHolder.getConfiguration();
+        ListenableFuture scale = customWorkflowService.scale(deploymentContext.getDeploymentPaaSId(), nodeTemplateId, instances, config.getUserName(), config.getPassword());
+        FutureUtil.associateFutureToPaaSCallback(scale, callback);
     }
 
     @Override
