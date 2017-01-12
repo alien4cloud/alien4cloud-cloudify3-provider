@@ -88,7 +88,8 @@ def check_liveness(nodes_to_monitor,depl_id):
                       update_nodes_tree_state(c, depl_id, instance, 'error')
                       params = {'node_instance_id': instance.id}
                       if cloudify_credentials:
-                          params.update(cloudify_credentials)
+                          cloudify_token = c.tokens.get();
+                          params['cloudify_token'] = cloudify_token['value']
                       log ('Calling Auto-healing workflow for container instance {0}'.format(instance.id))
                       c.executions.start(depl_id, 'a4c_heal', params)
                   else:
