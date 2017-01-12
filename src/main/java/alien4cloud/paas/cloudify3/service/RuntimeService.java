@@ -27,6 +27,11 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public abstract class RuntimeService {
+
+    public static final String CLOUDIFY_USER_KEY = "cloudify_user";
+    public static final String CLOUDIFY_PASS_KEY = "cloudify_password";
+    public static final String CLOUDIFY_TOKEN_KEY = "cloudify_token";
+
     @Resource
     private NodeInstanceClient nodeInstanceClient;
 

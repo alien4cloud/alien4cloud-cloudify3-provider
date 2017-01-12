@@ -10,6 +10,8 @@ import javax.annotation.Resource;
 
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.model.Token;
+import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
@@ -40,9 +42,6 @@ import lombok.extern.slf4j.Slf4j;
 public class DeploymentService extends RuntimeService {
 
     @Resource
-    private CloudConfigurationHolder cloudConfigurationHolder;
-
-    @Resource
     private DeploymentClient deploymentClient;
 
     @Resource
@@ -53,6 +52,9 @@ public class DeploymentService extends RuntimeService {
 
     @Resource
     private StatusService statusService;
+
+    @Resource
+    private TokenClient tokenClient;
 
     /**
      * Deploy a topology to cloudify.
@@ -107,8 +109,7 @@ public class DeploymentService extends RuntimeService {
         ListenableFuture<Deployment> createdDeployment = waitForDeploymentExecutionsFinish(creatingDeployment);
 
         // Trigger the install workflow and then wait until the install workflow is completed
-        CloudConfiguration config = cloudConfigurationHolder.getConfiguration();
-        AsyncFunction<Deployment, Execution> installExecutionFunction = installExecutionFunction(config.getUserName(), config.getPassword(), alienDeployment.getDeploymentPaaSId());
+        AsyncFunction<Deployment, Execution> installExecutionFunction = installExecutionFunction(alienDeployment.getDeploymentPaaSId());
         ListenableFuture<Execution> installingExecution = Futures.transform(createdDeployment, installExecutionFunction);
         ListenableFuture<Deployment> installedExecution = waitForExecutionFinish(installingExecution);
 
@@ -135,15 +136,15 @@ public class DeploymentService extends RuntimeService {
      * Wraps the deployment client asyncCreate operation into an AsyncFunction so it can be chained using Futures.transform and uses the Blueprint as a
      * parameter once available.
      */
-    private AsyncFunction<Deployment, Execution> installExecutionFunction(final String cloudifyUsername, final String cloudifyPassword, final String paasDeploymentId) {
+    private AsyncFunction<Deployment, Execution> installExecutionFunction(final String paasDeploymentId) {
         return new AsyncFunction<Deployment, Execution>() {
             @Override
             public ListenableFuture<Execution> apply(Deployment deployment) throws Exception {
                 // now that the create_deployment_environment has been terminated we switch to DEPLOYMENT_IN_PROGRESS state
                 // so from now, undeployment is possible
                 Map<String, Object> installParameters = Maps.newHashMap();
-                installParameters.put("cloudify_user", cloudifyUsername);
-                installParameters.put("cloudify_password", cloudifyPassword);
+                Token token = tokenClient.get();
+                installParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
                 statusService.registerDeploymentStatus(paasDeploymentId, DeploymentStatus.DEPLOYMENT_IN_PROGRESS);
                 return executionClient.asyncStart(deployment.getId(), Workflow.INSTALL, installParameters, false, false);
             }
@@ -186,8 +187,7 @@ public class DeploymentService extends RuntimeService {
         // Cancel all running executions for this deployment.
         ListenableFuture<NodeInstance[]> cancelRunningExecutionsFuture = cancelAllRunningExecutions(deploymentContext.getDeploymentPaaSId());
         // Once all executions are cancelled we start the un-deployment workflow.
-        CloudConfiguration config = cloudConfigurationHolder.getConfiguration();
-        AsyncFunction<NodeInstance[], Deployment> uninstallFunction = uninstallFunction(config.getUserName(), config.getPassword(), deploymentContext);
+        AsyncFunction<NodeInstance[], Deployment> uninstallFunction = uninstallFunction(deploymentContext);
         ListenableFuture<Deployment> uninstalled = Futures.transform(cancelRunningExecutionsFuture, uninstallFunction);
         // Delete the deployment from cloudify.
         ListenableFuture<?> deletedDeployment = Futures.transform(uninstalled, deleteDeploymentFunction(deploymentContext));
@@ -200,15 +200,15 @@ public class DeploymentService extends RuntimeService {
         return undeploymentFuture;
     }
 
-    private AsyncFunction<NodeInstance[], Deployment> uninstallFunction(final String cloudifyUsername, final String cloudifyPassword, final PaaSDeploymentContext deploymentContext) {
+    private AsyncFunction<NodeInstance[], Deployment> uninstallFunction(final PaaSDeploymentContext deploymentContext) {
         return new AsyncFunction<NodeInstance[], Deployment>() {
             @Override
             public ListenableFuture<Deployment> apply(NodeInstance[] livingNodes) throws Exception {
                 if (livingNodes != null && livingNodes.length > 0) {
                     // trigger the uninstall workflow only if there is some node instances.
                     Map<String, Object> uninstallParameters = Maps.newHashMap();
-                    uninstallParameters.put("cloudify_user", cloudifyUsername);
-                    uninstallParameters.put("cloudify_password", cloudifyPassword);
+                    Token token = tokenClient.get();
+                    uninstallParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
                     ListenableFuture<Execution> triggeredUninstallWorkflow = executionClient.asyncStart(deploymentContext.getDeploymentPaaSId(),
                             Workflow.UNINSTALL, uninstallParameters, false, false);
                     // ensure that the workflow execution is finished.

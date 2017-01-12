@@ -6,6 +6,8 @@ import java.util.Map.Entry;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.model.Token;
+import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.Interface;
@@ -64,6 +66,10 @@ public class CustomWorkflowService extends RuntimeService {
 
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
+
+    @Resource
+    private TokenClient tokenClient;
+
     @Inject
     private ArtifactRegistryService artifactRegistryService;
 
@@ -200,13 +206,13 @@ public class CustomWorkflowService extends RuntimeService {
                 + nodeInstance.getNodeId();
     }
 
-    public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta, String cloudifyUsername, String cloudifyPassword) {
+    public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta) {
+        Token token = tokenClient.get();
         Map<String, Object> scaleParameters = Maps.newHashMap();
         scaleParameters.put("node_id", nodeId);
         scaleParameters.put("delta", delta);
         scaleParameters.put("scale_compute", true);
-        scaleParameters.put("cloudify_user", cloudifyUsername);
-        scaleParameters.put("cloudify_password", cloudifyPassword);
+        scaleParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
     }
 

@@ -255,20 +255,20 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
     sequence.add(build_wf_event_task(instance, step_id, "in"))
     relationship_count = count_relationships(instance)
     if operation_fqname == 'cloudify.interfaces.lifecycle.start':
-        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token}))
         if _is_host_node_instance(instance):
             sequence.add(*host_post_start(ctx, instance))
-        sequence.add(instance.execute_operation('cloudify.interfaces.monitoring.start', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+        sequence.add(instance.execute_operation('cloudify.interfaces.monitoring.start', kwargs={'cloudify_token': custom_context.token}))
         as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
         host_instance = None
         if relationship_count > 0 or len(as_target_relationships) > 0:
             for relationship in instance.relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
-                    sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                    sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_token': custom_context.token}))
                     # if the target of the relation is not in modified instances, we should call the target.add_source
                     #if relationship.target_node_instance.id not in custom_context.modified_instance_ids:
-                    sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                    sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_token': custom_context.token}))
                     if 'cloudify.nodes.Volume' in instance.node.type_hierarchy:
                         ctx.logger.info("[MAPPING] instance={} hierarchy={}".format(instance.id, instance.node.type_hierarchy))
                         host_instance = __get_host(ctx, relationship.target_node_instance)
@@ -276,9 +276,9 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if relationship.node_instance.id not in custom_context.modified_instance_ids:
-                        sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                        sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_token': custom_context.token}))
                     if relationship.node_instance.id not in custom_context.modified_instance_ids:
-                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.establish', kwargs={'cloudify_token': custom_context.token}))
         sequence.add(instance.send_event("Start monitoring on node '{0}' instance '{1}'".format(node_id, instance.id)))
         if host_instance is not None and host_instance.id == instance.id:
             ctx.logger.info("[MAPPING] Do nothing it is the same instance: host_instance.id={} instance.id={}".format(host_instance.id, instance.id))
@@ -289,10 +289,10 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 if 'cloudify.azure.nodes.storage.DataDisk' in relationship.target_node_instance.node.type_hierarchy and 'alien4cloud.mapping.device.execute' in instance.node.operations:
                     volume_instance_id=relationship.target_id
                     sequence.add(instance.send_event("Updating device attribute for instance {} and volume {} (Azure)".format(instance.id, volume_instance_id)))
-                    sequence.add(instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': volume_instance_id, 'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                    sequence.add(instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': volume_instance_id, 'cloudify_token': custom_context.token}))
         elif host_instance is not None and 'alien4cloud.mapping.device.execute' in host_instance.node.operations:
             sequence.add(host_instance.send_event("Updating device attribute for instance {} and volume {}".format(host_instance.id, instance.id)))
-            sequence.add(host_instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': instance.id, 'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+            sequence.add(host_instance.execute_operation("alien4cloud.mapping.device.execute", kwargs={'volume_instance_id': instance.id, 'cloudify_token': custom_context.token}))
     elif operation_fqname == 'cloudify.interfaces.lifecycle.configure':
         as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
         if relationship_count > 0 or len(as_target_relationships) > 0:
@@ -303,18 +303,18 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                        preconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
                         has_preconfigure_tasks = True
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'target', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                        preconfigure_tasks.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
                         has_preconfigure_tasks = True
             if has_preconfigure_tasks:
                 sequence.add(forkjoin_sequence(graph, preconfigure_tasks, instance, "preconf for {0}".format(instance.id)))
         # the configure operation call itself
-        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token}))
         if relationship_count > 0 or len(as_target_relationships) > 0:
             has_postconfigure_tasks = False
             postconfigure_tasks = ForkjoinWrapper(graph)
@@ -323,13 +323,13 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'post'):
-                        postconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+                        postconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_token': custom_context.token}))
                         has_postconfigure_tasks = True
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'target', 'post'):
-                        task = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+                        task = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_token': custom_context.token})
                         _set_send_node_event_on_error_handler(task, instance, "Error occurred while postconfiguring node as target for relationship {0} - ignoring...".format(relationship))
                         postconfigure_tasks.add(task)
                         has_postconfigure_tasks = True
@@ -343,7 +343,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
     elif operation_fqname == 'cloudify.interfaces.lifecycle.stop':
         if _is_host_node_instance(instance):
             sequence.add(*host_pre_stop(instance))
-        task = instance.execute_operation(operation_fqname, kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+        task = instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token})
         _set_send_node_event_on_error_handler(task, instance, "Error occurred while stopping node - ignoring...")
         sequence.add(task)
         as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
@@ -352,32 +352,32 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
             for relationship in instance.relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
-                    unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+                    unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_token': custom_context.token})
                     _set_send_node_event_on_error_handler(unlink_task_source, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                     sequence.add(unlink_task_source)
                     # call unlink on the target of the relationship
-                    unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+                    unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_token': custom_context.token})
                     _set_send_node_event_on_error_handler(unlink_task_target, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                     sequence.add(unlink_task_target)
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if relationship.node_instance.id not in custom_context.modified_instance_ids:
-                        unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+                        unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_token': custom_context.token})
                         _set_send_node_event_on_error_handler(unlink_task_source, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                         sequence.add(unlink_task_source)
-                        unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+                        unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink', kwargs={'cloudify_token': custom_context.token})
                         _set_send_node_event_on_error_handler(unlink_task_target, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                         sequence.add(unlink_task_target)
 
 
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
-        task = instance.execute_operation(operation_fqname, kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password})
+        task = instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token})
         _set_send_node_event_on_error_handler(task, instance, "Error occurred while deleting node - ignoring...")
         sequence.add(task)
     else:
         # the default behavior : just do the job
-        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_user': custom_context.user, 'cloudify_password': custom_context.password}))
+        sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token}))
     sequence.add(build_wf_event_task(instance, step_id, "ok"))
     return sequence
 
@@ -614,7 +614,7 @@ class TaskSequenceWrapper(object):
 
 
 class CustomContext(object):
-    def __init__(self, ctx, modified_instances, modified_and_related_nodes, cloudify_user, cloudify_password):
+    def __init__(self, ctx, modified_instances, modified_and_related_nodes, cloudify_token):
         # this set to store pre/post conf source/target operation that have been already called
         # we'll use a string like sourceId#targetId#pre|post#source|target
         self.executed_operation = set()
@@ -630,8 +630,7 @@ class CustomContext(object):
         # contains the modifed nodes and the related nodes
         self.modified_and_related_nodes = modified_and_related_nodes
         self.__build_relationship_targets(ctx)
-        self.user = cloudify_user
-        self.password = cloudify_password
+        self.token = cloudify_token
 
     '''
     Given an instance array, build a map where:
