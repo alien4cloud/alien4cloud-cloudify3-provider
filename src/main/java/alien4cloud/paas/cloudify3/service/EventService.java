@@ -279,6 +279,7 @@ public class EventService {
                 pwme.setSubworkflow(eventAlienWorkflowStarted.getSubworkflow());
                 alienEvent = pwme;
             } catch (IOException e) {
+                log.warn("Problem processing workflow started event " + cloudifyEvent.getId(), e);
                 return null;
             }
             break;
@@ -287,12 +288,12 @@ public class EventService {
             objectMapper = new ObjectMapper();
             objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
             try {
-                EventAlienWorkflow eventAlienPersistent = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflow.class);
+                EventAlienWorkflow eventAlienWorkflow = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflow.class);
                 PaaSWorkflowStepMonitorEvent e = new PaaSWorkflowStepMonitorEvent();
                 e.setNodeId(cloudifyEvent.getContext().getNodeName());
                 e.setInstanceId(cloudifyEvent.getContext().getNodeId());
-                e.setStepId(eventAlienPersistent.getStepId());
-                e.setStage(eventAlienPersistent.getStage());
+                e.setStepId(eventAlienWorkflow.getStepId());
+                e.setStage(eventAlienWorkflow.getStage());
                 String workflowId = cloudifyEvent.getContext().getWorkflowId();
                 e.setExecutionId(cloudifyEvent.getContext().getExecutionId());
                 if (workflowId.startsWith(Workflow.A4C_PREFIX)) {
@@ -301,6 +302,7 @@ public class EventService {
                 e.setWorkflowId(cloudifyEvent.getContext().getWorkflowId());
                 alienEvent = e;
             } catch (IOException e) {
+                log.warn("Problem processing workflow event " + cloudifyEvent.getId(), e);
                 return null;
             }
             break;
