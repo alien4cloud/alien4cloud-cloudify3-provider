@@ -1,17 +1,18 @@
 from cloudify import ctx
+from cloudify import utils
 from cloudify.exceptions import NonRecoverableError
 from cloudify.state import ctx_parameters as inputs
-import subprocess
-import os
-import re
-import sys
-import time
-import threading
-import platform
-import base64
-from StringIO import StringIO
 from cloudify_rest_client import CloudifyClient
-from cloudify import utils
+from StringIO import StringIO
+
+import base64
+import os
+import platform
+import re
+import subprocess
+import sys
+import threading
+import time
 
 headers = None
 if inputs['cloudify_token']:
@@ -22,9 +23,6 @@ if 'MANAGER_REST_PROTOCOL' in os.environ and os.environ['MANAGER_REST_PROTOCOL']
 else:
     client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), headers=headers)
 
-def convert_env_value_to_string(envDict):
-    for key, value in envDict.items():
-        envDict[str(key)] = str(envDict.pop(key))
 
 def get_attribute_user(ctx):
     if get_attribute(ctx, 'user'):

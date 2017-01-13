@@ -136,7 +136,7 @@ public class CustomWorkflowService extends RuntimeService {
             // as we do not have the hand on the execute_operation wf, we consider a null parameter value to be an empty string
             replaceNullWithEmptyString(inputParameterValues);
         }
-
+        workflowParameters.put(CLOUDIFY_TOKEN_KEY, tokenClient.get().getValue());
         return workflowParameters;
     }
 
