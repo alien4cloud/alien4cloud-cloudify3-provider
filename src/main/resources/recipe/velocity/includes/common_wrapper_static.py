@@ -14,8 +14,8 @@ from cloudify_rest_client import CloudifyClient
 from cloudify import utils
 
 headers = None
-if inputs['cloudify_user']:
-    headers = {'Authorization': 'Basic ' + base64.b64encode(inputs['cloudify_user'] + ':' + inputs['cloudify_password'])}
+if inputs['cloudify_token']:
+    headers = {'Authentication-Token': inputs['cloudify_token']}
 
 if 'MANAGER_REST_PROTOCOL' in os.environ and os.environ['MANAGER_REST_PROTOCOL'] == "https":
     client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), protocol='https', trust_all=True, headers=headers)

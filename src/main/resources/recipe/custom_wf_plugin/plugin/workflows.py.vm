@@ -62,11 +62,11 @@ def ${stage}_host(ctx, graph, custom_context, compute):
 #end## foreach standardWorkflows
 #foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})
 @workflow
-def a4c_${wfEntry.key}(cloudify_user, cloudify_password, **kwargs):
+def a4c_${wfEntry.key}(cloudify_token, **kwargs):
     graph = ctx.graph_mode()
     nodes = _get_all_nodes(ctx)
     instances = _get_all_nodes_instances(ctx)
-    custom_context = CustomContext(ctx, instances, nodes, cloudify_user, cloudify_password)
+    custom_context = CustomContext(ctx, instances, nodes, cloudify_token)
     ctx.internal.send_workflow_event(event_type='a4c_workflow_started', message=build_pre_event(WfStartEvent('${wfEntry.key}')))
     _a4c_${wfEntry.key}(ctx, graph, custom_context)
     return graph.execute()
@@ -111,7 +111,7 @@ def _get_scaling_group_name_from_node_id(ctx, node_id):
 
 
 @workflow
-def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_user, cloudify_password, **kwargs):
+def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_token, **kwargs):
     delta = int(delta)
     scalable_entity_name = _get_scaling_group_name_from_node_id(ctx, node_id)
     scaling_group = ctx.deployment.scaling_groups.get(scalable_entity_name)
@@ -152,7 +152,7 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_user, cloudify_passwo
             graph = ctx.graph_mode()
             ctx.internal.send_workflow_event(event_type='a4c_workflow_started',
                                              message=build_pre_event(WfStartEvent('scale', 'install')))
-            custom_context = CustomContext(ctx, added, added_and_related, cloudify_user, cloudify_password)
+            custom_context = CustomContext(ctx, added, added_and_related, cloudify_token)
             install_host(ctx, graph, custom_context, node_id)
             try:
                 graph.execute()
@@ -162,7 +162,7 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_user, cloudify_passwo
                 for task in graph.tasks_iter():
                     graph.remove_task(task)
                 try:
-                    custom_context = CustomContext(ctx, added, added_and_related, cloudify_user, cloudify_password)
+                    custom_context = CustomContext(ctx, added, added_and_related, cloudify_token)
                     uninstall_host(ctx, graph, custom_context, scalable_entity_name)
                     graph.execute()
                 except:
@@ -175,7 +175,7 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_user, cloudify_passwo
             graph = ctx.graph_mode()
             ctx.internal.send_workflow_event(event_type='a4c_workflow_started',
                                              message=build_pre_event(WfStartEvent('scale', 'uninstall')))
-            custom_context = CustomContext(ctx, removed, removed_and_related, cloudify_user, cloudify_password)
+            custom_context = CustomContext(ctx, removed, removed_and_related, cloudify_token)
             uninstall_host(ctx, graph, custom_context, node_id)
             try:
                 graph.execute()
@@ -208,8 +208,7 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_user, cloudify_passwo
 def a4c_heal(
         ctx,
         node_instance_id,
-        cloudify_user,
-        cloudify_password,
+        cloudify_token,
         diagnose_value='Not provided',
         **kwargs):
     """Reinstalls the whole subgraph of the system topology
@@ -235,7 +234,7 @@ def a4c_heal(
       graph = ctx.graph_mode()
       ctx.internal.send_workflow_event(event_type='a4c_workflow_started',
                                                message=build_pre_event(WfStartEvent('heal', 'uninstall')))
-      custom_context = CustomContext(ctx, subgraph_node_instances, added_and_related, cloudify_user, cloudify_password)
+      custom_context = CustomContext(ctx, subgraph_node_instances, added_and_related, cloudify_token)
       uninstall_host(ctx, graph, custom_context, node_id)
       graph.execute()
     except:
@@ -245,7 +244,7 @@ def a4c_heal(
       graph.remove_task(task)
     ctx.internal.send_workflow_event(event_type='a4c_workflow_started',
                                              message=build_pre_event(WfStartEvent('heal', 'install')))
-    custom_context = CustomContext(ctx, subgraph_node_instances, added_and_related, cloudify_user, cloudify_password)
+    custom_context = CustomContext(ctx, subgraph_node_instances, added_and_related, cloudify_token)
     install_host(ctx, graph, custom_context, node_id)
     graph.execute()
 
