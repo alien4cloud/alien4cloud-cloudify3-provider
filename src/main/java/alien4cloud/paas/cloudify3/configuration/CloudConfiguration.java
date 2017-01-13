@@ -27,8 +27,10 @@ public class CloudConfiguration {
     @NotNull
     private LocationConfigurations locations;
 
+    @NotNull
     private String userName;
 
+    @NotNull
     @FormPropertyDefinition(type = "string", isPassword = true)
     private String password;
 
