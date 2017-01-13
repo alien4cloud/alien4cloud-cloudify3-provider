@@ -217,6 +217,8 @@ public class CustomWorkflowService extends RuntimeService {
     }
 
     public ListenableFuture launchWorkflow(String deploymentPaaSId, String workflowName, Map<String, Object> workflowParameters) {
+        Token token = tokenClient.get();
+        workflowParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.A4C_PREFIX + workflowName, workflowParameters, true, false));
     }
 

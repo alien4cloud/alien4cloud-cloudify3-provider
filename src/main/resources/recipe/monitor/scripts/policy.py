@@ -93,7 +93,7 @@ def check_liveness(nodes_to_monitor,depl_id):
                       log ('Calling Auto-healing workflow for container instance {0}'.format(instance.id))
                       c.executions.start(depl_id, 'a4c_heal', params)
                   else:
-                      log ('pendding executions on the deployment...waiting for their end before calling heal workfllow...')
+                      log ('pending executions on the deployment...waiting for the end before calling heal workflow...')
             except InfluxDBClientError as ee:
                 log ('DBClienterror {0}'.format(str(ee)), level='ERROR')
                 log ('instance id is {0}'.format(instance), level='ERROR')
