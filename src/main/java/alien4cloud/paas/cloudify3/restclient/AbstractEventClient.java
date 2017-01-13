@@ -45,7 +45,7 @@ public abstract class AbstractEventClient extends AbstractClient {
         }
         request.put("_offset", from);
         request.put("_size", batchSize);
-        request.put("_sort", "-@timestamp");
+        request.put("_sort", "@timestamp");
         if (StringUtils.isNotBlank(executionId)) {
             request.put("context.execution_id", executionId);
         }

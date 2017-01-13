@@ -1,13 +1,15 @@
 package alien4cloud.paas.cloudify3.service;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
-import alien4cloud.paas.cloudify3.restclient.NodeClient;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,11 +21,27 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import alien4cloud.paas.cloudify3.model.*;
+import alien4cloud.paas.cloudify3.model.CloudifyLifeCycle;
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.model.EventAlienPersistent;
+import alien4cloud.paas.cloudify3.model.EventAlienWorkflow;
+import alien4cloud.paas.cloudify3.model.EventAlienWorkflowStarted;
+import alien4cloud.paas.cloudify3.model.EventType;
+import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
+import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.restclient.DeploymentEventClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
+import alien4cloud.paas.model.PaaSInstancePersistentResourceMonitorEvent;
+import alien4cloud.paas.model.PaaSInstanceStateMonitorEvent;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.model.PaaSWorkflowMonitorEvent;
+import alien4cloud.paas.model.PaaSWorkflowStepMonitorEvent;
 import alien4cloud.utils.MapUtil;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,8 +52,10 @@ import lombok.extern.slf4j.Slf4j;
 public class EventService {
 
     @Resource
+    @Setter
     private DeploymentEventClient eventClient;
     @Resource
+    @Setter
     private NodeInstanceClient nodeInstanceClient;
     /**
      * Hold last event ids
@@ -88,10 +108,12 @@ public class EventService {
         Function<Event[], AbstractMonitorEvent[]> cloudify3ToAlienEventsAdapter = new Function<Event[], AbstractMonitorEvent[]>() {
             @Override
             public AbstractMonitorEvent[] apply(Event[] cloudifyEvents) {
+                log.debug("Polled events size: {}", cloudifyEvents.length);
                 // Convert cloudify events to alien events
                 List<Event> eventsAfterFiltering = Lists.newArrayList();
                 for (Event cloudifyEvent : cloudifyEvents) {
                     if (!lastEvents.contains(cloudifyEvent.getId())) {
+                        log.debug("Receiving event {}", cloudifyEvent.getId());
                         eventsAfterFiltering.add(cloudifyEvent);
                     } else if (log.isDebugEnabled()) {
                         log.debug("Filtering event " + cloudifyEvent.getId() + ", last events size " + lastEvents.size());
@@ -179,12 +201,12 @@ public class EventService {
             AbstractMonitorEvent alienEvent = toAlienEvent(cloudifyEvent);
             if (alienEvent != null) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Received event {}", cloudifyEvent);
+                    log.debug("Accepted after processing event {}", cloudifyEvent);
                 }
                 alienEvents.add(alienEvent);
             } else {
                 if (log.isDebugEnabled()) {
-                    log.debug("Filtered event {}", cloudifyEvent);
+                    log.debug("Filtered After processing event {}", cloudifyEvent.getId());
                 }
             }
         }
@@ -192,6 +214,16 @@ public class EventService {
     }
 
     private AbstractMonitorEvent toAlienEvent(Event cloudifyEvent) {
+
+        String alienDeploymentId = paaSDeploymentIdToAlienDeploymentIdMapping.get(cloudifyEvent.getContext().getDeploymentId());
+        if (alienDeploymentId == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
+                        cloudifyEvent.getId());
+            }
+            return null;
+        }
+
         AbstractMonitorEvent alienEvent;
         switch (cloudifyEvent.getEventType()) {
         case EventType.TASK_SUCCEEDED:
@@ -276,14 +308,6 @@ public class EventService {
             return null;
         }
         alienEvent.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getTimestamp()).getTimeInMillis());
-        String alienDeploymentId = paaSDeploymentIdToAlienDeploymentIdMapping.get(cloudifyEvent.getContext().getDeploymentId());
-        if (alienDeploymentId == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
-                        cloudifyEvent);
-            }
-            return null;
-        }
         alienEvent.setDeploymentId(alienDeploymentId);
         return alienEvent;
     }
