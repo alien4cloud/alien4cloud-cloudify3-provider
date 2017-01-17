@@ -15,6 +15,7 @@ public class DeploymentEventClient extends AbstractEventClient {
 
     protected Map<String, Object> createEventsQuery() {
         Map<String, Object> eventsQuery = Maps.newHashMap();
+        eventsQuery.put("type", "cloudify_event");
         eventsQuery.put("event_type",
                 new String[] { EventType.TASK_SUCCEEDED, EventType.A4C_PERSISTENT_EVENT, EventType.A4C_WORKFLOW_EVENT, EventType.A4C_WORKFLOW_STARTED });
         return eventsQuery;

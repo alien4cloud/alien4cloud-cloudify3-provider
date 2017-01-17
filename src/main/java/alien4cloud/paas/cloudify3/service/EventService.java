@@ -60,7 +60,7 @@ public class EventService {
     /**
      * Hold last event ids
      */
-    private Set<String> lastEvents;
+    private Set<String> lastEvents = Sets.newConcurrentHashSet();
     private long lastRequestedTimestamp;
 
     // TODO : May manage in a better manner this kind of state
@@ -84,12 +84,6 @@ public class EventService {
 
     public synchronized ListenableFuture<AbstractMonitorEvent[]> getEventsSince(final Date lastTimestamp, int batchSize) {
         // TODO Workaround as cloudify 3 seems do not respect appearance order of event based on timestamp
-        Date requestTimestamp = new Date(lastTimestamp.getTime());
-        if (lastEvents != null) {
-            requestTimestamp.setTime(requestTimestamp.getTime() - delay);
-        } else {
-            lastEvents = Sets.newConcurrentHashSet();
-        }
         // Process internal events
         final ListenableFuture<AbstractMonitorEvent[]> internalEvents = processInternalQueue(batchSize);
         if (internalEvents != null) {
@@ -101,9 +95,9 @@ public class EventService {
         // If the request is on the same timestamp then iterate from the last event size
         // TODO It's like a queue consumption and it's really ugly
         if (lastRequestedTimestamp == lastTimestamp.getTime()) {
-            eventsFuture = eventClient.asyncGetBatch(null, requestTimestamp, lastEvents.size(), batchSize);
+            eventsFuture = eventClient.asyncGetBatch(null, lastTimestamp, lastEvents.size(), batchSize);
         } else {
-            eventsFuture = eventClient.asyncGetBatch(null, requestTimestamp, 0, batchSize);
+            eventsFuture = eventClient.asyncGetBatch(null, lastTimestamp, 0, batchSize);
         }
         Function<Event[], AbstractMonitorEvent[]> cloudify3ToAlienEventsAdapter = new Function<Event[], AbstractMonitorEvent[]>() {
             @Override
@@ -151,7 +145,7 @@ public class EventService {
     }
 
     public synchronized String getDeploymentIdFromDeploymentPaaSId(String deploymentPaaSId) {
-        return paaSDeploymentIdToAlienDeploymentIdMapping.get(deploymentPaaSId);
+        return deploymentPaaSId == null ? null : paaSDeploymentIdToAlienDeploymentIdMapping.get(deploymentPaaSId);
     }
 
     /**
@@ -254,7 +248,7 @@ public class EventService {
                         // This is a workaround to ignore events from existing volumes especially on aws.
                         // Cloudify don't have a 'zone' runtime properties when using existing volumes.
                         // As it is existing volumes, we already has the persistent properties in A4C.
-                        // So we just ignore the event for conveniency
+                        // So we just ignore the event for convenience
                         log.warn("Ignore event. Couldn't find the key <{}> in the runtime properties of node instance <{}>", entry.getKey(), instance.getId());
                         return null;
                     }
