@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 import org.springframework.boot.actuate.autoconfigure.ManagementServerProperties;
@@ -37,7 +36,7 @@ public class PluginContextConfiguration {
     public RestTemplate restTemplate() {
         // Object mapper configuration
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
         MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
         jackson2HttpMessageConverter.setObjectMapper(objectMapper);

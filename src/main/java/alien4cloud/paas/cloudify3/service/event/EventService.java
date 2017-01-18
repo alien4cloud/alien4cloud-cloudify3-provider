@@ -1,11 +1,10 @@
-package alien4cloud.paas.cloudify3.service;
+package alien4cloud.paas.cloudify3.service.event;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
@@ -17,7 +16,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -30,6 +28,7 @@ import alien4cloud.paas.cloudify3.model.EventType;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
 import alien4cloud.paas.cloudify3.model.Workflow;
+import alien4cloud.paas.cloudify3.restclient.AbstractEventClient;
 import alien4cloud.paas.cloudify3.restclient.DeploymentEventClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.model.AbstractMonitorEvent;
@@ -49,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Component("cloudify-event-service")
 @Slf4j
-public class EventService {
+public class EventService extends AbstractEventService {
 
     @Resource
     @Setter
@@ -57,11 +56,6 @@ public class EventService {
     @Resource
     @Setter
     private NodeInstanceClient nodeInstanceClient;
-    /**
-     * Hold last event ids
-     */
-    private Set<String> lastEvents = Sets.newConcurrentHashSet();
-    private long lastRequestedTimestamp;
 
     // TODO : May manage in a better manner this kind of state
     private Map<String, String> paaSDeploymentIdToAlienDeploymentIdMapping = Maps.newConcurrentMap();
@@ -91,37 +85,14 @@ public class EventService {
             return internalEvents;
         }
         // Try to get events from cloudify
-        ListenableFuture<Event[]> eventsFuture;
-        // If the request is on the same timestamp then iterate from the last event size
-        // TODO It's like a queue consumption and it's really ugly
-        if (lastRequestedTimestamp == lastTimestamp.getTime()) {
-            eventsFuture = eventClient.asyncGetBatch(null, lastTimestamp, lastEvents.size(), batchSize);
-        } else {
-            eventsFuture = eventClient.asyncGetBatch(null, lastTimestamp, 0, batchSize);
-        }
+        ListenableFuture<Event[]> eventsFuture = getEvents(lastTimestamp, batchSize);
+
         Function<Event[], AbstractMonitorEvent[]> cloudify3ToAlienEventsAdapter = new Function<Event[], AbstractMonitorEvent[]>() {
             @Override
             public AbstractMonitorEvent[] apply(Event[] cloudifyEvents) {
                 log.debug("Polled events size: {}", cloudifyEvents.length);
                 // Convert cloudify events to alien events
-                List<Event> eventsAfterFiltering = Lists.newArrayList();
-                for (Event cloudifyEvent : cloudifyEvents) {
-                    if (!lastEvents.contains(cloudifyEvent.getId())) {
-                        log.debug("Receiving event {}", cloudifyEvent.getId());
-                        eventsAfterFiltering.add(cloudifyEvent);
-                    } else if (log.isDebugEnabled()) {
-                        log.debug("Filtering event " + cloudifyEvent.getId() + ", last events size " + lastEvents.size());
-                    }
-                }
-                if (lastRequestedTimestamp != lastTimestamp.getTime()) {
-                    // Only clear last events if the last requested timestamp has changed
-                    lastEvents.clear();
-                }
-                lastRequestedTimestamp = lastTimestamp.getTime();
-                for (Event cloudifyEvent : cloudifyEvents) {
-                    lastEvents.add(cloudifyEvent.getId());
-                }
-                List<AbstractMonitorEvent> alienEvents = toAlienEvents(eventsAfterFiltering);
+                List<AbstractMonitorEvent> alienEvents = toAlienEvents(Lists.newArrayList(cloudifyEvents));
                 return alienEvents.toArray(new AbstractMonitorEvent[alienEvents.size()]);
             }
         };
@@ -306,5 +277,10 @@ public class EventService {
         alienEvent.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getTimestamp()).getTimeInMillis());
         alienEvent.setDeploymentId(alienDeploymentId);
         return alienEvent;
+    }
+
+    @Override
+    protected AbstractEventClient getClient() {
+        return eventClient;
     }
 }

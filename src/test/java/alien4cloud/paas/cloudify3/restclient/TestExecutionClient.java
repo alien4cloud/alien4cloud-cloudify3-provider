@@ -21,7 +21,7 @@ import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
 import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.service.EventService;
+import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.model.AbstractMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;

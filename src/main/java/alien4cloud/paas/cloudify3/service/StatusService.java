@@ -46,6 +46,7 @@ import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.InstanceInformation;
