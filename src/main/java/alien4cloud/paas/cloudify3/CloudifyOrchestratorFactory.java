@@ -59,6 +59,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public CloudConfiguration getDefaultConfiguration() {
         CloudConfiguration cloudConfiguration = new CloudConfiguration();
         cloudConfiguration.setUrl("http://yourManagerIP");
+        cloudConfiguration.setUserName("username");
+        cloudConfiguration.setPassword("password");
         cloudConfiguration.setApiVersion("v3");
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
