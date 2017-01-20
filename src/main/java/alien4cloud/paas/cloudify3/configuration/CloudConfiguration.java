@@ -30,8 +30,7 @@ public class CloudConfiguration {
     @NotNull
     private String userName;
 
-    @NotNull
-    @FormPropertyDefinition(type = "string", isPassword = true)
+    @FormPropertyDefinition(type = "string", isPassword = true, isRequired = true)
     private String password;
 
     @NotNull
