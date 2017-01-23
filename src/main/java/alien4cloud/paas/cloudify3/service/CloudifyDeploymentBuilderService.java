@@ -82,7 +82,7 @@ public class CloudifyDeploymentBuilderService {
         Set<String> locationProvidedTypes = Sets.newHashSet();
         for (Location location : deploymentContext.getLocations().values()) {
             LocationResources locationResources = locationResourceService.getLocationResources(location);
-            locationProvidedTypes.addAll(locationResources.getNodeTypes().keySet());
+            locationProvidedTypes.addAll(locationResources.getProvidedTypes());
         }
 
         List<NodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(
