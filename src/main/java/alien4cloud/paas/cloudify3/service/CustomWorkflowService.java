@@ -6,8 +6,6 @@ import java.util.Map.Entry;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import alien4cloud.paas.cloudify3.model.Token;
-import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.Interface;
@@ -27,9 +25,11 @@ import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.model.Token;
 import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.function.FunctionEvaluator;
@@ -88,12 +88,18 @@ public class CustomWorkflowService extends RuntimeService {
             // operation can be null in case of operation only known at blueprint level
             inputParameters = operation.getInputParameters();
         }
+        // operation_kwargs --> process --> env
+        Map<String, Object> inputs = Maps.newHashMap();
+        workflowParameters.put("operation_kwargs", inputs);
+
+        // operation_kwargs --> cloudify_token
+        inputs.put(CLOUDIFY_TOKEN_KEY, tokenClient.get().getValue());
+
         if (MapUtils.isNotEmpty(inputParameters) || MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
-            Map<String, Object> inputs = Maps.newHashMap();
             Map<String, Object> process = Maps.newHashMap();
             Map<String, String> inputParameterValues = Maps.newHashMap();
+
             // operation_kwargs --> process --> env
-            workflowParameters.put("operation_kwargs", inputs);
             inputs.put("process", process);
             process.put("env", inputParameterValues);
             if (MapUtils.isNotEmpty(inputParameters)) {
@@ -136,7 +142,6 @@ public class CustomWorkflowService extends RuntimeService {
             // as we do not have the hand on the execute_operation wf, we consider a null parameter value to be an empty string
             replaceNullWithEmptyString(inputParameterValues);
         }
-        workflowParameters.put(CLOUDIFY_TOKEN_KEY, tokenClient.get().getValue());
         return workflowParameters;
     }
 
