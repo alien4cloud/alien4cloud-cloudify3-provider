@@ -73,7 +73,7 @@ node_types:
       instance_type:
         type: string
         default: ''
-      cloudify_agent:
+      agent_config:
         type: alien.datatypes.AgentConfig
         required: false
     attributes:
@@ -85,8 +85,16 @@ node_types:
     tags:
       _a4c_c3_derived_from: cloudify.aws.nodes.WindowsInstance
       _a4c_c3_prop_map: >
-        {"user": "cloudify_agent.user", "password": "cloudify_agent.password", "port": "cloudify_agent.port", "key_pair": null, "private_key_path": null}
+        {"user": "agent_config.user", "password": "agent_config.password", "port": "agent_config.port", "key_pair": null, "private_key_path": null, "use_password": "agent_config.use_password"}
     properties:
+      use_password:
+        type: boolean
+        required: true
+        description: |
+          Whether or not to generate a password for authentication.
+          If set to true, you might want to provide for keypair based authentication's informations.
+          If set to false, you MUST provide for a password for authentication.
+        default: true
       user:
         type: string
         required: true
@@ -102,13 +110,13 @@ node_types:
         default: 5985
       key_pair:
         type: string
-        required: true
+        required: false
         description: |
           The existing keypair's name on Amazon.
           The private key must be copied to the manager's machine (or manager's docker container) to the path defined in private_key_path
       private_key_path:
         type: string
-        required: true
+        required: false
         default: /root/.ssh/agent_key.pem
         description: |
           Path to the private key of the keypair defined in key_pair property on the manager's machine (or manager's docker container).

@@ -18,5 +18,3 @@ topology_template:
         user: cloudify
         password: Cl@ud1fy234!
         key_pair: mkv
-        cloudify_agent:
-          wait_started_timeout: 3600
