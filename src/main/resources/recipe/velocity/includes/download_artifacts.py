@@ -5,7 +5,7 @@ def download(child_rel_path, child_abs_path, download_dir):
     if not os.path.exists(new_file_dir):
         os.makedirs(new_file_dir)
     os.rename(artifact_downloaded_path, new_file)
-    ctx.logger.info('Downloaded artifact from path ' + child_abs_path + ', it\'s available now at ' + new_file)
+    ctx.logger.debug('Downloaded artifact from path ' + child_abs_path + ', it\'s available now at ' + new_file)
     return new_file
 
 
@@ -13,7 +13,7 @@ def download_artifacts(artifacts, download_dir):
     downloaded_artifacts = {}
     os.makedirs(download_dir)
     for artifact_name, artifact_ref in artifacts.items():
-        ctx.logger.info('Download artifact ' + artifact_name)
+        ctx.logger.debug('Download artifact ' + artifact_name)
         if isinstance(artifact_ref, basestring):
             downloaded_artifacts[artifact_name] = download(os.path.basename(artifact_ref), artifact_ref, download_dir)
         else:
