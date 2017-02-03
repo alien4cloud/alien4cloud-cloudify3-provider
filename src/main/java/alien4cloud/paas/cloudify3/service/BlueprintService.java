@@ -321,6 +321,9 @@ public class BlueprintService {
             podContext.put("pod_name", nonNative.getId().toLowerCase() + "-" + randomAlphanum);
             String shortenedName = util.getCommon().truncateString(nonNative.getId().toLowerCase(), 13);
             podContext.put("pod_service_name", shortenedName + "-" + randomAlphanum + "-svc"); // service name must be <=24 characters
+            // Tag
+            podContext.put("deployment_id", alienDeployment.getDeploymentId());
+            podContext.put("deployment_id_name", alienDeployment.getDeploymentPaaSId());
 
             // Generate pod file
             Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");

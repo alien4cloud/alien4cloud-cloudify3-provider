@@ -16,6 +16,8 @@ spec:
       name: ${pod_name}
       labels:
         app: ${pod_name}
+        a4c_id: ${deployment_id}
+        a4c_name: ${deployment_id_name}
     spec:
       containers:
       - name: ${pod_name}
