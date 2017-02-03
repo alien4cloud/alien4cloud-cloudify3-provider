@@ -1,4 +1,3 @@
-#set($pod_name=$dockerType.id.toLowerCase())
 #foreach( $capa in $dockerType.template.capabilities.values() )
 #if($capa.type=="alien.capabilities.endpoint.Docker")
 #set($dockerEndpoint=$capa)
