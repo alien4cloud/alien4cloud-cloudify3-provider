@@ -25,6 +25,7 @@ import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -311,10 +312,15 @@ public class BlueprintService {
                 }
             }
 
-            Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap" }, new Object[] { nonNative, envMap });
+            Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap", "util" }, new Object[] { nonNative, envMap, util });
             if (!envMap.isEmpty()) {
                 docker_envs.put(nonNative.getId(), envMap);
             }
+            // Pod name
+            String randomAlphanum = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
+            podContext.put("pod_name", nonNative.getId().toLowerCase() + "-" + randomAlphanum);
+            String shortenedName = util.getCommon().truncateString(nonNative.getId().toLowerCase(), 13);
+            podContext.put("pod_service_name", shortenedName + "-" + randomAlphanum + "-svc"); // service name must be <=24 characters
 
             // Generate pod file
             Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");
