@@ -319,6 +319,8 @@ public class BlueprintService {
             // Tag
             podContext.put("deployment_id", alienDeployment.getDeploymentId());
             podContext.put("deployment_id_name", alienDeployment.getDeploymentPaaSId());
+            // Add utils
+            podContext.put("util", util);
 
             // Generate pod file
             Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");

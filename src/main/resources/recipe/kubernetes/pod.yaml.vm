@@ -36,5 +36,22 @@ spec:
 #foreach( $var in $envMap.entrySet() )
         - name: $var.key
           value: '$var.value'
+#end## end foreach var in env
+#end## if env
+#if( $dockerType.template.properties["cpu_share"] || $dockerType.template.properties["mem_share"] )
+        resources:
+          limits:
+#if( $dockerType.template.properties["cpu_share"] )
+            cpu: "${dockerType.template.properties["cpu_share"].value}"
 #end
+#if( $dockerType.template.properties["mem_share"] )
+            memory: ${util.common.getValueInUnit($dockerType, "mem_share", "MB", true)}M
 #end
+          requests:
+#if( $dockerType.template.properties["cpu_share"] )
+            cpu: "${dockerType.template.properties["cpu_share"].value}"
+#end
+#if( $dockerType.template.properties["mem_share"] )
+            memory: ${util.common.getValueInUnit($dockerType, "mem_share", "MB", true)}M
+#end
+#end## resources
