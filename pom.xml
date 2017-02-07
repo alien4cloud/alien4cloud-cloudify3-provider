@@ -3,10 +3,10 @@
   <parent>
     <groupId>alien4cloud</groupId>
     <artifactId>alien4cloud-parent</artifactId>
-    <version>1.3.2-SNAPSHOT</version>
+    <version>1.3.2</version>
   </parent>
   <artifactId>alien4cloud-cloudify3-provider</artifactId>
-  <version>1.3.2-SNAPSHOT</version>
+  <version>1.3.2</version>
   <name>Cloudify 3.x PaaS Provider for Alien 4 Cloud</name>
 
   <repositories>
@@ -41,7 +41,7 @@
     <dependency>
       <groupId>alien4cloud</groupId>
       <artifactId>alien4cloud-core</artifactId>
-      <version>1.3.2-SNAPSHOT</version>
+      <version>1.3.2</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -246,7 +246,7 @@
         <dependency>
           <groupId>alien4cloud</groupId>
           <artifactId>alien4cloud-core</artifactId>
-          <version>1.3.2-SNAPSHOT</version>
+          <version>1.3.2</version>
           <scope>compile</scope>
           <exclusions>
             <exclusion>
