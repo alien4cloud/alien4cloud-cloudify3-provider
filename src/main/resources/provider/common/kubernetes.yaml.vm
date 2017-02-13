@@ -44,6 +44,10 @@
 #foreach($node in $deployment.dockerTypes)
   ${node.id}:
     type: alien.cloudify.kubernetes.nodes.Microservice
+    capabilities:
+      scalable:
+        properties:
+          default_instances: $node.scalingPolicy.initialInstances
     properties:
       name: ${node.id}
       ssh_username: ubuntu
