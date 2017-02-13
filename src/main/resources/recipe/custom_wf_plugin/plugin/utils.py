@@ -409,6 +409,9 @@ def _is_host_node_instance(node_instance):
 def is_host_node(node):
     return 'cloudify.nodes.Compute' in node.type_hierarchy
 
+def is_kubernetes_node(node):
+    return 'cloudify.kubernetes.Microservice' in node.type_hierarchy
+
 
 # def _relationship_operations(node_instance, operation):
 #     tasks_with_targets = _relationship_operations_with_targets(
