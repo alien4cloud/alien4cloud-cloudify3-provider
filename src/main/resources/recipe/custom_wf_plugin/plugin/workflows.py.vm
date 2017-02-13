@@ -10,6 +10,7 @@ from utils import _get_all_nodes
 from utils import _get_all_nodes_instances
 from utils import _get_all_modified_node_instances
 from utils import is_host_node
+from utils import is_kubernetes_node
 from workflow import WfStartEvent
 from workflow import build_pre_event
 
@@ -120,10 +121,10 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_token, **kwargs):
         planned_num_instances = curr_num_instances + delta
         scale_id = scalable_entity_name
     else:
-      scaled_node = ctx.get_node(scalable_entity_name)
+      scaled_node = ctx.get_node(node_id)
       if not scaled_node:
           raise ValueError("Node {0} doesn't exist".format(scalable_entity_name))
-      if not is_host_node(scaled_node):
+      if not is_host_node(scaled_node) and not is_kubernetes_node(scaled_node):
           raise ValueError("Node {0} is not a host. This workflow can only scale hosts".format(scalable_entity_name))
       if delta == 0:
           ctx.logger.info('delta parameter is 0, so no scaling will take place.')
@@ -131,6 +132,7 @@ def a4c_scale(ctx, node_id, delta, scale_compute, cloudify_token, **kwargs):
       curr_num_instances = scaled_node.number_of_instances
       planned_num_instances = curr_num_instances + delta
       scale_id = scaled_node.id
+      scalable_entity_name = scale_id
 
     if planned_num_instances < 1:
         raise ValueError('Provided delta: {0} is illegal. current number of'
