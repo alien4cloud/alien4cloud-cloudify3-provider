@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
@@ -79,9 +80,13 @@ public class CloudifyDeployment {
 
     private Set<PaaSNodeTemplate> nodesToMonitor;
 
+    /** Maps containing all capability types (capability name, capability type)*/
+    private Map<String,CapabilityType> capabilityTypes;
+
     /**
      * * {elementType -> {propertyNamePath -> IPropertyMapping}}
      */
     private Map<String, Map<String, List<IPropertyMapping>>> propertyMappings;
+
 
 }

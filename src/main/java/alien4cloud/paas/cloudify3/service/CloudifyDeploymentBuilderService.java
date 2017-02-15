@@ -8,7 +8,9 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
+import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import org.apache.commons.collections4.CollectionUtils;
@@ -20,6 +22,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import alien4cloud.component.ICSARRepositorySearchService;
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.model.components.IndexedModelUtils;
 import alien4cloud.model.orchestrators.locations.Location;
@@ -60,6 +63,9 @@ public class CloudifyDeploymentBuilderService {
     private CloudConfigurationHolder cloudConfigurationHolder;
 
     @Inject
+    private ICSARRepositorySearchService csarRepositorySearchService;
+
+    @Inject
     @Lazy(true)
     private ILocationResourceService locationResourceService;
 
@@ -89,6 +95,8 @@ public class CloudifyDeploymentBuilderService {
                 excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
+        
+        Map<String, CapabilityType> capabilityTypes = getAllCapabilityTypes(deploymentContext);
 
         cloudifyDeployment.setDeploymentPaaSId(deploymentContext.getDeploymentPaaSId());
         cloudifyDeployment.setDeploymentId(deploymentContext.getDeploymentId());
@@ -117,6 +125,7 @@ public class CloudifyDeploymentBuilderService {
 
         processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
         cloudifyDeployment.setNativeTypes(nativeTypes);
+        cloudifyDeployment.setCapabilityTypes(capabilityTypes);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
         cloudifyDeployment.setProviderDeploymentProperties(deploymentContext.getDeploymentTopology().getProviderDeploymentProperties());
@@ -130,6 +139,18 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
         return cloudifyDeployment;
+    }
+
+    private Map<String, CapabilityType> getAllCapabilityTypes(PaaSTopologyDeploymentContext deploymentContext) {
+        Map<String, CapabilityType> capabilities = Maps.newHashMap();
+        for (PaaSNodeTemplate template : deploymentContext.getPaaSTopology().getAllNodes().values()) {
+            for (CapabilityDefinition capabilityDef : template.getIndexedToscaElement().getCapabilities()) {
+                CapabilityType capabilityType = csarRepositorySearchService
+                        .getElementInDependencies(CapabilityType.class, capabilityDef.getType(), deploymentContext.getDeploymentTopology().getDependencies());
+                capabilities.put(capabilityDef.getType(), capabilityType);
+            }
+        }
+        return capabilities;
     }
 
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
