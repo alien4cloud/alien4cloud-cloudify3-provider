@@ -81,9 +81,13 @@ public class CloudifyDeployment {
 
     private Set<PaaSNodeTemplate> nodesToMonitor;
 
+    /** Maps containing all capability types (capability name, capability type)*/
+    private Map<String,CapabilityType> capabilityTypes;
+
     /**
      * * {elementType -> {propertyNamePath -> IPropertyMapping}}
      */
     private Map<String, Map<String, List<IPropertyMapping>>> propertyMappings;
+
 
 }

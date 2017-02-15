@@ -68,12 +68,10 @@ node_templates:
 #if($util.collectionHasElement($deployment.dockerTypes))
 #parse("provider/common/kubernetes.yaml.vm")
 #end## #if($util.collectionHasElement($deployment.dockerTypes))
-#if($deployment.locationType != "kubernetes")
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
 #nonNativeNodes($deployment.nonNatives)
-#end## #if($deployment.locationType != "kubernetes")
 
 #parse("provider/common/monitor_node.yaml.vm")
 

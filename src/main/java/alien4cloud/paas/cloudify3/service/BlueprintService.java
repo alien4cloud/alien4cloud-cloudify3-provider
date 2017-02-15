@@ -26,7 +26,10 @@ import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.alien4cloud.tosca.model.types.CapabilityType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -38,6 +41,7 @@ import org.springframework.stereotype.Component;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import alien4cloud.component.ICSARRepositorySearchService;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
@@ -69,7 +73,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class BlueprintService {
     public static final String TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER = "tosca.nodes.Container.Application.DockerContainer";
-    public static final String ALIEN_CAPABILITIES_ENDPOINT_DOCKER = "alien.capabilities.endpoint.Docker";
+
+    public static final String TOSCA_CAPABILITIES_ENDPOINT = "tosca.capabilities.Endpoint";
+
     @Resource
     private CloudConfigurationHolder cloudConfigurationHolder;
     @Resource
@@ -88,6 +94,9 @@ public class BlueprintService {
     private ILocationResourceService locationResourceService;
     @Inject
     private LocationService locationService;
+
+    @Inject
+    private ICSARRepositorySearchService csarRepoSearchService;
 
     private Path recipeDirectoryPath;
 
@@ -280,6 +289,17 @@ public class BlueprintService {
         }
 
         // Docker types
+        generateKubFiles(alienDeployment, generatedBlueprintDirectoryPath, context);
+
+        // Generate the blueprint at the end
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
+        return generatedBlueprintFilePath;
+    }
+
+    private void generateKubFiles(final CloudifyDeployment alienDeployment, final Path generatedBlueprintDirectoryPath, final Map<String, Object> context)
+            throws IOException {
+        BlueprintGenerationUtil util = (BlueprintGenerationUtil) context.get("util");
+
         Map<String, Map<String, Object>> docker_envs = new HashMap<String, Map<String, Object>>();
         for (PaaSNodeTemplate nonNative : alienDeployment.getDockerTypes()) {
 
@@ -314,8 +334,6 @@ public class BlueprintService {
             // Pod name
             String randomAlphanum = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
             podContext.put("pod_name", nonNative.getId().toLowerCase() + "-" + randomAlphanum);
-            String shortenedName = util.getCommon().truncateString(nonNative.getId().toLowerCase(), 13);
-            podContext.put("pod_service_name", shortenedName + "-" + randomAlphanum + "-svc"); // service name must be <=24 characters
             // Tag
             podContext.put("deployment_id", alienDeployment.getDeploymentId());
             podContext.put("deployment_id_name", alienDeployment.getDeploymentPaaSId());
@@ -328,9 +346,22 @@ public class BlueprintService {
             VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
 
             // Generate service file
-            Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
-            Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-service.yaml");
-            VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
+            for (Map.Entry<String, Capability> entry: nonNative.getTemplate().getCapabilities().entrySet()) {
+                Capability capability = entry.getValue();
+                CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
+                if (ToscaNormativeUtil.isFromType(TOSCA_CAPABILITIES_ENDPOINT, capabilityType)) {
+                    // Create a service if the capability is an endpoint
+                    podContext.put("service_capability", capability);
+
+                    String svcRandomAlphanum = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
+                    String shortenedName = util.getCommon().truncateString(nonNative.getId().toLowerCase(), 13);
+                    podContext.put("pod_service_name", shortenedName + "-" + svcRandomAlphanum + "-svc"); // service name must be <=24 characters
+
+                    Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
+                    Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-" + entry.getKey() + "-service.yaml");
+                    VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
+                }
+            }
         }
 
         if (!alienDeployment.getDockerTypes().isEmpty()) {
@@ -345,10 +376,6 @@ public class BlueprintService {
                 context.put("docker_envs", docker_envs);
             }
         }
-
-        // Generate the blueprint at the end
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
-        return generatedBlueprintFilePath;
     }
 
     private void generateServiceCreateOperation(IPaaSTemplate<?> owner, BlueprintGenerationUtil util, Map<String, Object> context,
