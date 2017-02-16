@@ -9,8 +9,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import alien4cloud.tosca.PaaSUtils;
 import org.alien4cloud.tosca.model.templates.Capability;
@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
@@ -498,15 +499,16 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
         Map<String, String> propertyValuesAsString = this.getNodeProperties(node);
         Map<String, AbstractPropertyValue> result = Maps.newHashMap();
-        if (cloudifyProperies != null) {
-            for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
-                if (cloudifyProperies.contains(e.getKey())) {
-                    // for custom native nodes we add inherited cloudify properties
-                    result.put(e.getKey(), e.getValue());
-                } else if (propertyValuesAsString.containsKey(e.getKey())) {
-                    // for kubernetes we add simple scalar properties
-                    result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
-                }
+        if (cloudifyProperies == null) {
+            cloudifyProperies = Sets.newHashSet();
+        }
+        for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
+            if (cloudifyProperies.contains(e.getKey())) {
+                // for custom native nodes we add inherited cloudify properties
+                result.put(e.getKey(), e.getValue());
+            } else if (propertyValuesAsString.containsKey(e.getKey())) {
+                // for kubernetes we add simple scalar properties
+                result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
             }
         }
         return result;
