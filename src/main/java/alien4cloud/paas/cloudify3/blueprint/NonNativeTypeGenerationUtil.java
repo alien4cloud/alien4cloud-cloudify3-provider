@@ -9,19 +9,27 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Map.Entry;
 
-import alien4cloud.tosca.PaaSUtils;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.NormativeComputeConstants;
-import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.OperationOutput;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
@@ -39,6 +47,9 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.topology.TopologyUtils;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
+import alien4cloud.tosca.normative.NormativeComputeConstants;
 import alien4cloud.tosca.normative.ToscaFunctionConstants;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -481,15 +492,16 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
         Map<String, String> propertyValuesAsString = this.getNodeProperties(node);
         Map<String, AbstractPropertyValue> result = Maps.newHashMap();
-        if (cloudifyProperies != null) {
-            for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
-                if (cloudifyProperies.contains(e.getKey())) {
-                    // for custom native nodes we add inherited cloudify properties
-                    result.put(e.getKey(), e.getValue());
-                } else if (propertyValuesAsString.containsKey(e.getKey())) {
-                    // for kubernetes we add simple scalar properties
-                    result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
-                }
+        if (cloudifyProperies == null) {
+            cloudifyProperies = Sets.newHashSet();
+        }
+        for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
+            if (cloudifyProperies.contains(e.getKey())) {
+                // for custom native nodes we add inherited cloudify properties
+                result.put(e.getKey(), e.getValue());
+            } else if (propertyValuesAsString.containsKey(e.getKey())) {
+                // for kubernetes we add simple scalar properties
+                result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
             }
         }
         return result;
