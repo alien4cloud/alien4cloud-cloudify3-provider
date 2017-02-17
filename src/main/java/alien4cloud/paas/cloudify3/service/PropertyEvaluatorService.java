@@ -13,6 +13,8 @@ import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.Capability;
 import org.springframework.stereotype.Component;
 
+import com.google.common.collect.Lists;
+
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.function.FunctionEvaluator;
@@ -111,48 +113,58 @@ public class PropertyEvaluatorService {
     }
 
     /**
-     * <p>
      * !!! Copied and adapted from marathon plugin !!!
      * Search for a property of a capability being required as a target of a relationship.
-     * <p/>
-     * 
-     * @param value the function parameters, e.g. the requirement name & property name to lookup.
-     * @param node The source node of the relationships, which defines the requirement.
+     *
+     * @param value    the function parameters, e.g. the requirement name & property name to lookup.
+     * @param node     The source node of the relationships, which defines the requirement.
      * @param allNodes all the nodes of the topology.
      * @return a String representing the property value.
      */
     private String evaluateGetPropertyFunction(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
 
-        if(value.getParameters().contains("REQ_TARGET")) {
+        if (value.getParameters().contains("REQ_TARGET")) {
             // Search for the requirement's target by filter the relationships' templates of this node.
             // If a target is found, then lookup for the given property name in its capabilities.
-            // The orchestrator replaces the PORT and IP_ADDRESS by the target's service port and the load balancer hostname respectively.
             String requirementName = value.getCapabilityOrRequirementName();
             String propertyName = value.getElementNameToFetch();
             if (node instanceof PaaSNodeTemplate && requirementName != null) {
                 for (PaaSRelationshipTemplate relationshipTemplate : ((PaaSNodeTemplate) node).getRelationshipTemplates()) {
-                    if (node.getId().equals(relationshipTemplate.getSource()) && requirementName.equals(relationshipTemplate.getTemplate().getRequirementName())) {
-                        if (relationshipTemplate.instanceOf("tosca.relationships.ConnectsTo")) {
-                            if ("port".equalsIgnoreCase(propertyName) || "ip_address".equalsIgnoreCase(propertyName)) {
-                                // FIXME workaround. If the property is 'ip_address', change it to 'ip' (cfy3)
-                                if("ip_address".equalsIgnoreCase(propertyName)) {
-                                    PaaSNodeTemplate target = allNodes.get(relationshipTemplate.getTemplate().getTarget());
-                                    if(ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, target.getIndexedToscaElement())){
-                                        propertyName = "clusterIP";
-                                    } else {
-                                        propertyName = "ip";
-                                    }
+                    if (node.getId().equals(relationshipTemplate.getSource()) && requirementName
+                            .equals(relationshipTemplate.getTemplate().getRequirementName())) {
+                        PaaSNodeTemplate target = allNodes.get(relationshipTemplate.getTemplate().getTarget());
+                        if (relationshipTemplate.instanceOf("tosca.relationships.ConnectsTo") && ("port".equalsIgnoreCase(propertyName) || "ip_address"
+                                .equalsIgnoreCase(propertyName))) {
+                            // Particuliar treatment for port and ip_address that needs to be retrieved at runtime from the kubernetes plugin of cloudify.
+                            // We need to generate a kind of custom function for the plugin in the generated blueprint.
+                            if ("ip_address".equalsIgnoreCase(propertyName)) {
+                                if (ToscaNormativeUtil
+                                        .isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, target.getIndexedToscaElement())) {
+                                    propertyName = "clusterIP";
+                                } else { // Workaround(cfy3): If the property is 'ip_address', change it to 'ip'
+                                    propertyName = "ip";
                                 }
-                                // Return a string as "function_name, node_id, propertiy_name" (c.f. kubernetes.yaml.vm)
-                                return String.format("%s,%s,%s", value.getFunction(), relationshipTemplate.getTemplate().getTarget(), propertyName);
                             }
+                            // Return a string as "function_name, node_id, property_name" (c.f. kubernetes.yaml.vm)
+                            return String.format("%s,%s,%s", value.getFunction(), relationshipTemplate.getTemplate().getTarget(), propertyName);
                         }
+                        // Search the property in capability of the target
+                        String targetedCapabilityName = relationshipTemplate.getTemplate().getTargetedCapabilityName();
+                        FunctionPropertyValue func = new FunctionPropertyValue(value.getFunction(),
+                                Lists.newArrayList(ToscaFunctionConstants.SELF, targetedCapabilityName, propertyName));
+                        String evaluated = FunctionEvaluator.evaluateGetPropertyFunction(func, target, allNodes);
+                        if (evaluated == null) {
+                            // If not found in the capability, search the property in the target's node itself.
+                            func = new FunctionPropertyValue(value.getFunction(), Lists.newArrayList(ToscaFunctionConstants.SELF, propertyName));
+                            evaluated = FunctionEvaluator.evaluateGetPropertyFunction(func, target, allNodes);
+                        }
+                        return evaluated;
                     }
                 }
             }
         }
         // Nominal case : get the requirement's targeted capability property.
-        // TODO: Add the REQ_TARGET keyword in the evaluateGetProperty function soo this is evaluated at parsing
+        // TODO: Add the REQ_TARGET keyword in the evaluateGetProperty function so this is evaluated at parsing
         return FunctionEvaluator.evaluateGetPropertyFunction(value, node, allNodes);
     }
 
