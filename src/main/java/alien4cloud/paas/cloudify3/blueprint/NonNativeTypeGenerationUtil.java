@@ -16,6 +16,7 @@ import alien4cloud.tosca.PaaSUtils;
 import alien4cloud.tosca.ToscaNormativeUtil;
 import alien4cloud.tosca.normative.NormativeComputeConstants;
 import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -531,6 +532,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean isCompute(PaaSNodeTemplate node) {
         return ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+    }
+
+    public boolean isServiceNodeTemplate(PaaSNodeTemplate node) {
+        return node.getTemplate() instanceof ServiceNodeTemplate;
     }
 
 }
