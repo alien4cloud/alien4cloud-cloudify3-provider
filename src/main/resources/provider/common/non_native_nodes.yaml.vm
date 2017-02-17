@@ -30,10 +30,10 @@
           implementation: ${util.nonNative.getArtifactWrapperPath($template, $interfaceEntry.key, $operationEntry.key)}
 #if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
           executor: central_deployment_agent
-#end## if
+#end## if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
 #end## foreach
 #end## foreach
-#end## if
+#end## if($util.nonNative.mapHasEntries($nodeInterfaces))
 #end## if($util.nonNative.isServiceNodeTemplate($template))
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($template) )
 #if($util.collectionHasElement($relationshipTemplates))
