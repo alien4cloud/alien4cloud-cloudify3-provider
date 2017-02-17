@@ -296,45 +296,33 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
     elif operation_fqname == 'cloudify.interfaces.lifecycle.configure':
         as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
         if relationship_count > 0 or len(as_target_relationships) > 0:
-            has_preconfigure_tasks = False
-            preconfigure_tasks = ForkjoinWrapper(graph)
-            preconfigure_tasks.add(instance.send_event("preconfiguring task for instance {0}'".format(instance.id)))
+            sequence.add(instance.send_event("preconfiguring task for instance {0}'".format(instance.id)))
             for relationship in instance.relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure'))
-                        has_preconfigure_tasks = True
+                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure'))
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'target', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure'))
-                        has_preconfigure_tasks = True
-            if has_preconfigure_tasks:
-                sequence.add(forkjoin_sequence(graph, preconfigure_tasks, instance, "preconf for {0}".format(instance.id)))
+                        sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure'))
         # the configure operation call itself
         sequence.add(instance.execute_operation(operation_fqname))
         if relationship_count > 0 or len(as_target_relationships) > 0:
-            has_postconfigure_tasks = False
-            postconfigure_tasks = ForkjoinWrapper(graph)
-            postconfigure_tasks.add(instance.send_event("postconfiguring task for instance {0}'".format(instance.id)))
+            sequence.add(instance.send_event("postconfiguring task for instance {0}'".format(instance.id)))
             for relationship in instance.relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'post'):
-                        postconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure'))
-                        has_postconfigure_tasks = True
+                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure'))
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'target', 'post'):
                         task = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.postconfigure')
                         _set_send_node_event_on_error_handler(task, instance, "Error occurred while postconfiguring node as target for relationship {0} - ignoring...".format(relationship))
-                        postconfigure_tasks.add(task)
-                        has_postconfigure_tasks = True
-            if has_postconfigure_tasks:
-                sequence.add(forkjoin_sequence(graph, postconfigure_tasks, instance, "postconf for {0}".format(instance.id)))
+                        sequence.add(task)
 
         persistent_event_tasks = build_persistent_event_tasks(instance)
         if persistent_event_tasks is not None:
