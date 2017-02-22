@@ -6,7 +6,7 @@
     <version>1.3.2</version>
   </parent>
   <artifactId>alien4cloud-cloudify3-provider</artifactId>
-  <version>1.3.2</version>
+  <version>1.3.3-SNAPSHOT</version>
   <name>Cloudify 3.x PaaS Provider for Alien 4 Cloud</name>
 
   <repositories>
