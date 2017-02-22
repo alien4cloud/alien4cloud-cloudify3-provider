@@ -23,7 +23,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.AsyncFunction;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.FutureFallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
@@ -116,48 +115,47 @@ public class StatusService {
             scheduleTime = cloudConfigurationHolder.getConfiguration().getDelayBetweenDeploymentStatusPolling();
             break;
         }
-        Runnable job = new Runnable() {
-            @Override
-            public void run() {
-                if (log.isDebugEnabled()) {
-                    log.debug("Running refresh state for {} with current state {}", deploymentPaaSId, currentStatus);
-                }
-                try {
-                    cacheLock.readLock().lock();
-                    // It means someone cleaned entry before the scheduled task run
-                    if (!statusCache.containsKey(deploymentPaaSId)) {
-                        return;
-                    }
-                } finally {
-                    cacheLock.readLock().unlock();
-                }
-                ListenableFuture<DeploymentStatus> newStatusFuture = asyncGetStatus(deploymentPaaSId);
-                Function<DeploymentStatus, DeploymentStatus> newStatusAdapter = new Function<DeploymentStatus, DeploymentStatus>() {
-                    @Override
-                    public DeploymentStatus apply(DeploymentStatus newStatus) {
-                        registerDeploymentStatusAndReschedule(deploymentPaaSId, newStatus);
-                        return newStatus;
-                    }
-                };
-                ListenableFuture<DeploymentStatus> refreshFuture = Futures.transform(newStatusFuture, newStatusAdapter);
-                Futures.addCallback(refreshFuture, new FutureCallback<DeploymentStatus>() {
-                    @Override
-                    public void onSuccess(DeploymentStatus result) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Successfully refreshed state for {} with new state {}", deploymentPaaSId, result);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Throwable t) {
-                        log.warn("Failed to refresh state for " + deploymentPaaSId, t);
-                    }
-                });
+        Runnable job = () -> {
+            if (log.isDebugEnabled()) {
+                log.debug("Running refresh state for {} with current state {}", deploymentPaaSId, currentStatus);
             }
+            try {
+                cacheLock.readLock().lock();
+                // It means someone cleaned entry before the scheduled task run
+                if (!statusCache.containsKey(deploymentPaaSId)) {
+                    return;
+                }
+            } finally {
+                cacheLock.readLock().unlock();
+            }
+            ListenableFuture<DeploymentStatus> newStatusFuture = asyncGetStatus(deploymentPaaSId);
+            Function<DeploymentStatus, DeploymentStatus> newStatusAdapter = newStatus -> {
+                registerDeploymentStatusAndReschedule(deploymentPaaSId, newStatus);
+                return newStatus;
+            };
+            ListenableFuture<DeploymentStatus> refreshFuture = Futures.transform(newStatusFuture, newStatusAdapter::apply);
+            Futures.addCallback(refreshFuture, new FutureCallback<DeploymentStatus>() {
+                @Override
+                public void onSuccess(DeploymentStatus result) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Successfully refreshed state for {} with new state {}", deploymentPaaSId, result);
+                    }
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    log.warn("Failed to refresh state for " + deploymentPaaSId, t);
+                }
+            });
         };
         try {
             cacheLock.writeLock().lock();
-            statusRefreshJobs.put(deploymentPaaSId, scheduler.schedule(job, scheduleTime, TimeUnit.SECONDS));
+            if (!isApplicationMonitored(deploymentPaaSId)) {
+                // Don't relaunch a schedule if one has been configured
+                statusRefreshJobs.put(deploymentPaaSId, scheduler.schedule(job, scheduleTime, TimeUnit.SECONDS));
+            } else {
+                log.info("Application " + deploymentPaaSId + " has already been monitored, ignore scheduling request");
+            }
         } finally {
             cacheLock.writeLock().unlock();
         }
@@ -181,34 +179,21 @@ public class StatusService {
 
     private ListenableFuture<DeploymentStatus> asyncGetStatus(String deploymentPaaSId) {
         ListenableFuture<Deployment> deploymentFuture = deploymentDAO.asyncRead(deploymentPaaSId);
-        AsyncFunction<Deployment, Execution[]> executionsAdapter = new AsyncFunction<Deployment, Execution[]>() {
-            @Override
-            public ListenableFuture<Execution[]> apply(Deployment deployment) throws Exception {
-                return executionDAO.asyncList(deployment.getId(), false);
-            }
-        };
+        AsyncFunction<Deployment, Execution[]> executionsAdapter = deployment -> executionDAO.asyncList(deployment.getId(), false);
         ListenableFuture<Execution[]> executionsFuture = Futures.transform(deploymentFuture, executionsAdapter);
-        Function<Execution[], DeploymentStatus> deploymentStatusAdapter = new Function<Execution[], DeploymentStatus>() {
-            @Override
-            public DeploymentStatus apply(Execution[] executions) {
-                return doGetStatus(executions);
-            }
-        };
+        Function<Execution[], DeploymentStatus> deploymentStatusAdapter = this::doGetStatus;
         ListenableFuture<DeploymentStatus> statusFuture = Futures.transform(executionsFuture, deploymentStatusAdapter);
-        return Futures.withFallback(statusFuture, new FutureFallback<DeploymentStatus>() {
-            @Override
-            public ListenableFuture<DeploymentStatus> create(Throwable throwable) throws Exception {
-                // In case of error we give back unknown status and let the next polling determine the application status
-                if (throwable instanceof HttpClientErrorException) {
-                    if (((HttpClientErrorException) throwable).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
-                        // Only return undeployed for an application if we received a 404 which means it was deleted
-                        log.info("Application " + deploymentPaaSId + " is not found on cloudify");
-                        return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
-                    }
+        return Futures.withFallback(statusFuture, throwable -> {
+            // In case of error we give back unknown status and let the next polling determine the application status
+            if (throwable instanceof HttpClientErrorException) {
+                if (((HttpClientErrorException) throwable).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+                    // Only return undeployed for an application if we received a 404 which means it was deleted
+                    log.info("Application " + deploymentPaaSId + " is not found on cloudify");
+                    return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
                 }
-                log.warn("Unable to retrieve status for application " + deploymentPaaSId + ", its status will pass to " + DeploymentStatus.UNKNOWN, throwable);
-                return Futures.immediateFuture(DeploymentStatus.UNKNOWN);
             }
+            log.warn("Unable to retrieve status for application " + deploymentPaaSId + ", its status will pass to " + DeploymentStatus.UNKNOWN, throwable);
+            return Futures.immediateFuture(DeploymentStatus.UNKNOWN);
         });
     }
 
@@ -347,26 +332,59 @@ public class StatusService {
      * This is used to retrieve the status of the application, get from cache for monitored entries else get from cloudify
      * 
      * @param deploymentPaaSId the deployment id
-     * @return the status of the deployment
+     * @param callback the callback when the status is ready
      */
-    private DeploymentStatus getStatus(String deploymentPaaSId) {
+    public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback) {
         try {
             cacheLock.readLock().lock();
             DeploymentStatus statusFromCache = getStatusFromCache(deploymentPaaSId);
             if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
                 // The deployment is being created means that currently it's not monitored, it's in transition
                 // The deployment is currently monitored so the cache can be used
-                return statusFromCache;
+                callback.onSuccess(statusFromCache);
+            } else {
+                Futures.addCallback(asyncGetStatus(deploymentPaaSId), new FutureCallback<DeploymentStatus>() {
+                    @Override
+                    public void onSuccess(DeploymentStatus newDeploymentStatus) {
+                        try {
+                            cacheLock.readLock().lock();
+                            DeploymentStatus statusFromCache = getStatusFromCache(deploymentPaaSId);
+                            if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
+                                callback.onSuccess(statusFromCache);
+                                // It's from cache nothing else to do
+                                return;
+                            } else {
+                                callback.onSuccess(newDeploymentStatus);
+                                // Will continue to registerDeploymentStatusAndReschedule
+                            }
+                        } finally {
+                            cacheLock.readLock().unlock();
+                        }
+                        try {
+                            cacheLock.writeLock().lock();
+                            // A deployment has kicked in in concurrence, tricky situation
+                            if (DeploymentStatus.INIT_DEPLOYMENT != getStatusFromCache(deploymentPaaSId)) {
+                                doRegisterDeploymentStatus(deploymentPaaSId, newDeploymentStatus);
+                                // Do not schedule anything then
+                                return;
+                            }
+                        } finally {
+                            cacheLock.writeLock().unlock();
+                        }
+                        if (!DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {
+                            scheduleRefreshStatus(deploymentPaaSId, newDeploymentStatus);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        callback.onFailure(t);
+                    }
+                });
             }
         } finally {
             cacheLock.readLock().unlock();
         }
-        // This will refresh the status of the application from cloudify
-        return getStatusFromCloudify(deploymentPaaSId);
-    }
-
-    public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback) {
-        callback.onSuccess(getStatus(deploymentPaaSId));
     }
 
     public void getInstancesInformation(final PaaSTopologyDeploymentContext deploymentContext,
@@ -483,7 +501,7 @@ public class StatusService {
                 if (log.isDebugEnabled()) {
                     log.debug("Problem retrieving instance information for deployment <" + deploymentContext.getDeploymentPaaSId() + "> ");
                 }
-                callback.onSuccess(Maps.<String, Map<String, InstanceInformation>> newHashMap());
+                callback.onSuccess(Maps.newHashMap());
             }
         });
     }
@@ -506,43 +524,44 @@ public class StatusService {
     public void registerDeploymentStatus(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
         try {
             cacheLock.writeLock().lock();
-            DeploymentStatus deploymentStatus = getStatusFromCache(deploymentPaaSId);
-            if (!newDeploymentStatus.equals(deploymentStatus)) {
-                log.info("Application " + deploymentPaaSId + " passed from status " + deploymentStatus + " to " + newDeploymentStatus);
-                // Only register event if it makes changes to the cache
-                if (DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {
-                    // Application has been removed, don't need to monitor it anymore
-                    statusCache.remove(deploymentPaaSId);
-                    statusRefreshJobs.remove(deploymentPaaSId);
-                } else {
-                    // Deployment status has changed
-                    statusCache.put(deploymentPaaSId, newDeploymentStatus);
-                }
-                // Send back event to Alien only if it's a known status
-                eventService.registerDeploymentEvent(deploymentPaaSId, newDeploymentStatus);
-            }
+            doRegisterDeploymentStatus(deploymentPaaSId, newDeploymentStatus);
         } finally {
             cacheLock.writeLock().unlock();
         }
     }
 
-    private boolean isApplicationMonitored(String deploymentPaaSId) {
-        try {
-            cacheLock.readLock().lock();
-            // If no scheduled job is found for this deployment or the scheduled job has been done, the the application will be monitored
-            return statusRefreshJobs.containsKey(deploymentPaaSId) && !statusRefreshJobs.get(deploymentPaaSId).isDone();
-        } finally {
-            cacheLock.readLock().unlock();
+    private void doRegisterDeploymentStatus(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
+        DeploymentStatus deploymentStatus = getStatusFromCache(deploymentPaaSId);
+        if (!newDeploymentStatus.equals(deploymentStatus)) {
+            // Only register event if it makes changes to the cache
+            if (DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {
+                if (DeploymentStatus.INIT_DEPLOYMENT != deploymentStatus) {
+                    // Application has been removed, don't need to monitor it anymore
+                    statusCache.remove(deploymentPaaSId);
+                    statusRefreshJobs.remove(deploymentPaaSId);
+                    log.info("Application [" + deploymentPaaSId + "] has been undeployed");
+                } else {
+                    // a deployment in INIT_DEPLOYMENT must come to state DEPLOYMENT_IN_PROGRESS
+                    log.info("Concurrent access to deployment [" + deploymentPaaSId + "], ignore transition from INIT_DEPLOYMENT to UNDEPLOYED");
+                }
+            } else {
+                log.info("Application [" + deploymentPaaSId + "] passed from status " + deploymentStatus + " to " + newDeploymentStatus);
+                // Deployment status has changed
+                statusCache.put(deploymentPaaSId, newDeploymentStatus);
+            }
+            // Send back event to Alien only if it's a known status
+            eventService.registerDeploymentEvent(deploymentPaaSId, newDeploymentStatus);
         }
+    }
+
+    private boolean isApplicationMonitored(String deploymentPaaSId) {
+        return statusRefreshJobs.containsKey(deploymentPaaSId) && !statusRefreshJobs.get(deploymentPaaSId).isDone();
     }
 
     private void registerDeploymentStatusAndReschedule(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
         registerDeploymentStatus(deploymentPaaSId, newDeploymentStatus);
         if (!DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {
-            if (!isApplicationMonitored(deploymentPaaSId)) {
-                // Don't relaunch a schedule if one has been configured
-                scheduleRefreshStatus(deploymentPaaSId, newDeploymentStatus);
-            }
+            scheduleRefreshStatus(deploymentPaaSId, newDeploymentStatus);
         }
     }
 }
