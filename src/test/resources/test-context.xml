@@ -38,7 +38,7 @@
         <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
             <property name="objectMapper">
                 <bean class="com.fasterxml.jackson.databind.ObjectMapper">
-                    <property name="propertyNamingStrategy" value="CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES"/>
+                    <property name="propertyNamingStrategy" value="SNAKE_CASE"/>
                     <property name="dateFormat">
                         <bean class="java.text.SimpleDateFormat">
                             <constructor-arg value="yyyy-MM-dd HH:mm:ss"/>
