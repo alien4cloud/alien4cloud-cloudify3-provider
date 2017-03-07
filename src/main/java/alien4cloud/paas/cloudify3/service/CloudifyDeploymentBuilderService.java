@@ -170,7 +170,7 @@ public class CloudifyDeploymentBuilderService {
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
         List<PaaSNodeTemplate> result = Lists.newArrayList();
         for (PaaSNodeTemplate value : nodes) {
-            if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, value.getIndexedToscaElement())) {
+            if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, value.getIndexedToscaElement())) {
                 result.add(value);
             }
         }
@@ -210,7 +210,7 @@ public class CloudifyDeploymentBuilderService {
             // if the type of the template is provided by the location, it can't be considered as a custom resource.
             return false;
         }
-        if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER, node.getIndexedToscaElement())) {
+        if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, node.getIndexedToscaElement())) {
             // Docker Container types are not custom resources
             return false;
         }

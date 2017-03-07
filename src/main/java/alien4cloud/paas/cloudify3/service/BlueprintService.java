@@ -72,8 +72,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component("cloudify-blueprint-service")
 @Slf4j
 public class BlueprintService {
-    public static final String TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER = "tosca.nodes.Container.Application.DockerContainer";
 
+    public static final String TOSCA_DOCKER_CONTAINER_TYPE = "tosca.nodes.Container.Application.DockerContainer";
     public static final String TOSCA_CAPABILITIES_ENDPOINT = "tosca.capabilities.Endpoint";
 
     @Resource

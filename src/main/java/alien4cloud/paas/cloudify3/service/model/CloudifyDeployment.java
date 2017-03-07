@@ -53,8 +53,6 @@ public class CloudifyDeployment {
 
     private List<NodeType> nativeTypes;
 
-    private Map<String, CapabilityType> capabilityTypes;
-
     /** Nodes that derived from tosca.nodes.Container.Application.DockerContainer */
     private List<PaaSNodeTemplate> dockerTypes;
 
@@ -82,7 +80,7 @@ public class CloudifyDeployment {
     private Set<PaaSNodeTemplate> nodesToMonitor;
 
     /** Maps containing all capability types (capability name, capability type)*/
-    private Map<String,CapabilityType> capabilityTypes;
+    private Map<String, CapabilityType> capabilityTypes;
 
     /**
      * * {elementType -> {propertyNamePath -> IPropertyMapping}}
