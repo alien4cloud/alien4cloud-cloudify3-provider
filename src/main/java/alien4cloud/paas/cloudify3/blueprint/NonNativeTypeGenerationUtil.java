@@ -521,7 +521,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                     result.put(e.getKey(), e.getValue());
                 }
             }
-        } else {
+        } else if (nodeType.getProperties() != null) {
             result.putAll(nodeType.getProperties());
         }
         return result;
