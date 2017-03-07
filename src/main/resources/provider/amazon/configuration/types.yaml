@@ -11,6 +11,7 @@ imports:
 data_types:
 
   alien.data.aws.InstanceParameters:
+    derived_from: tosca.datatypes.Root
     properties:
       key_name:
         type: string
