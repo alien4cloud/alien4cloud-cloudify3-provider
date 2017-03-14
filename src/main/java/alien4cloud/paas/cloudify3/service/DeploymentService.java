@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
+import alien4cloud.paas.cloudify3.restclient.DeploymentUpdateClient;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
@@ -38,6 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 public class DeploymentService extends RuntimeService {
     @Resource
     private DeploymentClient deploymentClient;
+
+    @Resource
+    private DeploymentUpdateClient deploymentUpdateClient;
 
     @Resource
     private BlueprintService blueprintService;
@@ -108,6 +112,29 @@ public class DeploymentService extends RuntimeService {
         addFailureCallback(installedExecution, "Deployment", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
                 DeploymentStatus.FAILURE);
         return installedExecution;
+    }
+
+    public ListenableFuture<Void> update(final CloudifyDeployment alienDeployment) {
+        // generate the blueprint and return in case of failure.
+        Path blueprintPath;
+        try {
+            blueprintPath = blueprintService.generateBlueprint(alienDeployment);
+        } catch (IOException e) {
+            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
+                    + alienDeployment.getDeploymentId(), e);
+
+            statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
+            return Futures.immediateFailedFuture(e);
+        }
+
+        // update the deployment.
+        ListenableFuture<Void> updatingDeployment = deploymentUpdateClient.asyncUpdate(alienDeployment.getDeploymentPaaSId(), blueprintPath.toString());
+
+        // Add a callback to handled failures and provide alien with the correct events.
+        addFailureCallback(updatingDeployment, "Update", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
+                DeploymentStatus.UPDATE_FAILURE);
+
+        return updatingDeployment;
     }
 
     /**
