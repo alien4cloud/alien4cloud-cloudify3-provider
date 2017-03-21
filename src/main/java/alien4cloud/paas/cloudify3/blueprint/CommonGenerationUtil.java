@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 
 import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
 
-import alien4cloud.tosca.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 
 import org.apache.commons.lang3.StringUtils;
 

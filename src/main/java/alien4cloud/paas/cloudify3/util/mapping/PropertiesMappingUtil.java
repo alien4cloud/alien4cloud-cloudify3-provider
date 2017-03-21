@@ -5,7 +5,7 @@ import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.AbstractToscaType;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import alien4cloud.tosca.normative.ToscaType;
+import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import alien4cloud.utils.TagUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -123,14 +123,14 @@ public class PropertiesMappingUtil {
 
     private static ComplexPropertyMapping buildPropertyMapping(PropertyDefinition definition) {
 
-        if (ToscaType.isSimple(definition.getType())) {
+        if (ToscaTypes.isSimple(definition.getType())) {
             return null;
         }
 
         switch (definition.getType()) {
-        case ToscaType.LIST:
-        case ToscaType.MAP:
-            return new ComplexPropertyMapping(definition.getEntrySchema().getType(), ToscaType.LIST.equalsIgnoreCase(definition.getType()));
+        case ToscaTypes.LIST:
+        case ToscaTypes.MAP:
+            return new ComplexPropertyMapping(definition.getEntrySchema().getType(), ToscaTypes.LIST.equalsIgnoreCase(definition.getType()));
         default:
             return new ComplexPropertyMapping(definition.getType(), false);
         }

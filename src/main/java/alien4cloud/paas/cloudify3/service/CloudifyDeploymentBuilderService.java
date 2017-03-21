@@ -47,8 +47,8 @@ import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.NormativeRelationshipConstants;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Component("cloudify-deployment-builder-service")

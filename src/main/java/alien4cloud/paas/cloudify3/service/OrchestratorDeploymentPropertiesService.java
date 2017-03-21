@@ -12,7 +12,7 @@ import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.definitions.constraints.GreaterThanConstraint;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
-import alien4cloud.tosca.normative.ToscaType;
+import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import alien4cloud.utils.MapUtil;
 
 import com.google.common.collect.Maps;
@@ -27,7 +27,7 @@ public class OrchestratorDeploymentPropertiesService {
 
         // Field 1 : monitoring_interval_inSec
         PropertyDefinition monitoringInterval = new PropertyDefinition();
-        monitoringInterval.setType(ToscaType.INTEGER.toString());
+        monitoringInterval.setType(ToscaTypes.INTEGER.toString());
         monitoringInterval.setRequired(false);
         monitoringInterval.setDescription("Interval time in seconds we should check the liveliness of a compute for this deployment. Default is 1min");
         monitoringInterval.setDefault(new ScalarPropertyValue("1"));
@@ -38,7 +38,7 @@ public class OrchestratorDeploymentPropertiesService {
 
         // Field 2 : auto_heal
         PropertyDefinition autoHeal = new PropertyDefinition();
-        autoHeal.setType(ToscaType.BOOLEAN.toString());
+        autoHeal.setType(ToscaTypes.BOOLEAN.toString());
         autoHeal.setRequired(false);
         autoHeal.setDescription("Whether to enable or not the auto-heal process on this deployment. Default is disabled.");
         autoHeal.setDefault(new ScalarPropertyValue("false"));
