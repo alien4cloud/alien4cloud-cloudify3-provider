@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
-    public static final String CFY_VERSION = "4.0m10";
+    public static final String CFY_VERSION = "4.0rc1";
 
     public static final String CFY_AWS_PLUGIN_VERSION = "1.4.3";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
@@ -61,6 +61,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         cloudConfiguration.setUrl("http://yourManagerIP");
         cloudConfiguration.setUserName("username");
         cloudConfiguration.setPassword("password");
+        cloudConfiguration.setCloudifyTenant("default_tenant");
         cloudConfiguration.setApiVersion("v3");
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);

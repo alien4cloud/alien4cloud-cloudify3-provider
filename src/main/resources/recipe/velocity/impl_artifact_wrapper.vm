@@ -43,6 +43,7 @@ Include static wrapper python (functions etc.) in the current file.
 TODO: For smaller packages we should improve that and actually make a python package to import (from )
 *#
 #include("includes/common_wrapper_static.py")
+#parse("includes/cloudify_rest_client.py.vm")
 #if($util.nonNative.operationHasDeploymentArtifacts($operation))
 #include("includes/download_artifacts.py")
 #end

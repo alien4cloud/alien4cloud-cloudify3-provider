@@ -1,8 +1,6 @@
 from cloudify import ctx
 from cloudify import utils
 from cloudify.exceptions import NonRecoverableError
-from cloudify.state import ctx_parameters as inputs
-from cloudify_rest_client import CloudifyClient
 from StringIO import StringIO
 
 import base64
@@ -13,16 +11,6 @@ import subprocess
 import sys
 import threading
 import time
-
-headers = None
-if inputs['cloudify_token']:
-    headers = {'Authentication-Token': inputs['cloudify_token']}
-
-if 'MANAGER_REST_PROTOCOL' in os.environ and os.environ['MANAGER_REST_PROTOCOL'] == "https":
-    client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), protocol='https', trust_all=True, headers=headers)
-else:
-    client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), headers=headers)
-
 
 def get_attribute_user(ctx):
     if get_attribute(ctx, 'user'):

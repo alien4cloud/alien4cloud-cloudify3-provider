@@ -1,0 +1,14 @@
+from cloudify import utils
+from cloudify_rest_client import CloudifyClient
+from cloudify.state import ctx_parameters as inputs
+
+import os
+
+headers = None
+if inputs['cloudify_token']:
+    headers = {'Authentication-Token': inputs['cloudify_token']}
+
+if 'MANAGER_REST_PROTOCOL' in os.environ and os.environ['MANAGER_REST_PROTOCOL'] == "https":
+    client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), protocol='https', trust_all=True, headers=headers, tenant='$cloud.cloudifyTenant')
+else:
+    client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), headers=headers, tenant='$cloud.cloudifyTenant')
