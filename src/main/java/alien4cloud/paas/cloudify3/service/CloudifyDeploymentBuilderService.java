@@ -11,6 +11,10 @@ import javax.inject.Inject;
 import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.types.CapabilityType;
+import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import org.apache.commons.collections4.CollectionUtils;
@@ -88,7 +92,7 @@ public class CloudifyDeploymentBuilderService {
         Set<String> locationProvidedTypes = Sets.newHashSet();
         for (Location location : deploymentContext.getLocations().values()) {
             LocationResources locationResources = locationResourceService.getLocationResources(location);
-            locationProvidedTypes.addAll(locationResources.getNodeTypes().keySet());
+            locationProvidedTypes.addAll(locationResources.getProvidedTypes());
         }
 
         List<NodeType> nativeTypes = getTypesOrderedByDerivedFromHierarchy(
@@ -126,6 +130,7 @@ public class CloudifyDeploymentBuilderService {
         processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
         cloudifyDeployment.setNativeTypes(nativeTypes);
         cloudifyDeployment.setCapabilityTypes(capabilityTypes);
+        processServices(cloudifyDeployment);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
         cloudifyDeployment.setProviderDeploymentProperties(deploymentContext.getDeploymentTopology().getProviderDeploymentProperties());
@@ -153,6 +158,36 @@ public class CloudifyDeploymentBuilderService {
         return capabilities;
     }
 
+    /**
+     * FIXME: to be reviewed, this will not necessary done here, or differently.
+     */
+    private void processServices(CloudifyDeployment cloudifyDeployment) {
+        for (PaaSNodeTemplate paaSNodeTemplate : cloudifyDeployment.getNonNatives()) {
+            if (paaSNodeTemplate.getTemplate() instanceof ServiceNodeTemplate) {
+                for (PaaSRelationshipTemplate paaSRelationshipTemplate : paaSNodeTemplate.getRelationshipTemplates()) {
+                    if (MapUtils.isNotEmpty(paaSRelationshipTemplate.getInterfaces())) {
+                        Interface interfazz = paaSRelationshipTemplate.getInterfaces().get(ToscaRelationshipLifecycleConstants.CONFIGURE);
+                        if (interfazz != null) {
+                            if (paaSRelationshipTemplate.getSource().equals(paaSNodeTemplate.getId())) {
+                                // for services that are source of a relationship, all operations related to source (the service) are not run.
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.ADD_TARGET);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.POST_CONFIGURE_SOURCE);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_SOURCE);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.REMOVE_TARGET);
+                            } else {
+                                // for services that are target of a relationship, all operations related to target (the service) are not run.
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.ADD_SOURCE);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.POST_CONFIGURE_TARGET);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_TARGET);
+                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.REMOVE_SOURCE);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
         List<PaaSNodeTemplate> result = Lists.newArrayList();
         for (PaaSNodeTemplate value : nodes) {
@@ -178,6 +213,8 @@ public class CloudifyDeploymentBuilderService {
      * <ul>
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
+     * * <li>AND is not a Docker container</li>
+     * * <li>AND is not a service</li>
      * </ul>
      *
      * @param node
@@ -194,6 +231,10 @@ public class CloudifyDeploymentBuilderService {
         }
         if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, node.getIndexedToscaElement())) {
             // Docker Container types are not custom resources
+            return false;
+        }
+        if (node.getTemplate() instanceof ServiceNodeTemplate) {
+            // a service has no host and it's type is not provided by the location but is not a custom resource
             return false;
         }
         return true;

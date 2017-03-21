@@ -101,6 +101,7 @@ data_types:
         type: string
 
   alien.data.openstack.cinder.v1.VolumeCreateArgs:
+    derived_from: tosca.datatypes.Root
     properties:
       tenant_id:
         type: string
@@ -140,6 +141,7 @@ data_types:
         description: One or more metadata key and value pairs to associate with the volume.
 
   alien.data.openstack.EmbededVolumeProperties:
+    derived_from: tosca.datatypes.Root
     properties:
       volume:
         type: alien.data.openstack.cinder.v1.VolumeCreateArgs
@@ -181,6 +183,7 @@ data_types:
         {"size": {"path": "volume.size", "unit": "GiB", "ceil": true}, "volume_id": "resource_id", "snapshot_id": "volume.snapshot_id", "device": "device_name"}
 
   alien.data.openstack.EmbededFloatingIpProperties:
+    derived_from: tosca.datatypes.Root
     properties:
       floatingip:
         type: alien.data.FloatingIpConfig

@@ -23,6 +23,11 @@ import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.OperationOutput;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.tosca.ToscaNormativeUtil;
+import alien4cloud.tosca.normative.NormativeComputeConstants;
+import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -483,8 +488,8 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     /**
      * In the node properties, isolate:
      * <ul>
-     *     <li>those related to cloudify type inherited properties.</li>
-     *     <li>properties that can be serailized as string (for kubernetes)</li>
+     * <li>those related to cloudify type inherited properties.</li>
+     * <li>properties that can be serailized as string (for kubernetes)</li>
      * </ul>
      */
     public Map<String, AbstractPropertyValue> getCloudifyAndSimpleProperties(PaaSNodeTemplate node) {
@@ -530,9 +535,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     /**
      * A custom resource is a template that:
      * <ul>
-     *     <li>is not of a type provided by the location</li>
-     *     <li>AND doesn't have a host</li>
+     * <li>is not of a type provided by the location</li>
+     * <li>AND doesn't have a host</li>
      * </ul>
+     * 
      * @param node
      * @return true is the node is considered as a custom template.
      */
@@ -542,6 +548,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean isCompute(PaaSNodeTemplate node) {
         return ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+    }
+
+    public boolean isServiceNodeTemplate(PaaSNodeTemplate node) {
+        return node.getTemplate() instanceof ServiceNodeTemplate;
     }
 
 }

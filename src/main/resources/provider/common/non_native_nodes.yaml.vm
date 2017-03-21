@@ -13,6 +13,13 @@
 #if($util.nonNative.mapHasEntries($nodeProperties))
     properties: ${util.natives.formatProperties(3, $nodeProperties, $deployment.propertyMappings, $template.nodeTemplate.type)}
 #end## if($util.nonNative.mapHasEntries($nodeProperties))
+#if($util.nonNative.isServiceNodeTemplate($template))
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: ${util.nonNative.getArtifactWrapperPath($template, 'tosca.interfaces.node.lifecycle.Standard', 'create')}
+          executor: central_deployment_agent
+#else## node is not a service
 #set( $nodeInterfaces = $util.nonNative.getNodeInterfaces($template) )
 #if($util.nonNative.mapHasEntries($nodeInterfaces))
     interfaces:
@@ -23,10 +30,11 @@
           implementation: ${util.nonNative.getArtifactWrapperPath($template, $interfaceEntry.key, $operationEntry.key)}
 #if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
           executor: central_deployment_agent
-#end
-#end
-#end
-#end
+#end## if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
+#end## foreach
+#end## foreach
+#end## if($util.nonNative.mapHasEntries($nodeInterfaces))
+#end## if($util.nonNative.isServiceNodeTemplate($template))
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($template) )
 #if($util.collectionHasElement($relationshipTemplates))
     relationships:

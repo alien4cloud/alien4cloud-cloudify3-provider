@@ -207,7 +207,7 @@ public class EventService extends AbstractEventService {
             log.info("Received persistent event " + cloudifyEvent.getId());
             String persistentCloudifyEvent = cloudifyEvent.getMessage().getText();
             ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
             try {
                 EventAlienPersistent eventAlienPersistent = objectMapper.readValue(persistentCloudifyEvent, EventAlienPersistent.class);
                 // query API
@@ -235,7 +235,7 @@ public class EventService extends AbstractEventService {
         case EventType.A4C_WORKFLOW_STARTED:
             String wfCloudifyEvent = cloudifyEvent.getMessage().getText();
             objectMapper = new ObjectMapper();
-            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
             try {
                 EventAlienWorkflowStarted eventAlienWorkflowStarted = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflowStarted.class);
                 PaaSWorkflowMonitorEvent pwme = new PaaSWorkflowMonitorEvent();
@@ -251,7 +251,7 @@ public class EventService extends AbstractEventService {
         case EventType.A4C_WORKFLOW_EVENT:
             wfCloudifyEvent = cloudifyEvent.getMessage().getText();
             objectMapper = new ObjectMapper();
-            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
             try {
                 EventAlienWorkflow eventAlienWorkflow = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflow.class);
                 PaaSWorkflowStepMonitorEvent e = new PaaSWorkflowStepMonitorEvent();

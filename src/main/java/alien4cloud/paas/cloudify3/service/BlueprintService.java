@@ -15,6 +15,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
@@ -25,6 +26,7 @@ import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.types.CapabilityType;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -191,18 +193,22 @@ public class BlueprintService {
 
         // Wrap all implementation script into a wrapper so it can be called from cloudify 3 with respect of TOSCA.
         for (PaaSNodeTemplate node : alienDeployment.getNonNatives()) {
-            Map<String, Interface> interfaces = util.getNonNative().getNodeInterfaces(node);
-            if (MapUtils.isNotEmpty(interfaces)) {
-                for (Map.Entry<String, Interface> inter : interfaces.entrySet()) {
-                    Map<String, Operation> operations = inter.getValue().getOperations();
-                    for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
-                        Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
-                        // Special case when it's a node operation, then the only artifacts that are being injected is of the node it-self
-                        if (MapUtils.isNotEmpty(node.getTemplate().getArtifacts())) {
-                            artifacts.put(node.getId(), node.getTemplate().getArtifacts());
+            if (node.getTemplate() instanceof ServiceNodeTemplate) {
+                generateServiceCreateOperation(node, util, context, generatedBlueprintDirectoryPath);
+            } else {
+                Map<String, Interface> interfaces = util.getNonNative().getNodeInterfaces(node);
+                if (MapUtils.isNotEmpty(interfaces)) {
+                    for (Map.Entry<String, Interface> inter : interfaces.entrySet()) {
+                        Map<String, Operation> operations = inter.getValue().getOperations();
+                        for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
+                            Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
+                            // Special case when it's a node operation, then the only artifacts that are being injected is of the node it-self
+                            if (MapUtils.isNotEmpty(node.getTemplate().getArtifacts())) {
+                                artifacts.put(node.getId(), node.getTemplate().getArtifacts());
+                            }
+                            generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), node, util, context,
+                                    generatedBlueprintDirectoryPath, artifacts, null, alienDeployment.getAllNodes());
                         }
-                        generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), node, util, context,
-                                generatedBlueprintDirectoryPath, artifacts, null, alienDeployment.getAllNodes());
                     }
                 }
             }
@@ -379,6 +385,15 @@ public class BlueprintService {
                 context.put("docker_envs", docker_envs);
             }
         }
+    }
+
+    private void generateServiceCreateOperation(IPaaSTemplate<?> owner, BlueprintGenerationUtil util, Map<String, Object> context,
+                                                Path generatedBlueprintDirectoryPath) throws IOException {
+
+        Map<String, Object> operationContext = Maps.newHashMap(context);
+        operationContext.put("template", owner);
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"),
+                generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, ToscaNodeLifecycleConstants.STANDARD, ToscaNodeLifecycleConstants.CREATE)), operationContext);
     }
 
     private OperationWrapper generateOperationScriptWrapper(String interfaceName, String operationName, Operation operation, IPaaSTemplate<?> owner,

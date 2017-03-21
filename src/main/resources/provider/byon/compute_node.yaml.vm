@@ -3,14 +3,6 @@
   ${compute.id}:
     type: ${compute.nodeTemplate.type}
     properties: ${util.natives.formatProperties(3, $compute.nodeTemplate.properties, $deployment.propertyMappings.get($compute.nodeTemplate.type))}
-#if(${compute.scalingPolicy})
-    instances:
-#if(${compute.scalingPolicy.initialInstances})
-      deploy: ${compute.scalingPolicy.initialInstances}
-#else
-      deploy: 1
-#end
-#end
 
     interfaces:
       cloudify.interfaces.lifecycle:
