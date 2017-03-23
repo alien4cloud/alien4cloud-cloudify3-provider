@@ -1,12 +1,8 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -21,9 +17,6 @@ import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
 import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.service.event.EventService;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -70,7 +63,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
     }
 
     @Test
-    public void testDeployment() {
+    public void testCreateDeployment() {
         String blueprintId = "testRest";
         Deployment[] deployments = deploymentClient.list();
         Assert.assertEquals(0, deployments.length);
@@ -104,6 +97,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
             }
             waitForAllExecutionToFinish(blueprintId);
             Execution installExecution = executionClient.start(blueprintId, "install", null, false, false);
+            log.info("sleeping...");
             sleep();
             Assert.assertNotNull(executionClient.read(installExecution.getId()));
             waitForAllExecutionToFinish(blueprintId);
@@ -126,7 +120,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
             Assert.assertNotNull(nodeInstance.getRuntimeProperties());
             Assert.assertFalse(nodeInstance.getRuntimeProperties().isEmpty());
         } finally {
-            processUninstall(blueprintId);
+            // processUninstall(blueprintId);
         }
     }
 
@@ -146,7 +140,9 @@ public class TestExecutionClient extends AbstractRestClientTest {
         // System.out.println(ArrayUtils.toString(events));
         List<Event> list = Lists.newArrayList(events);
         for (String lifeCycle : lifeCycles) {
-            Assert.assertEquals(1, list.stream().filter(event -> Objects.equals(event.getContext().getOperation(), lifeCycle)).count());
+            int expected = 1;
+            long actual = list.stream().filter(event -> Objects.equals(event.getContext().getOperation(), lifeCycle)).count();
+            Assert.assertEquals("lifecycle " + lifeCycle + "--> Expected:" + expected + " Actual:" + actual, expected, actual);
         }
     }
 }

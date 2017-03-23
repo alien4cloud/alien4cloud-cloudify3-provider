@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import org.apache.commons.lang.StringUtils;
 import org.junit.Assert;
 import org.mockito.Mockito;
 import org.springframework.web.client.AsyncRestTemplate;
@@ -24,8 +23,9 @@ public abstract class AbstractRestClientTest {
     static CloudConfigurationHolder cloudConfigurationHolder;
 
     static void initializeContext() {
-        String cloudifyManagerURL = System.getenv(CLOUDIFY_MANAGER_URL_ENV_VAR);
-        Assert.assertTrue(CLOUDIFY_MANAGER_URL_ENV_VAR + " must be configured for the test", StringUtils.isNotBlank(cloudifyManagerURL));
+        // String cloudifyManagerURL = System.getenv(CLOUDIFY_MANAGER_URL_ENV_VAR);
+        String cloudifyManagerURL = "http://34.249.69.84";
+        // Assert.assertTrue(CLOUDIFY_MANAGER_URL_ENV_VAR + " must be configured for the test", StringUtils.isNotBlank(cloudifyManagerURL));
         PluginContextConfiguration fake = Mockito.mock(PluginContextConfiguration.class);
         Mockito.when(fake.asyncRestTemplate()).thenCallRealMethod();
         Mockito.when(fake.restTemplate()).thenCallRealMethod();
@@ -33,21 +33,17 @@ public abstract class AbstractRestClientTest {
         CloudConfiguration defaultConfiguration = new CloudifyOrchestratorFactory().getDefaultConfiguration();
         defaultConfiguration.setUrl(cloudifyManagerURL);
         defaultConfiguration.setUserName("admin");
-        defaultConfiguration.setPassword("admin");
+        defaultConfiguration.setPassword("ad1min");
         cloudConfigurationHolder = new CloudConfigurationHolder();
         authenticationInterceptor = new AuthenticationInterceptor();
 
-        VersionClient versionClient = new VersionClient();
-        versionClient.setAuthenticationInterceptor(authenticationInterceptor);
-        versionClient.setRestTemplate(asyncRestTemplate);
-
-        BlueprintClient blueprintClient = new BlueprintClient();
-        blueprintClient.setAuthenticationInterceptor(authenticationInterceptor);
-        blueprintClient.setRestTemplate(asyncRestTemplate);
-        blueprintClient.setConfigurationHolder(cloudConfigurationHolder);
+        VersionClient versionClient = configureClient(new VersionClient());
+        BlueprintClient blueprintClient = configureClient(new BlueprintClient());
+        DeploymentClient deploymentClient = configureClient(new DeploymentClient());
 
         cloudConfigurationHolder.setVersionClient(versionClient);
         cloudConfigurationHolder.setBlueprintClient(blueprintClient);
+        cloudConfigurationHolder.setDeploymentClient(deploymentClient);
         cloudConfigurationHolder.setAuthenticationInterceptor(authenticationInterceptor);
         cloudConfigurationHolder.setSslContextManager(new SSLContextManager());
         versionClient.setConfigurationHolder(cloudConfigurationHolder);

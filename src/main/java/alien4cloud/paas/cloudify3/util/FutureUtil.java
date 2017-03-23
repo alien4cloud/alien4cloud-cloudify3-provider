@@ -3,13 +3,16 @@ package alien4cloud.paas.cloudify3.util;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 
-import alien4cloud.paas.IPaaSCallback;
-
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import alien4cloud.paas.IPaaSCallback;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FutureUtil {
 
     public static <T> ListenableFuture<T> unwrapRestResponse(org.springframework.util.concurrent.ListenableFuture<ResponseEntity<T>> future) {

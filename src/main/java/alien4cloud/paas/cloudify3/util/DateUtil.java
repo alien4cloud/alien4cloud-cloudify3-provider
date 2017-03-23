@@ -2,6 +2,10 @@ package alien4cloud.paas.cloudify3.util;
 
 import java.util.Date;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DateUtil {
 
     public static int compare(Date left, Date right) {

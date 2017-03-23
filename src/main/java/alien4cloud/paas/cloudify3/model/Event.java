@@ -1,5 +1,7 @@
 package alien4cloud.paas.cloudify3.model;
 
+import java.util.StringJoiner;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,11 +27,14 @@ public class Event extends AbstractCloudifyModel {
 
     private EventMessage message;
 
+    private String executionId;
+
     @JsonIgnore
     public String getId() {
-        StringBuilder buffer = new StringBuilder().append(eventType).append("_").append(timestamp);
+        StringJoiner buffer = new StringJoiner("_");
+        buffer.add(eventType).add(timestamp);
         if (context != null) {
-            buffer.append(context.getExecutionId()).append("_").append(context.getNodeId()).append("_").append(context.getOperation());
+            buffer.add(context.getNodeId()).add(context.getOperation());
         }
         return buffer.toString();
     }

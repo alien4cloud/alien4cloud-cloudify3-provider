@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3.service.event;
 
-import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +26,6 @@ import alien4cloud.paas.cloudify3.model.EventAlienWorkflowStarted;
 import alien4cloud.paas.cloudify3.model.EventType;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
-import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.restclient.AbstractEventClient;
 import alien4cloud.paas.cloudify3.restclient.DeploymentEventClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
@@ -239,11 +237,11 @@ public class EventService extends AbstractEventService {
             try {
                 EventAlienWorkflowStarted eventAlienWorkflowStarted = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflowStarted.class);
                 PaaSWorkflowMonitorEvent pwme = new PaaSWorkflowMonitorEvent();
-                pwme.setExecutionId(cloudifyEvent.getContext().getExecutionId());
+                pwme.setExecutionId(cloudifyEvent.getExecutionId());
                 pwme.setWorkflowId(eventAlienWorkflowStarted.getWorkflowName());
                 pwme.setSubworkflow(eventAlienWorkflowStarted.getSubworkflow());
                 alienEvent = pwme;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("Problem processing workflow started event " + cloudifyEvent.getId(), e);
                 return null;
             }
@@ -260,13 +258,15 @@ public class EventService extends AbstractEventService {
                 e.setStepId(eventAlienWorkflow.getStepId());
                 e.setStage(eventAlienWorkflow.getStage());
                 String workflowId = cloudifyEvent.getContext().getWorkflowId();
-                e.setExecutionId(cloudifyEvent.getContext().getExecutionId());
-                if (workflowId.startsWith(Workflow.A4C_PREFIX)) {
-                    workflowId = workflowId.substring(Workflow.A4C_PREFIX.length());
-                }
+                e.setExecutionId(cloudifyEvent.getExecutionId());
+                // FIXME broken since no worlflowId is returned
+                // Why do we event do this??
+                // if (StringUtils.startsWith(workflowId, Workflow.A4C_PREFIX)) {
+                // workflowId = workflowId.substring(Workflow.A4C_PREFIX.length());
+                // }
                 e.setWorkflowId(cloudifyEvent.getContext().getWorkflowId());
                 alienEvent = e;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("Problem processing workflow event " + cloudifyEvent.getId(), e);
                 return null;
             }
