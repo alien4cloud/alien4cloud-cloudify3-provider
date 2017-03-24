@@ -5,25 +5,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.IArtifact;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.definitions.*;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -50,6 +38,7 @@ import alien4cloud.paas.cloudify3.service.model.Relationship;
 import alien4cloud.paas.cloudify3.util.VelocityUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
@@ -374,11 +363,6 @@ public class BlueprintService {
         if (cloudifyImplementationArtifact == null) {
             // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
             log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
-            // TODO allow logs during recipe generation.
-            // PaaSDeploymentLog deploymentLog = new PaaSDeploymentLog(deploymentId, "", PaaSDeploymentLogLevel.WARN, "", new Date(), "install", null,
-            // owner.getId(), null, interfaceName, operationName, "Trying to generate a recipe while the implementation artifact ("
-            // + operation.getImplementationArtifact().getArtifactType() + ") is not recognized.");
-            // alienMonitorDao.save(deploymentLog);
             operationContext.put("executor_template", "artifacts/scripts.vm");
         } else {
             operationContext.put("executor_template", cloudifyImplementationArtifact.getVelocityWrapperPath());
