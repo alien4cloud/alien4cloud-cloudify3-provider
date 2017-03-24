@@ -301,16 +301,12 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
-                        has_preconfigure_tasks = True
+                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'target', 'pre'):
-                        preconfigure_tasks.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
-                        has_preconfigure_tasks = True
-            if has_preconfigure_tasks:
-                sequence.add(forkjoin_sequence(graph, preconfigure_tasks, instance, "preconf for {0}".format(instance.id)))
+                        sequence.add(relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.preconfigure', kwargs={'cloudify_token': custom_context.token}))
         # the configure operation call itself
         sequence.add(instance.execute_operation(operation_fqname, kwargs={'cloudify_token': custom_context.token}))
         if relationship_count > 0 or len(as_target_relationships) > 0:
@@ -319,7 +315,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'post'):
-                        postconfigure_tasks.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_token': custom_context.token}))
+                        sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_token': custom_context.token}))
                         has_postconfigure_tasks = True
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
