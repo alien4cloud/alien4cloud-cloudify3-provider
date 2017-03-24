@@ -363,6 +363,7 @@ public class BlueprintService {
         if (cloudifyImplementationArtifact == null) {
             // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
             log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
+            // TODO allow logs during recipe generation.
             operationContext.put("executor_template", "artifacts/scripts.vm");
         } else {
             operationContext.put("executor_template", cloudifyImplementationArtifact.getVelocityWrapperPath());
