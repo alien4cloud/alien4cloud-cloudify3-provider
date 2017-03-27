@@ -211,3 +211,10 @@ def __recursively_get_instance_data(node, node_instance, attribute_name):
         return None
     else:
         return None
+
+def get_public_or_private_ip(entity):
+    public_ip = get_attribute(entity, 'public_ip_address')
+    if not public_ip:
+        return get_attribute(entity, 'ip_address')
+    return public_ip
+

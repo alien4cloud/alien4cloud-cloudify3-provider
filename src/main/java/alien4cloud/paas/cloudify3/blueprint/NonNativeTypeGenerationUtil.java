@@ -13,7 +13,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import alien4cloud.tosca.PaaSUtils;
+import org.alien4cloud.tosca.model.templates.Capability;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
 import org.alien4cloud.tosca.model.definitions.*;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
@@ -538,4 +541,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return node.getTemplate() instanceof ServiceNodeTemplate;
     }
 
+    public boolean isEndpoint(Capability capability) {
+        CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
+        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId())
+                || (capabilityType.getDerivedFrom() != null && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
+    }
 }

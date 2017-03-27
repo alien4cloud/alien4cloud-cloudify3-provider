@@ -3,7 +3,11 @@ package alien4cloud.paas.cloudify3.blueprint;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
+import alien4cloud.paas.model.PaaSNodeTemplate;
 import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
 
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
@@ -19,6 +23,8 @@ import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesServic
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.utils.MapUtil;
+
+import static alien4cloud.utils.AlienUtils.safe;
 
 public class CommonGenerationUtil extends AbstractGenerationUtil {
 
@@ -57,14 +63,22 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
         }
     }
 
-    public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement){
-       return ToscaNormativeUtil.isFromType(type, indexedInheritableToscaElement);
+    public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement) {
+        return ToscaNormativeUtil.isFromType(type, indexedInheritableToscaElement);
     }
 
     public boolean doesVelocityFileExists(String velocityFilePath) {
-        if(Files.exists(Paths.get(velocityFilePath))) {
+        if (Files.exists(Paths.get(velocityFilePath))) {
             return true;
         }
         return false;
+    }
+
+    public Set<Entry> safeEntrySet(Map map) {
+        return safe(map).entrySet();
+    }
+
+    public boolean isNull(Object o) {
+        return o == null;
     }
 }

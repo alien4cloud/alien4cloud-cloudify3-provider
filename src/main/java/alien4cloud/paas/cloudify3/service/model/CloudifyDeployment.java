@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
@@ -52,6 +53,8 @@ public class CloudifyDeployment {
 
     private List<NodeType> nativeTypes;
 
+    private Map<String, CapabilityType> capabilityTypes;
+
     /** Nodes that derived from tosca.nodes.Container.Application.DockerContainer */
     private List<PaaSNodeTemplate> dockerTypes;
 
@@ -59,7 +62,6 @@ public class CloudifyDeployment {
 
     /** Nodes that are custom resources (provided as types but native by nature). */
     private Map<String, PaaSNodeTemplate> customResources;
-
 
     private Map<String, List<PaaSNodeTemplate>> groups;
 

@@ -133,6 +133,8 @@ public class CloudifyDeploymentBuilderService {
         TopologyContext topologyContext = workflowBuilderService.buildTopologyContext(deploymentContext.getDeploymentTopology());
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
+        cloudifyDeployment.setCapabilityTypes(deploymentContext.getPaaSTopology().getCapabilityTypes());
+
         return cloudifyDeployment;
     }
 
@@ -191,8 +193,10 @@ public class CloudifyDeploymentBuilderService {
      * <ul>
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
-     * * <li>AND is not a Docker container</li>
-     * * <li>AND is not a service</li>
+     * *
+     * <li>AND is not a Docker container</li>
+     * *
+     * <li>AND is not a service</li>
      * </ul>
      *
      * @param node
