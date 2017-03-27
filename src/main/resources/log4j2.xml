@@ -9,5 +9,8 @@
         <Root level="error">
             <AppenderRef ref="Console"/>
         </Root>
+        <logger name="springfox.documentation" />
+        <logger name="alien4cloud.paas.cloudify3" level="debug" />
+        <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" level="warn" />
     </Loggers>
 </Configuration>
