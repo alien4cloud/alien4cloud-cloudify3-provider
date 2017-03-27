@@ -8,7 +8,6 @@ import java.util.Map;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -38,6 +37,7 @@ import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
+import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.AbstractMonitorEvent;
 import alien4cloud.paas.model.DeploymentStatus;
@@ -151,7 +151,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             return;
         }
 
-        log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+        log.info("Updating {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UPDATE_IN_PROGRESS);
 

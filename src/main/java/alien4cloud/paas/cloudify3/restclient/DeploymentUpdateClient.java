@@ -1,11 +1,10 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import alien4cloud.paas.cloudify3.model.Blueprint;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-import alien4cloud.utils.FileUtil;
-import com.google.common.util.concurrent.ListenableFuture;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,10 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import alien4cloud.utils.FileUtil;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by xdegenne on 06/03/2017.
@@ -27,7 +28,7 @@ import java.nio.file.Paths;
 public class DeploymentUpdateClient extends AbstractClient {
 
     // FIXME: actually we can not query anything but backend REST API
-    public static final String DEPLOYMENT_UPDATE_PATH = "/backend/cloudify-api/deployment-updates";
+    public static final String DEPLOYMENT_UPDATE_PATH = "/deployment-updates";
 
     @Override
     protected String getPath() {
