@@ -1,7 +1,7 @@
 from cloudify import ctx
 from cloudify.decorators import operation
 
-from a4c_common.wrapper_util import (A4C_RESOURCE_ID_KEY,USE_EXTERNAL_RESOURCE_KEY,handle_external_resource,Lock,_get_index,_write_index)
+from a4c_common.wrapper_util import (A4C_RESOURCE_ID_KEY,USE_EXTERNAL_RESOURCE_KEY,handle_external_resource,Lock,_get_index,_write_index,_get_working_dir)
 
 from ec2.instance import run_instances
 from ec2.ebs import create
@@ -48,7 +48,7 @@ def _set_placement_for_instance():
     lock.release()
 
 def _get_placement_filepath():
-  return "./deployments/{}/placement_index_{}.dat".format(ctx.deployment.id, ctx.node.id)
+  return "{}/placement_index_{}.dat".format(_get_working_dir(), ctx.node.id)
 
 @operation
 def overrided_create_volume(args, **_):
@@ -83,4 +83,4 @@ def handle_aws_resource_ids():
   else:
     ctx.logger.warning("[A4C_VOLUME] Create new volume for instance {} as there no match index to get a volume id on the list {} (index={})".format(ctx.instance.id, resource_ids, instance_index))
     ctx.instance.runtime_properties[resource_id_key] = None
-    ctx.instance.runtime_properties[USE_EXTERNAL_RESOURCE_KEY] = False 
+    ctx.instance.runtime_properties[USE_EXTERNAL_RESOURCE_KEY] = False
