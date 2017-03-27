@@ -1,17 +1,14 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.xml.bind.DatatypeConverter;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -44,7 +41,7 @@ public abstract class AbstractEventClient extends AbstractClient {
      * @deprecated hack due to event api limitation on filtering on event_type. Delete this when fixed!
      */
     // FIXME hack due to event api limitation on filtering on event_type. Delete this when fixed
-    protected abstract Set<String> getValidEventTypes();
+    public abstract void filter(List<Event> events);
 
     @SneakyThrows
     public ListenableFuture<Event[]> asyncGetBatch(String executionId, Date fromDate, int from, int batchSize) {
@@ -81,14 +78,7 @@ public abstract class AbstractEventClient extends AbstractClient {
         ListenableFuture<ListEventResponse> eventsResultListenableFuture = FutureUtil
                 .unwrapRestResponse(getForEntity(getSuffixedUrl(null, allParamsNames.toArray(new String[allParamsNames.size()])), ListEventResponse.class,
                         allParamsValues.toArray(new Object[allParamsValues.size()])));
-        // return Futures.transform(eventsResultListenableFuture, ListEventResponse::getItems);
-        // FIXME:Event4.0 hack due to event api limitation on filtering on event_type. uncomment the line above when fixed
-        return Futures.transform(eventsResultListenableFuture, (Function<? super ListEventResponse, ? extends Event[]>) listEventResponse -> {
-            Set<String> validEventTypes = getValidEventTypes();
-            Event[] events = listEventResponse.getItems();
-            return (validEventTypes == null || events == null) ? events
-                    : Arrays.stream(events).filter(event -> validEventTypes.contains(event.getEventType())).toArray(Event[]::new);
-        });
+        return Futures.transform(eventsResultListenableFuture, ListEventResponse::getItems);
     }
 
     @SneakyThrows

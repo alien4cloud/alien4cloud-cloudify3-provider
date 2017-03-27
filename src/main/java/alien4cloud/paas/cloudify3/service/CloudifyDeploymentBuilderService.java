@@ -10,11 +10,9 @@ import javax.inject.Inject;
 
 import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.types.CapabilityType;
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import org.apache.commons.collections4.CollectionUtils;
@@ -46,6 +44,7 @@ import alien4cloud.paas.cloudify3.util.mapping.PropertiesMappingUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.paas.wf.AbstractStep;
 import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
@@ -99,7 +98,7 @@ public class CloudifyDeploymentBuilderService {
                 excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
-        
+
         Map<String, CapabilityType> capabilityTypes = getAllCapabilityTypes(deploymentContext);
 
         cloudifyDeployment.setDeploymentPaaSId(deploymentContext.getDeploymentPaaSId());
@@ -150,8 +149,8 @@ public class CloudifyDeploymentBuilderService {
         Map<String, CapabilityType> capabilities = Maps.newHashMap();
         for (PaaSNodeTemplate template : deploymentContext.getPaaSTopology().getAllNodes().values()) {
             for (CapabilityDefinition capabilityDef : template.getIndexedToscaElement().getCapabilities()) {
-                CapabilityType capabilityType = csarRepositorySearchService
-                        .getElementInDependencies(CapabilityType.class, capabilityDef.getType(), deploymentContext.getDeploymentTopology().getDependencies());
+                CapabilityType capabilityType = csarRepositorySearchService.getElementInDependencies(CapabilityType.class, capabilityDef.getType(),
+                        deploymentContext.getDeploymentTopology().getDependencies());
                 capabilities.put(capabilityDef.getType(), capabilityType);
             }
         }
@@ -213,8 +212,10 @@ public class CloudifyDeploymentBuilderService {
      * <ul>
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
-     * * <li>AND is not a Docker container</li>
-     * * <li>AND is not a service</li>
+     * *
+     * <li>AND is not a Docker container</li>
+     * *
+     * <li>AND is not a service</li>
      * </ul>
      *
      * @param node
