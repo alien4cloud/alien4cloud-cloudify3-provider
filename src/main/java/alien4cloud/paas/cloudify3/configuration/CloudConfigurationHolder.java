@@ -55,7 +55,7 @@ public class CloudConfigurationHolder {
             public void onConfigurationChange(CloudConfiguration newConfiguration) throws Exception {
                 authenticationInterceptor.setUserName(newConfiguration.getUserName());
                 authenticationInterceptor.setPassword(newConfiguration.getPassword());
-                authenticationInterceptor.setTenant(newConfiguration.getCloudifyTenant());
+                authenticationInterceptor.setTenant(newConfiguration.getTenant());
                 sslContextManager.disableSSLVerification(configuration.getDisableSSLVerification() != null && configuration.getDisableSSLVerification());
                 Version version = versionClient.read();
                 Blueprint[] blueprints = blueprintClient.list();

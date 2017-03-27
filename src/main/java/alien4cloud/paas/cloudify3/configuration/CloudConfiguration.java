@@ -13,7 +13,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@FormProperties({ "url", "locations", "userName", "password", "cloudifyTenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
+@FormProperties({ "url", "locations", "userName", "password", "tenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
         "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent", "kubernetes" })
 public class CloudConfiguration {
 
@@ -34,7 +34,7 @@ public class CloudConfiguration {
     private String password;
 
     @NotNull
-    private String cloudifyTenant;
+    private String tenant;
 
     @NotNull
     private Boolean disableSSLVerification;
