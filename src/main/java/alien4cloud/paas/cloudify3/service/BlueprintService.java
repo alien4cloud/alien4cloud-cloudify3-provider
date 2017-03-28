@@ -39,6 +39,7 @@ import com.google.common.collect.Sets;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
@@ -51,7 +52,6 @@ import alien4cloud.paas.cloudify3.service.model.Relationship;
 import alien4cloud.paas.cloudify3.util.VelocityUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
@@ -67,38 +67,22 @@ import lombok.extern.slf4j.Slf4j;
 public class BlueprintService {
     public static final String TOSCA_NODES_CONTAINER_APPLICATION_DOCKER_CONTAINER = "tosca.nodes.Container.Application.DockerContainer";
     public static final String ALIEN_CAPABILITIES_ENDPOINT_DOCKER = "alien.capabilities.endpoint.Docker";
-
-    // An artifact type that does not do anything but still force the cloudify to actually call something (for create post-initialization).
-    private static final String DO_NOTHING_IMPL_ARTIFACT_TYPE = "org.alien4cloud.artifacts.cfy.DoNothing";
-    private static final ImplementationArtifact DO_NOTHING_IMPL_ARTIFACT;
-    static {
-        DO_NOTHING_IMPL_ARTIFACT = new ImplementationArtifact();
-        DO_NOTHING_IMPL_ARTIFACT.setArtifactType(DO_NOTHING_IMPL_ARTIFACT_TYPE);
-    }
-
     @Resource
     private CloudConfigurationHolder cloudConfigurationHolder;
-
     @Resource
     private MappingConfigurationHolder mappingConfigurationHolder;
-
     @Resource
     private PropertyEvaluatorService propertyEvaluatorService;
-
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
-
     @Resource
     private ManagedPlugin pluginContext;
-
     /** Registry of implementation artifacts supported by the plugin. */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
-
     @Inject
     @Lazy(true)
     private ILocationResourceService locationResourceService;
-
     @Inject
     private LocationService locationService;
 
@@ -196,10 +180,6 @@ public class BlueprintService {
         for (PaaSNodeTemplate node : alienDeployment.getNonNatives()) {
             // Get all defined interfaces that have at least one implemented operation
             Map<String, Interface> interfaces = util.getNonNative().getNodeInterfaces(node);
-
-            // We use the create operation using a post create code injection to set all node properties as attributes, set the ip attribute on the endpoint
-            // capabilities and set eventually attribute values if some are defined.
-            ensureCreateOperation(interfaces);
 
             for (Map.Entry<String, Interface> inter : safe(interfaces).entrySet()) {
                 Map<String, Operation> operations = inter.getValue().getOperations();
@@ -355,15 +335,6 @@ public class BlueprintService {
         return generatedBlueprintFilePath;
     }
 
-    private void ensureCreateOperation(Map<String, Interface> interfaces) throws IOException {
-        Interface standard = interfaces.get(ToscaNodeLifecycleConstants.STANDARD);
-        standard = standard == null ? new Interface(ToscaNodeLifecycleConstants.STANDARD) : standard;
-        Operation create = standard.getOperations().get(ToscaNodeLifecycleConstants.CREATE);
-        create = create == null ? new Operation(DO_NOTHING_IMPL_ARTIFACT) : create;
-        standard.getOperations().put(ToscaNodeLifecycleConstants.CREATE, create);
-        interfaces.put(ToscaNodeLifecycleConstants.STANDARD, standard);
-    }
-
     private OperationWrapper generateOperationScriptWrapper(String interfaceName, String operationName, Operation operation, IPaaSTemplate<?> owner,
             BlueprintGenerationUtil util, Map<String, Object> context, Path generatedBlueprintDirectoryPath,
             Map<String, Map<String, DeploymentArtifact>> artifacts, Map<Relationship, Map<String, DeploymentArtifact>> relationshipArtifacts,
@@ -372,26 +343,29 @@ public class BlueprintService {
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("operation", operationWrapper);
 
-        if (!DO_NOTHING_IMPL_ARTIFACT_TYPE.equals(operation.getImplementationArtifact().getArtifactType())) {
-            ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService
-                    .getCloudifyImplementationArtifact(operation.getImplementationArtifact().getArtifactType());
-            if (cloudifyImplementationArtifact == null) {
-                // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
-                log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
-                // TODO allow logs during recipe generation.
-                // PaaSDeploymentLog deploymentLog = new PaaSDeploymentLog(deploymentId, "", PaaSDeploymentLogLevel.WARN, "", new Date(), "install", null,
-                // owner.getId(), null, interfaceName, operationName, "Trying to generate a recipe while the implementation artifact ("
-                // + operation.getImplementationArtifact().getArtifactType() + ") is not recognized.");
-                // alienMonitorDao.save(deploymentLog);
-                operationContext.put("executor_template", "artifacts/scripts.vm");
-            } else {
-                operationContext.put("executor_template", cloudifyImplementationArtifact.getVelocityWrapperPath());
-                cloudifyImplementationArtifact.updateVelocityWrapperContext(operationContext, cloudConfigurationHolder.getConfiguration());
-            }
+        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService
+                .getCloudifyImplementationArtifact(operation.getImplementationArtifact().getArtifactType());
+        if (cloudifyImplementationArtifact == null) {
+            // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
+            log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
+            // TODO allow logs during recipe generation.
+            // PaaSDeploymentLog deploymentLog = new PaaSDeploymentLog(deploymentId, "", PaaSDeploymentLogLevel.WARN, "", new Date(), "install", null,
+            // owner.getId(), null, interfaceName, operationName, "Trying to generate a recipe while the implementation artifact ("
+            // + operation.getImplementationArtifact().getArtifactType() + ") is not recognized.");
+            // alienMonitorDao.save(deploymentLog);
+            operationContext.put("executor_template", "artifacts/scripts.vm");
+        } else {
+            operationContext.put("executor_template", cloudifyImplementationArtifact.getVelocityWrapperPath());
+            cloudifyImplementationArtifact.updateVelocityWrapperContext(operationContext, cloudConfigurationHolder.getConfiguration());
         }
 
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/impl_artifact_wrapper.vm"),
-                generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName)), operationContext);
+        if(cloudifyImplementationArtifact instanceof NodeInitArtifact) {
+            VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/node_init.vm"),
+                    generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName)), operationContext);
+        } else {
+            VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/impl_artifact_wrapper.vm"),
+                    generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName)), operationContext);
+        }
         return operationWrapper;
     }
 
@@ -451,21 +425,22 @@ public class BlueprintService {
             Map<String, Operation> operations = interfaceEntry.getValue().getOperations();
             for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
                 ImplementationArtifact artifact = operationEntry.getValue().getImplementationArtifact();
-
                 if (artifact != null) {
-                    String relativePathToArtifact;
-                    if (node instanceof PaaSNodeTemplate) {
-                        relativePathToArtifact = util.getImplementationArtifactPath((PaaSNodeTemplate) node, interfaceEntry.getKey(), operationEntry.getKey(),
-                                artifact);
-                    } else if (node instanceof PaaSRelationshipTemplate) {
-                        PaaSRelationshipTemplate relationshipTemplate = ((PaaSRelationshipTemplate) node);
-                        relativePathToArtifact = util.getRelationshipImplementationArtifactPath(relationshipTemplate, interfaceEntry.getKey(),
-                                operationEntry.getKey(), artifact);
-                    } else {
-                        throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
-                    }
-                    if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
-                        copyArtifact(artifactsDir, relativePathToArtifact, artifact);
+                    if (!NodeInitArtifact.DO_NOTHING_IMPL_ARTIFACT_TYPE.equals(artifact.getArtifactType())) {
+                        String relativePathToArtifact;
+                        if (node instanceof PaaSNodeTemplate) {
+                            relativePathToArtifact = util.getImplementationArtifactPath((PaaSNodeTemplate) node, interfaceEntry.getKey(),
+                                    operationEntry.getKey(), artifact);
+                        } else if (node instanceof PaaSRelationshipTemplate) {
+                            PaaSRelationshipTemplate relationshipTemplate = ((PaaSRelationshipTemplate) node);
+                            relativePathToArtifact = util.getRelationshipImplementationArtifactPath(relationshipTemplate, interfaceEntry.getKey(),
+                                    operationEntry.getKey(), artifact);
+                        } else {
+                            throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
+                        }
+                        if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
+                            copyArtifact(artifactsDir, relativePathToArtifact, artifact);
+                        }
                     }
                 }
             }

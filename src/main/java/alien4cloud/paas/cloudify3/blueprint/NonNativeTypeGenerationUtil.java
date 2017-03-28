@@ -244,7 +244,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         if (owner instanceof PaaSNodeTemplate) {
             return formatNodeFunctionPropertyValue(context, functionPropertyValue);
         } else if (owner instanceof PaaSRelationshipTemplate) {
-            return formatRelationshipFunctionPropertyValue(context, functionPropertyValue);
+            return formatRelationshipFunctionPropertyValue(context, (PaaSRelationshipTemplate) owner, functionPropertyValue);
         } else {
             throw new NotSupportedException("Un-managed paaS template type " + owner.getClass().getSimpleName());
         }
@@ -274,10 +274,19 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
+     * @param relationshipTemplate The relationship template for which to format the function request.
      * @return the formatted parameter understandable by Cloudify 3
      */
-    public String formatRelationshipFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
+    private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
+            FunctionPropertyValue functionPropertyValue) {
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+            if ("target".equals(functionPropertyValue.getTemplateName().toLowerCase())
+                    && relationshipTemplate.getTemplate().getTargetedCapabilityName() != null) {
+                // If fetching from target and we know then try to fetch attribute from the target capability first and then the from the node.
+                return "get_target_capa_or_node_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", 'capabilities."
+                        + relationshipTemplate.getTemplate().getTargetedCapabilityName() + "." + functionPropertyValue.getElementNameToFetch() + "', '"
+                        + functionPropertyValue.getElementNameToFetch() + "')";
+            }
             if (functionPropertyValue.getParameters().size() > 2) {
                 StringBuilder builder = new StringBuilder();
                 builder.append("get_nested_attribute(ctx.").append(functionPropertyValue.getTemplateName().toLowerCase()).append(context).append(", [");
@@ -451,12 +460,11 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     /**
      * Utility method to know where the operation should be executed (on the host node or management node).
-     * 
+     *
      * @param operation The operation for which to check hosting.
      * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
      */
     public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
-
         if (isCustomResource(node)) {
             return false;
         }
@@ -525,7 +533,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
      * </ul>
-     * 
+     *
      * @param node
      * @return true is the node is considered as a custom template.
      */

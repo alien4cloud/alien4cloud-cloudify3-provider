@@ -83,7 +83,7 @@ env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.source)
 #end##elseif($util.nonNative.isOperationOwnedByRelationship(${operation}))
 
 ###################### If the method is the create method we inject node initialization here.
-#if($operation.interfaceName == "tosca.interfaces.node.lifecycle.Standard" && $operation.operationName == "create")
+#if($operation.interfaceName == "org.alien4cloud.interfaces.cfy.lifecycle" && $operation.operationName == "NodeInit")
 ## Make all node property an attribute
 #foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
 #if(!$util.common.isNull($propertyEntry.value))
@@ -113,9 +113,11 @@ ctx.instance.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.val
 #end##if($operation.operationName == "create")
 ###################### END If the method is the create method we inject node initialization here.
 
+
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 env_map['$inputEntry.key'] = $util.nonNative.formatValue(${operation.owner}, $inputEntry.value)
 #end
+
 
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 #if($util.nonNative.isGetAttributeFunctionPropertyValue($inputEntry.value))
