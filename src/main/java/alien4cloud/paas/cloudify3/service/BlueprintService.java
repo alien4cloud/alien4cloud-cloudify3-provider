@@ -26,6 +26,7 @@ import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Required;
@@ -39,8 +40,8 @@ import com.google.common.collect.Sets;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
-import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
+import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
@@ -52,6 +53,7 @@ import alien4cloud.paas.cloudify3.service.model.Relationship;
 import alien4cloud.paas.cloudify3.util.VelocityUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
@@ -178,43 +180,48 @@ public class BlueprintService {
 
         // Wrap all implementation script into a wrapper so it can be called from cloudify 3 with respect of TOSCA.
         for (PaaSNodeTemplate node : alienDeployment.getNonNatives()) {
-            // Get all defined interfaces that have at least one implemented operation
-            Map<String, Interface> interfaces = util.getNonNative().getNodeInterfaces(node);
+            if (node.getTemplate() instanceof ServiceNodeTemplate) {
+                generateServiceCreateOperation(node, util, context, generatedBlueprintDirectoryPath);
+            } else {
+                // Get all defined interfaces that have at least one implemented operation
+                Map<String, Interface> interfaces = util.getNonNative().getNodeInterfaces(node);
 
-            for (Map.Entry<String, Interface> inter : safe(interfaces).entrySet()) {
-                Map<String, Operation> operations = inter.getValue().getOperations();
-                for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
-                    // Node operation download and access only the node artifacts.
-                    Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
-                    putIfNotEmpty(artifacts, node.getId(), node.getTemplate().getArtifacts());
-                    generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), node, util, context,
-                            generatedBlueprintDirectoryPath, artifacts, null, alienDeployment.getAllNodes());
-                }
-            }
-
-            List<PaaSRelationshipTemplate> relationships = util.getNonNative().getSourceRelationships(node);
-            for (PaaSRelationshipTemplate relationship : relationships) {
-                Map<String, Interface> relationshipInterfaces = util.getNonNative().getRelationshipInterfaces(relationship);
-
-                for (Map.Entry<String, Interface> inter : safe(relationshipInterfaces).entrySet()) {
+                for (Map.Entry<String, Interface> inter : safe(interfaces).entrySet()) {
                     Map<String, Operation> operations = inter.getValue().getOperations();
                     for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
-                        // Relationship artifacts
-                        Relationship keyRelationship = new Relationship(relationship.getId(), relationship.getSource(), relationship.getTemplate().getTarget());
-                        Map<Relationship, Map<String, DeploymentArtifact>> relationshipArtifacts = Maps.newLinkedHashMap();
-                        putIfNotEmpty(relationshipArtifacts, keyRelationship, relationship.getTemplate().getArtifacts());
+                        // Node operation download and access only the node artifacts.
                         Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
-                        // Source node artifacts
-                        Map<String, DeploymentArtifact> sourceArtifacts = alienDeployment.getAllNodes().get(relationship.getSource()).getTemplate()
-                                .getArtifacts();
-                        putIfNotEmpty(artifacts, relationship.getSource(), sourceArtifacts);
-                        // Target node artifacts
-                        Map<String, DeploymentArtifact> targetArtifacts = alienDeployment.getAllNodes().get(relationship.getTemplate().getTarget())
-                                .getTemplate().getArtifacts();
-                        putIfNotEmpty(artifacts, relationship.getTemplate().getTarget(), targetArtifacts);
+                        putIfNotEmpty(artifacts, node.getId(), node.getTemplate().getArtifacts());
+                        generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), node, util, context,
+                                generatedBlueprintDirectoryPath, artifacts, null, alienDeployment.getAllNodes());
+                    }
+                }
 
-                        generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), relationship, util, context,
-                                generatedBlueprintDirectoryPath, artifacts, relationshipArtifacts, alienDeployment.getAllNodes());
+                List<PaaSRelationshipTemplate> relationships = util.getNonNative().getSourceRelationships(node);
+                for (PaaSRelationshipTemplate relationship : relationships) {
+                    Map<String, Interface> relationshipInterfaces = util.getNonNative().getRelationshipInterfaces(relationship);
+
+                    for (Map.Entry<String, Interface> inter : safe(relationshipInterfaces).entrySet()) {
+                        Map<String, Operation> operations = inter.getValue().getOperations();
+                        for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
+                            // Relationship artifacts
+                            Relationship keyRelationship = new Relationship(relationship.getId(), relationship.getSource(),
+                                    relationship.getTemplate().getTarget());
+                            Map<Relationship, Map<String, DeploymentArtifact>> relationshipArtifacts = Maps.newLinkedHashMap();
+                            putIfNotEmpty(relationshipArtifacts, keyRelationship, relationship.getTemplate().getArtifacts());
+                            Map<String, Map<String, DeploymentArtifact>> artifacts = Maps.newLinkedHashMap();
+                            // Source node artifacts
+                            Map<String, DeploymentArtifact> sourceArtifacts = alienDeployment.getAllNodes().get(relationship.getSource()).getTemplate()
+                                    .getArtifacts();
+                            putIfNotEmpty(artifacts, relationship.getSource(), sourceArtifacts);
+                            // Target node artifacts
+                            Map<String, DeploymentArtifact> targetArtifacts = alienDeployment.getAllNodes().get(relationship.getTemplate().getTarget())
+                                    .getTemplate().getArtifacts();
+                            putIfNotEmpty(artifacts, relationship.getTemplate().getTarget(), targetArtifacts);
+
+                            generateOperationScriptWrapper(inter.getKey(), operationEntry.getKey(), operationEntry.getValue(), relationship, util, context,
+                                    generatedBlueprintDirectoryPath, artifacts, relationshipArtifacts, alienDeployment.getAllNodes());
+                        }
                     }
                 }
             }
@@ -335,6 +342,17 @@ public class BlueprintService {
         return generatedBlueprintFilePath;
     }
 
+    private void generateServiceCreateOperation(IPaaSTemplate<?> owner, BlueprintGenerationUtil util, Map<String, Object> context,
+            Path generatedBlueprintDirectoryPath) throws IOException {
+
+        Map<String, Object> operationContext = Maps.newHashMap(context);
+        operationContext.put("template", owner);
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"),
+                generatedBlueprintDirectoryPath
+                        .resolve(util.getNonNative().getArtifactWrapperPath(owner, ToscaNodeLifecycleConstants.STANDARD, ToscaNodeLifecycleConstants.CREATE)),
+                operationContext);
+    }
+
     private OperationWrapper generateOperationScriptWrapper(String interfaceName, String operationName, Operation operation, IPaaSTemplate<?> owner,
             BlueprintGenerationUtil util, Map<String, Object> context, Path generatedBlueprintDirectoryPath,
             Map<String, Map<String, DeploymentArtifact>> artifacts, Map<Relationship, Map<String, DeploymentArtifact>> relationshipArtifacts,
@@ -359,7 +377,7 @@ public class BlueprintService {
             cloudifyImplementationArtifact.updateVelocityWrapperContext(operationContext, cloudConfigurationHolder.getConfiguration());
         }
 
-        if(cloudifyImplementationArtifact instanceof NodeInitArtifact) {
+        if (cloudifyImplementationArtifact instanceof NodeInitArtifact) {
             VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/node_init.vm"),
                     generatedBlueprintDirectoryPath.resolve(util.getNonNative().getArtifactWrapperPath(owner, interfaceName, operationName)), operationContext);
         } else {

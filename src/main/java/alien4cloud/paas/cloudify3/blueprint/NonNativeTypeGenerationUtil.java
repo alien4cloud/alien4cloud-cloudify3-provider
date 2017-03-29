@@ -549,8 +549,8 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return node.getTemplate() instanceof ServiceNodeTemplate;
     }
 
-    public boolean isEndpoint(Capability capability) {
-        CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
+    public boolean isEndpoint(String capabilityTypeName) {
+        CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capabilityTypeName);
         return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId())
                 || (capabilityType.getDerivedFrom() != null && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
     }
