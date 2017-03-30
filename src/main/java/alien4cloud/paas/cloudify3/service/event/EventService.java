@@ -175,7 +175,7 @@ public class EventService extends AbstractEventService {
         String alienDeploymentId = paaSDeploymentIdToAlienDeploymentIdMapping.get(cloudifyEvent.getContext().getDeploymentId());
         if (alienDeploymentId == null) {
             if (log.isDebugEnabled()) {
-                log.debug("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
+                log.warn("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
                         cloudifyEvent.getId());
             }
             return null;
@@ -264,12 +264,6 @@ public class EventService extends AbstractEventService {
             return null;
         }
         alienEvent.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getTimestamp()).getTimeInMillis());
-        String alienDeploymentId = paaSDeploymentIdToAlienDeploymentIdMapping.get(cloudifyEvent.getContext().getDeploymentId());
-        if (alienDeploymentId == null) {
-            log.warn("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
-                    cloudifyEvent);
-            return null;
-        }
         alienEvent.setDeploymentId(alienDeploymentId);
         return alienEvent;
     }

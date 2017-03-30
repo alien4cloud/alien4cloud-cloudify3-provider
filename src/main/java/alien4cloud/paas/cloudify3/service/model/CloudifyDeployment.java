@@ -4,16 +4,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
+
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
 import alien4cloud.paas.model.PaaSNodeTemplate;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -52,8 +53,6 @@ public class CloudifyDeployment {
     private List<RelationshipType> nonNativesRelationshipTypes;
 
     private List<NodeType> nativeTypes;
-
-    private Map<String, CapabilityType> capabilityTypes;
 
     /** Nodes that derived from tosca.nodes.Container.Application.DockerContainer */
     private List<PaaSNodeTemplate> dockerTypes;
