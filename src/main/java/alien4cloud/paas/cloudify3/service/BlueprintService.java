@@ -443,22 +443,20 @@ public class BlueprintService {
             Map<String, Operation> operations = interfaceEntry.getValue().getOperations();
             for (Map.Entry<String, Operation> operationEntry : operations.entrySet()) {
                 ImplementationArtifact artifact = operationEntry.getValue().getImplementationArtifact();
-                if (artifact != null) {
-                    if (!NodeInitArtifact.DO_NOTHING_IMPL_ARTIFACT_TYPE.equals(artifact.getArtifactType())) {
-                        String relativePathToArtifact;
-                        if (node instanceof PaaSNodeTemplate) {
-                            relativePathToArtifact = util.getImplementationArtifactPath((PaaSNodeTemplate) node, interfaceEntry.getKey(),
-                                    operationEntry.getKey(), artifact);
-                        } else if (node instanceof PaaSRelationshipTemplate) {
-                            PaaSRelationshipTemplate relationshipTemplate = ((PaaSRelationshipTemplate) node);
-                            relativePathToArtifact = util.getRelationshipImplementationArtifactPath(relationshipTemplate, interfaceEntry.getKey(),
-                                    operationEntry.getKey(), artifact);
-                        } else {
-                            throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
-                        }
-                        if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
-                            copyArtifact(artifactsDir, relativePathToArtifact, artifact);
-                        }
+                if (artifact != null && !NodeInitArtifact.DO_NOTHING_IMPL_ARTIFACT_TYPE.equals(artifact.getArtifactType())) {
+                    String relativePathToArtifact;
+                    if (node instanceof PaaSNodeTemplate) {
+                        relativePathToArtifact = util.getImplementationArtifactPath((PaaSNodeTemplate) node, interfaceEntry.getKey(), operationEntry.getKey(),
+                                artifact);
+                    } else if (node instanceof PaaSRelationshipTemplate) {
+                        PaaSRelationshipTemplate relationshipTemplate = ((PaaSRelationshipTemplate) node);
+                        relativePathToArtifact = util.getRelationshipImplementationArtifactPath(relationshipTemplate, interfaceEntry.getKey(),
+                                operationEntry.getKey(), artifact);
+                    } else {
+                        throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
+                    }
+                    if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
+                        copyArtifact(artifactsDir, relativePathToArtifact, artifact);
                     }
                 }
             }
