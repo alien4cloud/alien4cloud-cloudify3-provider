@@ -4,8 +4,9 @@ from cloudify.state import ctx_parameters as inputs
 
 import os
 
-headers = None
-if inputs['cloudify_token']:
-    headers = {'Authentication-Token': inputs['cloudify_token']}
-
-client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), protocol='https', trust_all=True, token=inputs['cloudify_token'], tenant='$cloud.tenant')
+client = CloudifyClient(host=utils.get_manager_ip(),
+                        port=utils.get_manager_rest_service_port(),
+                        protocol='https',
+                        cert=utils.get_local_rest_certificate(),
+                        token= utils.get_rest_token(),
+                        tenant='$cloud.tenant')
