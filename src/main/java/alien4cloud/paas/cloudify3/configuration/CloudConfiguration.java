@@ -22,9 +22,6 @@ public class CloudConfiguration {
     private String url;
 
     @NotNull
-    private String apiVersion;
-
-    @NotNull
     private LocationConfigurations locations;
 
     @NotNull

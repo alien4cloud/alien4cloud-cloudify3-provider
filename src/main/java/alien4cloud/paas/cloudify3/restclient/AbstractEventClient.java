@@ -4,6 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -35,20 +36,14 @@ public abstract class AbstractEventClient extends AbstractClient {
         return EVENTS_PATH;
     }
 
-    @Deprecated
-    /**
-     *
-     * @deprecated hack due to event api limitation on filtering on event_type. Delete this when fixed!
-     */
-    // FIXME hack due to event api limitation on filtering on event_type. Delete this when fixed
-    public abstract void filter(List<Event> events);
-
     @SneakyThrows
     public ListenableFuture<Event[]> asyncGetBatch(String executionId, Date fromDate, int from, int batchSize) {
         Map<String, Object> request = Maps.newLinkedHashMap();
         if (fromDate != null) {
-            Calendar calendar = Calendar.getInstance();
+            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             calendar.setTime(fromDate);
+            // FIXME event 2.1 api is broken on ronge filters. We have to add 4 hours to the real request date, and set the manager timezone to UTC
+            // calendar.add(Calendar.HOUR, 4);
             request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(calendar) + ",");
         }
         request.put("_offset", from);
@@ -84,5 +79,11 @@ public abstract class AbstractEventClient extends AbstractClient {
     @SneakyThrows
     public Event[] getBatch(String executionId, Date fromDate, int from, int batchSize) {
         return asyncGetBatch(executionId, fromDate, from, batchSize).get();
+    }
+
+    @Override
+    protected String getApiVersion() {
+        // TODO now lets use api v2.1 for events, since v3 is constantly changing. when stabilized, we should use it
+        return "v2.1";
     }
 }

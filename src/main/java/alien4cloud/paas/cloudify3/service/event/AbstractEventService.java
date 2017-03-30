@@ -53,8 +53,6 @@ public abstract class AbstractEventService {
             for (Event cloudifyEvent : events) {
                 lastEvents.add(cloudifyEvent.getId());
             }
-            // FIXME:Event4.0 hack due to event api limitation on filtering on event_type. remove the line below when fixed
-            getClient().filter(eventsAfterFiltering);
             return eventsAfterFiltering.toArray(new Event[eventsAfterFiltering.size()]);
         };
 

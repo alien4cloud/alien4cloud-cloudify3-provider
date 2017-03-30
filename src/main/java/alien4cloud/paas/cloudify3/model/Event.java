@@ -27,8 +27,6 @@ public class Event extends AbstractCloudifyModel {
 
     private EventMessage message;
 
-    private String executionId;
-
     @JsonIgnore
     public String getId() {
         StringJoiner buffer = new StringJoiner("_");
