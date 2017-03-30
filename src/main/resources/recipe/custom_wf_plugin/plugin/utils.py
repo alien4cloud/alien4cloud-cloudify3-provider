@@ -316,7 +316,6 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 if should_call_relationship_op(ctx, relationship):
                     if __check_and_register_call_config_arround(ctx, custom_context, relationship, 'source', 'post'):
                         sequence.add(relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.postconfigure', kwargs={'cloudify_token': custom_context.token}))
-                        has_postconfigure_tasks = True
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):

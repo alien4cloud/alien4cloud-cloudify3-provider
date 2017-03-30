@@ -19,8 +19,8 @@ import alien4cloud.paas.cloudify3.model.RelationshipInstance;
 import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.exception.NotSupportedException;
-import alien4cloud.tosca.normative.NormativeRelationshipConstants;
-import alien4cloud.tosca.normative.ToscaFunctionConstants;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;

@@ -35,7 +35,7 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.normative.ToscaFunctionConstants;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
 
 /**

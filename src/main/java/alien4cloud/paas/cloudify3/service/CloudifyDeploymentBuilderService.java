@@ -8,13 +8,13 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
-import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.context.annotation.Lazy;
@@ -50,30 +50,28 @@ import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.NormativeRelationshipConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Component("cloudify-deployment-builder-service")
 @Slf4j
 public class CloudifyDeploymentBuilderService {
-
     @Inject
     private WorkflowsBuilderService workflowBuilderService;
     @Inject
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Inject
     private CloudConfigurationHolder cloudConfigurationHolder;
-
     @Inject
     private ICSARRepositorySearchService csarRepositorySearchService;
 
     @Inject
     @Lazy(true)
     private ILocationResourceService locationResourceService;
-
     @Inject
     private LocationService locationService;
+    /** Service that force the presence of a create operation to trigger initializations. */
+    @Inject
+    private InitOperationInjectorService createOperationInjectorService;
 
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
@@ -98,8 +96,6 @@ public class CloudifyDeploymentBuilderService {
                 excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
-
-        Map<String, CapabilityType> capabilityTypes = getAllCapabilityTypes(deploymentContext);
 
         cloudifyDeployment.setDeploymentPaaSId(deploymentContext.getDeploymentPaaSId());
         cloudifyDeployment.setDeploymentId(deploymentContext.getDeploymentId());
@@ -128,11 +124,13 @@ public class CloudifyDeploymentBuilderService {
 
         processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
         cloudifyDeployment.setNativeTypes(nativeTypes);
-        cloudifyDeployment.setCapabilityTypes(capabilityTypes);
+        cloudifyDeployment.setCapabilityTypes(deploymentContext.getPaaSTopology().getCapabilityTypes());
         processServices(cloudifyDeployment);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
         cloudifyDeployment.setProviderDeploymentProperties(deploymentContext.getDeploymentTopology().getProviderDeploymentProperties());
+        // Inject missing create operations required for nodes initializations.
+        injectCreateOperations(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
         cloudifyDeployment.setWorkflows(buildWorkflowsForDeployment(deploymentContext.getDeploymentTopology().getWorkflows()));
 
         // if monitoring is enabled then try to get the nodes to monitor
@@ -143,18 +141,6 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
         return cloudifyDeployment;
-    }
-
-    private Map<String, CapabilityType> getAllCapabilityTypes(PaaSTopologyDeploymentContext deploymentContext) {
-        Map<String, CapabilityType> capabilities = Maps.newHashMap();
-        for (PaaSNodeTemplate template : deploymentContext.getPaaSTopology().getAllNodes().values()) {
-            for (CapabilityDefinition capabilityDef : template.getIndexedToscaElement().getCapabilities()) {
-                CapabilityType capabilityType = csarRepositorySearchService.getElementInDependencies(CapabilityType.class, capabilityDef.getType(),
-                        deploymentContext.getDeploymentTopology().getDependencies());
-                capabilities.put(capabilityDef.getType(), capabilityType);
-            }
-        }
-        return capabilities;
     }
 
     /**
@@ -261,15 +247,28 @@ public class CloudifyDeploymentBuilderService {
         }
     }
 
-    // TODO: shouldn't we put this in utils intead??
     public Workflows buildWorkflowsForDeployment(Map<String, Workflow> workflowsMap) {
         Workflows workflows = new Workflows();
         workflows.setWorkflows(workflowsMap);
+        // Cloudify plugin injects a create operation for node that does not implements it, therefore we ensure that between a node create and created steps we
+        // indeed have a call to create operation.
         fillWorkflowSteps(Workflow.INSTALL_WF, workflowsMap, workflows.getInstallHostWorkflows());
         fillWorkflowSteps(Workflow.UNINSTALL_WF, workflowsMap, workflows.getUninstallHostWorkflows());
         fillOrphans(Workflow.INSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
         fillOrphans(Workflow.UNINSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
         return workflows;
+    }
+
+    // We use the create operation using a post create code injection to set all node properties as attributes, set the ip attribute on the endpoint
+    // capabilities and set eventually attribute values if some are defined. Inject create operations used for node initialization in node that do not
+    // define them. Also inject call to create operation before the node created
+    // state change.
+    private void injectCreateOperations(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
+        Workflow installWorkflow = workflowsMap.get(Workflow.INSTALL_WF);
+        // for every non native node let's ensure that there is a call to the create method.
+        for (PaaSNodeTemplate template : nonNatives) {
+            createOperationInjectorService.ensureCreateOperation(template, installWorkflow);
+        }
     }
 
     private void fillOrphans(String workflowName, Map<String, Workflow> workflows, Map<String, StandardWorkflow> standardWorkflows) {

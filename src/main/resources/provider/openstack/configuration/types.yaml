@@ -1,7 +1,7 @@
-tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
+tosca_definitions_version: alien_dsl_1_3_0
 
 template_name: openstack-types
-template_author: Alien4cloud
+template_author: alien4cloud
 template_version: 1.3.0
 
 imports:

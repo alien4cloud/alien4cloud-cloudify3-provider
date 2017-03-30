@@ -58,18 +58,13 @@ public class EventService extends AbstractEventService {
     // TODO : May manage in a better manner this kind of state
     private Map<String, String> paaSDeploymentIdToAlienDeploymentIdMapping = Maps.newConcurrentMap();
 
-    private Map<String, String> alienDeploymentIdToPaaSDeploymentIdMapping = Maps.newConcurrentMap();
-
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
         for (Map.Entry<String, PaaSTopologyDeploymentContext> activeDeploymentContextEntry : activeDeploymentContexts.entrySet()) {
             paaSDeploymentIdToAlienDeploymentIdMapping.put(activeDeploymentContextEntry.getKey(), activeDeploymentContextEntry.getValue().getDeploymentId());
-            alienDeploymentIdToPaaSDeploymentIdMapping.put(activeDeploymentContextEntry.getValue().getDeploymentId(), activeDeploymentContextEntry.getKey());
         }
     }
 
-    /**
-     * This queue is used for internal events
-     */
+    /** This queue is used for internal events. */
     private List<AbstractMonitorEvent> internalProviderEventsQueue = Lists.newLinkedList();
 
     private static final long delay = 30 * 1000L;
@@ -99,7 +94,6 @@ public class EventService extends AbstractEventService {
 
     public synchronized void registerDeployment(String deploymentPaaSId, String deploymentId) {
         paaSDeploymentIdToAlienDeploymentIdMapping.put(deploymentPaaSId, deploymentId);
-        alienDeploymentIdToPaaSDeploymentIdMapping.put(deploymentId, deploymentPaaSId);
     }
 
     public synchronized void registerDeploymentEvent(String deploymentPaaSId, DeploymentStatus deploymentStatus) {
@@ -212,8 +206,8 @@ public class EventService extends AbstractEventService {
                 // TODO make that Async
                 NodeInstance instance = nodeInstanceClient.read(cloudifyEvent.getContext().getNodeId());
                 Map<String, Object> persistentProperties = new HashMap<String, Object>(eventAlienPersistent.getPersistentProperties().size());
-                for(Map.Entry<String, String> entry: eventAlienPersistent.getPersistentProperties().entrySet()) {
-                    if(!instance.getRuntimeProperties().containsKey(entry.getKey())) {
+                for (Map.Entry<String, String> entry : eventAlienPersistent.getPersistentProperties().entrySet()) {
+                    if (!instance.getRuntimeProperties().containsKey(entry.getKey())) {
                         // This is a workaround to ignore events from existing volumes especially on aws.
                         // Cloudify don't have a 'zone' runtime properties when using existing volumes.
                         // As it is existing volumes, we already has the persistent properties in A4C.
@@ -224,7 +218,8 @@ public class EventService extends AbstractEventService {
                     String attributeValue = (String) MapUtil.get(instance.getRuntimeProperties(), entry.getKey());
                     persistentProperties.put(entry.getValue(), attributeValue);
                 }
-                alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getContext().getNodeName(), cloudifyEvent.getContext().getNodeId(), persistentProperties);
+                alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getContext().getNodeName(), cloudifyEvent.getContext().getNodeId(),
+                        persistentProperties);
             } catch (Exception e) {
                 log.warn("Problem processing persistent event " + cloudifyEvent.getId(), e);
                 return null;
@@ -275,6 +270,12 @@ public class EventService extends AbstractEventService {
             return null;
         }
         alienEvent.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getTimestamp()).getTimeInMillis());
+        String alienDeploymentId = paaSDeploymentIdToAlienDeploymentIdMapping.get(cloudifyEvent.getContext().getDeploymentId());
+        if (alienDeploymentId == null) {
+            log.warn("Alien deployment id is not found for paaS deployment {}, must ignore this event {}", cloudifyEvent.getContext().getDeploymentId(),
+                    cloudifyEvent);
+            return null;
+        }
         alienEvent.setDeploymentId(alienDeploymentId);
         return alienEvent;
     }

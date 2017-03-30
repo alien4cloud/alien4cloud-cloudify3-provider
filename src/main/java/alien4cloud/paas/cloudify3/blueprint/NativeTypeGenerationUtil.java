@@ -2,8 +2,8 @@ package alien4cloud.paas.cloudify3.blueprint;
 
 import alien4cloud.model.common.Tag;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.NormativeComputeConstants;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
 import com.google.common.collect.Lists;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;

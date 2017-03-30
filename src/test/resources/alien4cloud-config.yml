@@ -110,3 +110,6 @@ openstack:
 cloudify3:
   externalNetworkName: "net-pub"
   imageId: "02ddfcbb-9534-44d7-974d-5cfd36dfbcab"
+
+logs_deployment_appender:
+  enable: false

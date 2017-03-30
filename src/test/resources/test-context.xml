@@ -77,6 +77,6 @@
     </bean>
 
     <bean id="alien-plugin-context" class="alien4cloud.plugin.model.ManagedPlugin" primary="true">
-        <constructor-arg value="target/alien/plugin"/>
+        <constructor-arg value="src/main/resources"/>
     </bean>
 </beans>

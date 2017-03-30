@@ -53,6 +53,8 @@ public class CloudifyDeployment {
 
     private List<NodeType> nativeTypes;
 
+    private Map<String, CapabilityType> capabilityTypes;
+
     /** Nodes that derived from tosca.nodes.Container.Application.DockerContainer */
     private List<PaaSNodeTemplate> dockerTypes;
 
@@ -60,7 +62,6 @@ public class CloudifyDeployment {
 
     /** Nodes that are custom resources (provided as types but native by nature). */
     private Map<String, PaaSNodeTemplate> customResources;
-
 
     private Map<String, List<PaaSNodeTemplate>> groups;
 
