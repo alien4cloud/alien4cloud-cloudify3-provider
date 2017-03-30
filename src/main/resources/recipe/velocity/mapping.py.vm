@@ -44,7 +44,7 @@ device_key = inputs['device_key'] # the attribute name of the volume node which 
 
 # Retrieve the current device_name from the attributes of the volume node
 volume = client.node_instances.get(volume_instance_id)
-ctx.logger.debug("[MAPPING] volume: {0}".format(volume))
+ctx.logger.debug("[MAPPING] volume: {0}".format(json.dumps(volume)))
 
 saved_device_key = "cfy_{0}_saved".format(device_key)
 if saved_device_key in volume.runtime_properties:
@@ -65,6 +65,6 @@ if mapped_device is not None:
     volume.runtime_properties[saved_device_key] = device_name
   volume.runtime_properties[device_key] = mapped_device
   client.node_instances.update(volume_instance_id, None, volume.runtime_properties, volume.version)
-  ctx.logger.info("[MAPPING] volume: {0} updated".format(volume))
+  ctx.logger.info("[MAPPING] volume: {0} updated".format(json.dumps(volume)))
 else:
   ctx.logger.info("[MAPPING] No mapping for {0}".format(volume_instance_id))
