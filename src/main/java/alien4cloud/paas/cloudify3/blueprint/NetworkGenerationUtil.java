@@ -3,13 +3,14 @@ package alien4cloud.paas.cloudify3.blueprint;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+
+import com.google.common.collect.Lists;
+
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.ToscaNormativeUtil;
-
-import com.google.common.collect.Lists;
 
 public class NetworkGenerationUtil extends NativeTypeGenerationUtil {
 

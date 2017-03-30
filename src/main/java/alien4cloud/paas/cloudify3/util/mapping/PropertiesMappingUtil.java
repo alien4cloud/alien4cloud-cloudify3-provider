@@ -1,15 +1,5 @@
 package alien4cloud.paas.cloudify3.util.mapping;
 
-import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
-import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.model.types.AbstractToscaType;
-import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
-import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import alien4cloud.tosca.normative.ToscaType;
-import alien4cloud.utils.TagUtil;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,9 +7,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import lombok.extern.slf4j.Slf4j;
+
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
+import org.alien4cloud.tosca.model.types.AbstractToscaType;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Maps;
+
+import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
+import alien4cloud.utils.TagUtil;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Perform mapping of properties
@@ -123,14 +126,14 @@ public class PropertiesMappingUtil {
 
     private static ComplexPropertyMapping buildPropertyMapping(PropertyDefinition definition) {
 
-        if (ToscaType.isSimple(definition.getType())) {
+        if (ToscaTypes.isSimple(definition.getType())) {
             return null;
         }
 
         switch (definition.getType()) {
-        case ToscaType.LIST:
-        case ToscaType.MAP:
-            return new ComplexPropertyMapping(definition.getEntrySchema().getType(), ToscaType.LIST.equalsIgnoreCase(definition.getType()));
+        case ToscaTypes.LIST:
+        case ToscaTypes.MAP:
+            return new ComplexPropertyMapping(definition.getEntrySchema().getType(), ToscaTypes.LIST.equalsIgnoreCase(definition.getType()));
         default:
             return new ComplexPropertyMapping(definition.getType(), false);
         }

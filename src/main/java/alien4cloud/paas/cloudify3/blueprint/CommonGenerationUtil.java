@@ -10,6 +10,10 @@ import org.alien4cloud.tosca.model.definitions.PropertyValue;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.types.IPropertyType;
+import org.alien4cloud.tosca.normative.types.ScalarType;
+import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import org.apache.commons.lang3.StringUtils;
 
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
@@ -18,10 +22,6 @@ import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesServic
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.IPropertyType;
-import alien4cloud.tosca.normative.ScalarType;
-import alien4cloud.tosca.normative.ToscaType;
 import alien4cloud.utils.MapUtil;
 import alien4cloud.utils.services.PropertyValueService;
 
@@ -62,12 +62,12 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
         }
     }
 
-    public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement){
-       return ToscaNormativeUtil.isFromType(type, indexedInheritableToscaElement);
+    public boolean isFromType(String type, AbstractInheritableToscaType indexedInheritableToscaElement) {
+        return ToscaNormativeUtil.isFromType(type, indexedInheritableToscaElement);
     }
 
     public boolean doesVelocityFileExists(String velocityFilePath) {
-        if(Files.exists(Paths.get(velocityFilePath))) {
+        if (Files.exists(Paths.get(velocityFilePath))) {
             return true;
         }
         return false;
@@ -78,13 +78,14 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
             throw new IllegalArgumentException(String.format("Unknown property '%s' in node template '%s'", propertyName, template.getId()));
         }
         PropertyDefinition propertyDefinition = template.getIndexedToscaElement().getProperties().get(propertyName);
-        IPropertyType type = ToscaType.fromYamlTypeName(propertyDefinition.getType());
+        IPropertyType type = ToscaTypes.fromYamlTypeName(propertyDefinition.getType());
         if (type instanceof ScalarType) {
             AbstractPropertyValue apv = template.getTemplate().getProperties().get(propertyName);
-            if(apv instanceof PropertyValue) {
+            if (apv instanceof PropertyValue) {
                 return PropertyValueService.getValueInUnit(((PropertyValue) apv).getValue(), unit, ceil, propertyDefinition);
             } else {
-                throw new IllegalArgumentException(String.format("Property '%s' in node template '%s' is not a property value", propertyName, template.getId()));
+                throw new IllegalArgumentException(
+                        String.format("Property '%s' in node template '%s' is not a property value", propertyName, template.getId()));
             }
         }
         throw new IllegalArgumentException(String.format("Property '%s' in node template '%s' is not a scalar unit type", propertyName, template.getId()));
