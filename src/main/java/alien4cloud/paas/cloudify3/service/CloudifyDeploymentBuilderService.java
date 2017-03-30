@@ -1,5 +1,8 @@
 package alien4cloud.paas.cloudify3.service;
 
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -8,12 +11,12 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.context.annotation.Lazy;
@@ -47,8 +50,6 @@ import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
-import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Component("cloudify-deployment-builder-service")
@@ -67,7 +68,9 @@ public class CloudifyDeploymentBuilderService {
     private LocationService locationService;
     /** Service that force the presence of a create operation to trigger initializations. */
     @Inject
-    private InitOperationInjectorService createOperationInjectorService;
+    private InitOperationInjectorService initOperationInjectorService;
+    @Inject
+    private ServiceDelegateWorkflowService serviceDelegateWorkflowService;
 
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
@@ -123,8 +126,12 @@ public class CloudifyDeploymentBuilderService {
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
         cloudifyDeployment.setProviderDeploymentProperties(deploymentContext.getDeploymentTopology().getProviderDeploymentProperties());
-        // Inject missing create operations required for nodes initializations.
-        injectCreateOperations(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
+
+        // Replace services delegate operation with create and start operations
+        replaceServiceDelegate(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
+        // Cloudify plugin injects a specific operation required for nodes initializations.
+        injectInitOperations(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
+
         cloudifyDeployment.setWorkflows(buildWorkflowsForDeployment(deploymentContext.getDeploymentTopology().getWorkflows()));
 
         // if monitoring is enabled then try to get the nodes to monitor
@@ -216,24 +223,41 @@ public class CloudifyDeploymentBuilderService {
     public Workflows buildWorkflowsForDeployment(Map<String, Workflow> workflowsMap) {
         Workflows workflows = new Workflows();
         workflows.setWorkflows(workflowsMap);
-        // Cloudify plugin injects a create operation for node that does not implements it, therefore we ensure that between a node create and created steps we
-        // indeed have a call to create operation.
-        fillWorkflowSteps(Workflow.INSTALL_WF, workflowsMap, workflows.getInstallHostWorkflows());
-        fillWorkflowSteps(Workflow.UNINSTALL_WF, workflowsMap, workflows.getUninstallHostWorkflows());
-        fillOrphans(Workflow.INSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
-        fillOrphans(Workflow.UNINSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
+        fillWorkflowSteps(INSTALL, workflowsMap, workflows.getInstallHostWorkflows());
+        fillWorkflowSteps(UNINSTALL, workflowsMap, workflows.getUninstallHostWorkflows());
+        fillOrphans(INSTALL, workflowsMap, workflows.getStandardWorkflows());
+        fillOrphans(UNINSTALL, workflowsMap, workflows.getStandardWorkflows());
         return workflows;
     }
 
-    // We use the create operation using a post create code injection to set all node properties as attributes, set the ip attribute on the endpoint
-    // capabilities and set eventually attribute values if some are defined. Inject create operations used for node initialization in node that do not
-    // define them. Also inject call to create operation before the node created
-    // state change.
-    private void injectCreateOperations(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
-        Workflow installWorkflow = workflowsMap.get(Workflow.INSTALL_WF);
+    /**
+     * We use the create operation using a post create code injection to set all node properties as attributes, set the ip attribute on the endpoint
+     * capabilities and set eventually attribute values if some are defined. Inject create operations used for node initialization in node that do not
+     * define them. Also inject call to create operation before the node created
+     * state change.
+     * 
+     * @param nonNatives
+     * @param workflowsMap
+     */
+    private void injectInitOperations(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
+        Workflow installWorkflow = workflowsMap.get(INSTALL);
         // for every non native node let's ensure that there is a call to the create method.
         for (PaaSNodeTemplate template : nonNatives) {
-            createOperationInjectorService.ensureCreateOperation(template, installWorkflow);
+            initOperationInjectorService.ensureCreateOperation(template, installWorkflow);
+        }
+    }
+
+    /**
+     * Replace the service delegate operations by a create and start operation call sequence.
+     *
+     * @param nonNatives Services nodes are stored as non native nodes.
+     * @param workflowsMap The workflow map to impact.
+     */
+    private void replaceServiceDelegate(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
+        for (PaaSNodeTemplate template : nonNatives) {
+            if (template.getTemplate() instanceof ServiceNodeTemplate) {
+                serviceDelegateWorkflowService.replaceInstallServiceDelegate(template, workflowsMap.get(INSTALL));
+            }
         }
     }
 

@@ -2,9 +2,11 @@ package alien4cloud.paas.cloudify3.service;
 
 import java.util.Map.Entry;
 
+import alien4cloud.paas.wf.DelegateWorkflowActivity;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
@@ -20,6 +22,8 @@ import alien4cloud.paas.wf.SetStateActivity;
 import alien4cloud.paas.wf.Workflow;
 import lombok.extern.slf4j.Slf4j;
 
+import static alien4cloud.utils.AlienUtils.safe;
+
 /**
  * Inject a node init operation to the node and workflow to actually perform some attribute values initializations.
  */
@@ -34,7 +38,7 @@ public class InitOperationInjectorService {
 
     static {
         ImplementationArtifact doNothing = new ImplementationArtifact();
-        doNothing.setArtifactType(NodeInitArtifact.DO_NOTHING_IMPL_ARTIFACT_TYPE);
+        doNothing.setArtifactType(NodeInitArtifact.NODE_INIT_ARTIFACT_TYPE);
         INIT_INTERFACE = new Interface(INIT_INTERFACE_TYPE);
         Operation initOperation = new Operation(doNothing);
         INIT_INTERFACE.getOperations().put(INIT_OPERATION_NAME, initOperation);
@@ -53,7 +57,7 @@ public class InitOperationInjectorService {
             if (stepEntry.getValue() instanceof NodeActivityStep && node.getId().equals(((NodeActivityStep) stepEntry.getValue()).getNodeId())) {
                 NodeActivityStep nodeStep = (NodeActivityStep) stepEntry.getValue();
                 AbstractActivity activity = nodeStep.getActivity();
-                if (activity instanceof SetStateActivity && ToscaNodeLifecycleConstants.CREATING.equals(((SetStateActivity) activity).getStateName())) {
+                if (isCreatingStep(node, activity)) {
                     String stepName = "_a4c_init_" + node.getId();
                     // Inject the NodeInit operation in the workflow steps
                     OperationCallActivity callActivity = new OperationCallActivity(INIT_INTERFACE_TYPE, INIT_OPERATION_NAME);
@@ -61,7 +65,7 @@ public class InitOperationInjectorService {
                     NodeActivityStep initStep = new NodeActivityStep(nodeStep.getNodeId(), nodeStep.getHostId(), callActivity);
                     initStep.setName(stepName);
                     initStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
-                    for (String followerId : initStep.getFollowingSteps()) {
+                    for (String followerId : safe(initStep.getFollowingSteps())) {
                         AbstractStep follower = installWorkflow.getSteps().get(followerId);
                         follower.getPrecedingSteps().remove(stepEntry.getKey());
                         follower.getPrecedingSteps().add(stepName);
@@ -74,5 +78,9 @@ public class InitOperationInjectorService {
             }
         }
         log.error("Unable to find creating step and to inject init operation for node {}.", node.getId());
+    }
+
+    private boolean isCreatingStep(PaaSNodeTemplate node, AbstractActivity activity) {
+        return activity instanceof SetStateActivity && ToscaNodeLifecycleConstants.CREATING.equals(((SetStateActivity) activity).getStateName());
     }
 }

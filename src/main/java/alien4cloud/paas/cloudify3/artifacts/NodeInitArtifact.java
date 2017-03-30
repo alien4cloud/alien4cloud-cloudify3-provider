@@ -15,11 +15,11 @@ import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
  */
 @Component
 public class NodeInitArtifact implements ICloudifyImplementationArtifact {
-    public static final String DO_NOTHING_IMPL_ARTIFACT_TYPE = "org.alien4cloud.artifacts.cfy.NodeInit";
+    public static final String NODE_INIT_ARTIFACT_TYPE = "org.alien4cloud.artifacts.cfy.NodeInit";
 
     @Override
     public String getArtifactName() {
-        return DO_NOTHING_IMPL_ARTIFACT_TYPE;
+        return NODE_INIT_ARTIFACT_TYPE;
     }
 
     @Override

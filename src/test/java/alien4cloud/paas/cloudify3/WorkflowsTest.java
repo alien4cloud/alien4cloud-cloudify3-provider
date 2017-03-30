@@ -23,14 +23,17 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
+
 public class WorkflowsTest {
 
     private Map<String, Workflow> wfs = Maps.newHashMap();
 
     @Before
     public void before() {
-        addWorkflow(true, Workflow.INSTALL_WF);
-        addWorkflow(true, Workflow.UNINSTALL_WF);
+        addWorkflow(true, INSTALL);
+        addWorkflow(true, UNINSTALL);
     }
 
     @Test
@@ -44,7 +47,8 @@ public class WorkflowsTest {
         List<Tag> tags = new ArrayList<>();
         Tag tag = new Tag();
         tag.setName(PropertiesMappingUtil.PROP_MAPPING_TAG_KEY);
-        tag.setValue("{\"size\": [{\"path\": \"volume.size\", \"unit\": \"GiB\"}, \"toto\" ], \"volume_id\": \"resource_id\", \"snapshot_id\": \"volume.snapshot_id\", \"device\": \"device_name\"}");
+        tag.setValue(
+                "{\"size\": [{\"path\": \"volume.size\", \"unit\": \"GiB\"}, \"toto\" ], \"volume_id\": \"resource_id\", \"snapshot_id\": \"volume.snapshot_id\", \"device\": \"device_name\"}");
         tags.add(tag);
         nodeType.setTags(tags);
         Map<String, List<IPropertyMapping>> mappings = PropertiesMappingUtil.loadPropertyMapping(PropertiesMappingUtil.PROP_MAPPING_TAG_KEY, nodeType);
@@ -71,7 +75,7 @@ public class WorkflowsTest {
      */
     @Test
     public void test() {
-        Workflow installWf = wfs.get(Workflow.INSTALL_WF);
+        Workflow installWf = wfs.get(INSTALL);
         String host1 = "host1";
         String host2 = "host2";
         installWf.setHosts(Sets.newHashSet(host1, host2));
@@ -108,7 +112,7 @@ public class WorkflowsTest {
         assertHostWorkflow(installHostWFs, host2, 4, 3, 2); // additional step b2 -> orphan1 considered as internal link
 
         assertNotEmpty(builtWorkflow.getStandardWorkflows());
-        StandardWorkflow installSdf = builtWorkflow.getStandardWorkflows().get(Workflow.INSTALL_WF);
+        StandardWorkflow installSdf = builtWorkflow.getStandardWorkflows().get(INSTALL);
         assertStandardWorkFlow(installSdf, 2, 1);
 
     }
@@ -119,7 +123,8 @@ public class WorkflowsTest {
 
     }
 
-    private void assertHostWorkflow(Map<String, HostWorkflow> hostWfs, String hostName, int expectedSteps, int expectedInternalLinks, int expectedExternalLinks) {
+    private void assertHostWorkflow(Map<String, HostWorkflow> hostWfs, String hostName, int expectedSteps, int expectedInternalLinks,
+            int expectedExternalLinks) {
         HostWorkflow hwf = hostWfs.get(hostName);
         Assert.assertNotNull(hwf);
         Assert.assertEquals(expectedSteps, hwf.getSteps().size());
