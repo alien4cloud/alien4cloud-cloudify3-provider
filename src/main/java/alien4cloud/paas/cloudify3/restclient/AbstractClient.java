@@ -30,6 +30,8 @@ public abstract class AbstractClient {
     @Setter
     private AuthenticationInterceptor authenticationInterceptor;
 
+    private static String API_VERSION = "v3";
+
     /**
      * Get the url appended with the given suffix
      *
@@ -38,7 +40,7 @@ public abstract class AbstractClient {
      * @return the url suffixed
      */
     public String getSuffixedUrl(String suffix, String... parameterNames) {
-        String urlPrefix = configurationHolder.getConfiguration().getUrl() + "/api/" + configurationHolder.getConfiguration().getApiVersion() + getPath()
+        String urlPrefix = configurationHolder.getConfiguration().getUrl() + "/api/" + getApiVersion() + getPath()
                 + (suffix != null ? suffix : "");
         if (parameterNames != null && parameterNames.length > 0) {
             UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(urlPrefix);
@@ -87,4 +89,13 @@ public abstract class AbstractClient {
     }
 
     protected abstract String getPath();
+
+    /**
+     * Other clients can override this to use a different api version
+     * 
+     * @return
+     */
+    protected String getApiVersion() {
+        return API_VERSION;
+    }
 }

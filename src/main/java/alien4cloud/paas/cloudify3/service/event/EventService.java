@@ -237,7 +237,7 @@ public class EventService extends AbstractEventService {
             try {
                 EventAlienWorkflowStarted eventAlienWorkflowStarted = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflowStarted.class);
                 PaaSWorkflowMonitorEvent pwme = new PaaSWorkflowMonitorEvent();
-                pwme.setExecutionId(cloudifyEvent.getExecutionId());
+                pwme.setExecutionId(cloudifyEvent.getContext().getExecutionId());
                 pwme.setWorkflowId(eventAlienWorkflowStarted.getWorkflowName());
                 pwme.setSubworkflow(eventAlienWorkflowStarted.getSubworkflow());
                 alienEvent = pwme;
@@ -257,13 +257,7 @@ public class EventService extends AbstractEventService {
                 e.setInstanceId(cloudifyEvent.getContext().getNodeId());
                 e.setStepId(eventAlienWorkflow.getStepId());
                 e.setStage(eventAlienWorkflow.getStage());
-                String workflowId = cloudifyEvent.getContext().getWorkflowId();
-                e.setExecutionId(cloudifyEvent.getExecutionId());
-                // FIXME broken since no worlflowId is returned
-                // Why do we event do this??
-                // if (StringUtils.startsWith(workflowId, Workflow.A4C_PREFIX)) {
-                // workflowId = workflowId.substring(Workflow.A4C_PREFIX.length());
-                // }
+                e.setExecutionId(cloudifyEvent.getContext().getExecutionId());
                 e.setWorkflowId(cloudifyEvent.getContext().getWorkflowId());
                 alienEvent = e;
             } catch (Exception e) {
