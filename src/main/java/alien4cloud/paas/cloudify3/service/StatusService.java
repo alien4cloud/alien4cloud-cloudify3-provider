@@ -54,6 +54,7 @@ import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 

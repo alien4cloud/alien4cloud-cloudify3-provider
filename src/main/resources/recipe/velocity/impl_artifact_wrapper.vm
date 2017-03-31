@@ -73,19 +73,60 @@ env_map['SOURCE_INSTANCES'] = get_instance_list(ctx.source.node.id)
 
 ## Test if operation should be executed on source or target
 #if($operation.operationName.matches("(pre|post)_configure_target|(add|remove)_source"))
-env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.target, 'ip_address')
+#if(!$util.common.isNull(${operation.owner.getTemplate().getTargetedCapabilityName()}))
+env_map['A4C_EXECUTION_HOST'] = get_target_capa_or_node_attribute(ctx.target, 'capabilities.${operation.owner.getTemplate().getTargetedCapabilityName()}.ip_address', 'ip_address')
+#else
+env_map['A4C_EXECUTION_HOST'] = get_attribute_user(ctx.target, 'ip_address')
+#end
 env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.target)
 env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.target)
 #else
-env_map['A4C_EXECUTION_HOST'] = get_attribute(ctx.source, 'ip_address')
+#if(!$util.common.isNull(${operation.owner.getTemplate().getRequirementName()}))
+env_map['A4C_EXECUTION_HOST'] = get_target_capa_or_node_attribute(ctx.source, 'requirements.${operation.owner.getTemplate().getRequirementName()}.ip_address', 'ip_address')
+#else
+env_map['A4C_EXECUTION_HOST'] = get_attribute_user(ctx.target, 'ip_address')
+#end
 env_map['A4C_EXECUTION_USER'] = get_attribute_user(ctx.source)
 env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.source)
-#end ## if(($operation.operationName).matches("(pre|post)_configure_target|(add|remove)_source"))
+#end## if(($operation.operationName).matches("(pre|post)_configure_target|(add|remove)_source"))
+#end##elseif($util.nonNative.isOperationOwnedByRelationship(${operation}))
 
+###################### If the method is the create method we inject node initialization here.
+#if($operation.interfaceName == "org.alien4cloud.interfaces.cfy.lifecycle" && $operation.operationName == "NodeInit")
+## Make all node property an attribute
+#foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
+#if(!$util.common.isNull($propertyEntry.value))
+ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatTextValueToPython($util.property.formatValueForceEscape(false, 0, $propertyEntry.value))
 #end
+#end##foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
+
+## Make all node capability property an attribute
+#foreach($capabilityEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.capabilities))
+#foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
+#if(!$util.common.isNull($propertyEntry.value))
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatTextValueToPython($util.property.formatValueForceEscape(false, 0, $propertyEntry.value))
+#end
+#end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
+## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
+#if($util.nonNative.isEndpoint($capabilityEntry.value))
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.ip_address'] = get_public_or_private_ip(ctx)
+#end
+#end##foreach($capabilityEntry in $util.common.safeEntrySet(template.nodeTemplate.capabilities))
+
+## Inject all default attribute values
+#if(!$util.common.isNull($template.nodeTemplate.attributeValues))
+#foreach($attributeEntry in ${template.nodeTemplate.attributeValues.entrySet()})
+ctx.instance.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.value}'
+#end## foreach($attributeEntry in ${attributes.entrySet()})
+#end##isNull($template.nodeTemplate.attributeValues)
+#end##if($operation.operationName == "create")
+###################### END If the method is the create method we inject node initialization here.
+
+
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 env_map['$inputEntry.key'] = $util.nonNative.formatValue(${operation.owner}, $inputEntry.value)
 #end
+
 
 #foreach($inputEntry in $operation.inputParameters.entrySet())
 #if($util.nonNative.isGetAttributeFunctionPropertyValue($inputEntry.value))
@@ -144,6 +185,7 @@ if inputs.get('process', None) is not None and inputs['process'].get('env', None
 #parse($executor_template)
 #end
 
+## Register operation outputs (as tosca allow reference to operation execution outputs)
 for k,v in outputs:
     ctx.logger.info('Output name: {0} value: {1}'.format(k, v))
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))

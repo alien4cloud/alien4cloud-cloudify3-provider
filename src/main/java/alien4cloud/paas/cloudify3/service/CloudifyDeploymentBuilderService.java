@@ -1,5 +1,8 @@
 package alien4cloud.paas.cloudify3.service;
 
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +13,7 @@ import javax.inject.Inject;
 
 import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
@@ -57,23 +61,22 @@ import lombok.extern.slf4j.Slf4j;
 @Component("cloudify-deployment-builder-service")
 @Slf4j
 public class CloudifyDeploymentBuilderService {
-
     @Inject
     private WorkflowsBuilderService workflowBuilderService;
     @Inject
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Inject
     private CloudConfigurationHolder cloudConfigurationHolder;
-
-    @Inject
-    private ICSARRepositorySearchService csarRepositorySearchService;
-
     @Inject
     @Lazy(true)
     private ILocationResourceService locationResourceService;
-
     @Inject
     private LocationService locationService;
+    /** Service that force the presence of a create operation to trigger initializations. */
+    @Inject
+    private InitOperationInjectorService initOperationInjectorService;
+    @Inject
+    private ServiceDelegateWorkflowService serviceDelegateWorkflowService;
 
     /**
      * Build the Cloudify deployment from the deployment context. Cloudify deployment has data pre-parsed so that blueprint generation is easier.
@@ -98,8 +101,6 @@ public class CloudifyDeploymentBuilderService {
                 excludeCustomNativeTypes(deploymentContext.getPaaSTopology().getComputes(), locationProvidedTypes));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getNetworks()));
         nativeTypes.addAll(getTypesOrderedByDerivedFromHierarchy(deploymentContext.getPaaSTopology().getVolumes()));
-
-        Map<String, CapabilityType> capabilityTypes = getAllCapabilityTypes(deploymentContext);
 
         cloudifyDeployment.setDeploymentPaaSId(deploymentContext.getDeploymentPaaSId());
         cloudifyDeployment.setDeploymentId(deploymentContext.getDeploymentId());
@@ -128,11 +129,15 @@ public class CloudifyDeploymentBuilderService {
 
         processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
         cloudifyDeployment.setNativeTypes(nativeTypes);
-        cloudifyDeployment.setCapabilityTypes(capabilityTypes);
-        processServices(cloudifyDeployment);
 
         cloudifyDeployment.setAllNodes(deploymentContext.getPaaSTopology().getAllNodes());
         cloudifyDeployment.setProviderDeploymentProperties(deploymentContext.getDeploymentTopology().getProviderDeploymentProperties());
+
+        // Replace services delegate operation with create and start operations
+        replaceServiceDelegate(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
+        // Cloudify plugin injects a specific operation required for nodes initializations.
+        injectInitOperations(cloudifyDeployment.getNonNatives(), deploymentContext.getDeploymentTopology().getWorkflows());
+
         cloudifyDeployment.setWorkflows(buildWorkflowsForDeployment(deploymentContext.getDeploymentTopology().getWorkflows()));
 
         // if monitoring is enabled then try to get the nodes to monitor
@@ -142,49 +147,9 @@ public class CloudifyDeploymentBuilderService {
         TopologyContext topologyContext = workflowBuilderService.buildTopologyContext(deploymentContext.getDeploymentTopology());
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
+        cloudifyDeployment.setCapabilityTypes(deploymentContext.getPaaSTopology().getCapabilityTypes());
+
         return cloudifyDeployment;
-    }
-
-    private Map<String, CapabilityType> getAllCapabilityTypes(PaaSTopologyDeploymentContext deploymentContext) {
-        Map<String, CapabilityType> capabilities = Maps.newHashMap();
-        for (PaaSNodeTemplate template : deploymentContext.getPaaSTopology().getAllNodes().values()) {
-            for (CapabilityDefinition capabilityDef : template.getIndexedToscaElement().getCapabilities()) {
-                CapabilityType capabilityType = csarRepositorySearchService.getElementInDependencies(CapabilityType.class, capabilityDef.getType(),
-                        deploymentContext.getDeploymentTopology().getDependencies());
-                capabilities.put(capabilityDef.getType(), capabilityType);
-            }
-        }
-        return capabilities;
-    }
-
-    /**
-     * FIXME: to be reviewed, this will not necessary done here, or differently.
-     */
-    private void processServices(CloudifyDeployment cloudifyDeployment) {
-        for (PaaSNodeTemplate paaSNodeTemplate : cloudifyDeployment.getNonNatives()) {
-            if (paaSNodeTemplate.getTemplate() instanceof ServiceNodeTemplate) {
-                for (PaaSRelationshipTemplate paaSRelationshipTemplate : paaSNodeTemplate.getRelationshipTemplates()) {
-                    if (MapUtils.isNotEmpty(paaSRelationshipTemplate.getInterfaces())) {
-                        Interface interfazz = paaSRelationshipTemplate.getInterfaces().get(ToscaRelationshipLifecycleConstants.CONFIGURE);
-                        if (interfazz != null) {
-                            if (paaSRelationshipTemplate.getSource().equals(paaSNodeTemplate.getId())) {
-                                // for services that are source of a relationship, all operations related to source (the service) are not run.
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.ADD_TARGET);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.POST_CONFIGURE_SOURCE);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_SOURCE);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.REMOVE_TARGET);
-                            } else {
-                                // for services that are target of a relationship, all operations related to target (the service) are not run.
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.ADD_SOURCE);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.POST_CONFIGURE_TARGET);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_TARGET);
-                                interfazz.getOperations().remove(ToscaRelationshipLifecycleConstants.REMOVE_SOURCE);
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
@@ -261,15 +226,46 @@ public class CloudifyDeploymentBuilderService {
         }
     }
 
-    // TODO: shouldn't we put this in utils intead??
     public Workflows buildWorkflowsForDeployment(Map<String, Workflow> workflowsMap) {
         Workflows workflows = new Workflows();
         workflows.setWorkflows(workflowsMap);
-        fillWorkflowSteps(Workflow.INSTALL_WF, workflowsMap, workflows.getInstallHostWorkflows());
-        fillWorkflowSteps(Workflow.UNINSTALL_WF, workflowsMap, workflows.getUninstallHostWorkflows());
-        fillOrphans(Workflow.INSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
-        fillOrphans(Workflow.UNINSTALL_WF, workflowsMap, workflows.getStandardWorkflows());
+        fillWorkflowSteps(INSTALL, workflowsMap, workflows.getInstallHostWorkflows());
+        fillWorkflowSteps(UNINSTALL, workflowsMap, workflows.getUninstallHostWorkflows());
+        fillOrphans(INSTALL, workflowsMap, workflows.getStandardWorkflows());
+        fillOrphans(UNINSTALL, workflowsMap, workflows.getStandardWorkflows());
         return workflows;
+    }
+
+    /**
+     * We use the create operation using a post create code injection to set all node properties as attributes, set the ip attribute on the endpoint
+     * capabilities and set eventually attribute values if some are defined. Inject create operations used for node initialization in node that do not
+     * define them. Also inject call to create operation before the node created
+     * state change.
+     *
+     * @param nonNatives
+     * @param workflowsMap
+     */
+    private void injectInitOperations(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
+        Workflow installWorkflow = workflowsMap.get(INSTALL);
+        // for every non native node let's ensure that there is a call to the create method.
+        for (PaaSNodeTemplate template : nonNatives) {
+            initOperationInjectorService.ensureCreateOperation(template, installWorkflow);
+        }
+    }
+
+    /**
+     * Replace the service delegate operations by a create and start operation call sequence.
+     *
+     * @param nonNatives Services nodes are stored as non native nodes.
+     * @param workflowsMap The workflow map to impact.
+     */
+    private void replaceServiceDelegate(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
+        for (PaaSNodeTemplate template : nonNatives) {
+            if (template.getTemplate() instanceof ServiceNodeTemplate) {
+                serviceDelegateWorkflowService.replaceInstallServiceDelegate(template, workflowsMap.get(INSTALL));
+                serviceDelegateWorkflowService.replaceUnInstallServiceDelegate(template, workflowsMap.get(UNINSTALL));
+            }
+        }
     }
 
     private void fillOrphans(String workflowName, Map<String, Workflow> workflows, Map<String, StandardWorkflow> standardWorkflows) {

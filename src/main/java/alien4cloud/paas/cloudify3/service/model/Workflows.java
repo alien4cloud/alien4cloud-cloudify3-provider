@@ -34,7 +34,6 @@ public class Workflows {
 
     /**
      * Per standard workflow, orphan steps and external links
-     *
      */
     private Map<String, StandardWorkflow> standardWorkflows = Maps.newLinkedHashMap();
 

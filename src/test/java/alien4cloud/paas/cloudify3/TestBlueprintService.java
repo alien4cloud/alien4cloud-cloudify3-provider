@@ -88,11 +88,11 @@ public class TestBlueprintService extends AbstractTestBlueprint {
     @Before
     public void before() throws Exception {
         super.before();
-        cloudConfigurationHolder.getConfiguration().getKubernetes().setKubernetesUrl("kubernetes_master_host:8080");
+        // cloudConfigurationHolder.getConfiguration().getKubernetes().setKubernetesUrl("kubernetes_master_host:8080");
         // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/artifact-test"));
         // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/support-hss"));
-        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/nodecellar-docker-types"));
-        csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/mongo-types"));
+        // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/nodecellar-docker-types"));
+        // csarUtil.uploadCSAR(Paths.get("./src/test/resources/components/mongo-types"));
     }
 
     @Test

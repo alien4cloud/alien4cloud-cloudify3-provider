@@ -11,7 +11,6 @@ import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -36,6 +35,7 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
 
 /**

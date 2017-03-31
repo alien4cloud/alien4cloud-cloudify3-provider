@@ -85,6 +85,7 @@ public class DeploymentLauncher {
         deploymentContext.setDeployment(deployment);
         Map<String, Location> locationMap = Maps.newHashMap();
         Location location = new Location();
+        location.setOrchestratorId("undefined");
         location.setInfrastructureType(locationName);
         locationMap.put(AlienConstants.GROUP_ALL, location);
         deploymentContext.setLocations(locationMap);

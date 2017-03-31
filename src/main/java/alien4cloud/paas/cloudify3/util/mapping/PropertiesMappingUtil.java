@@ -1,5 +1,15 @@
 package alien4cloud.paas.cloudify3.util.mapping;
 
+import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.AbstractToscaType;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
+import org.alien4cloud.tosca.normative.types.ToscaTypes;
+import alien4cloud.utils.TagUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
