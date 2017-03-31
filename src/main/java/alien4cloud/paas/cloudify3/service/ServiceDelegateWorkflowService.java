@@ -3,6 +3,8 @@ package alien4cloud.paas.cloudify3.service;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.CREATE;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.CREATED;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.CREATING;
+import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.DELETED;
+import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.DELETING;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.STANDARD;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.START;
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.STARTED;
@@ -136,7 +138,7 @@ public class ServiceDelegateWorkflowService {
 
     /**
      * Replace the delegate operation of the service in the uninstall workflow by a simple:
-     * stopping -> stop() -> deleted
+     * stopping -> stop() -> stopped -> deleting -> deleted
      *
      * @param serviceNode The service node for which to override the delegate operation.
      * @param uninstallWorkflow The uninstall workflow in which to perform the override.
@@ -151,6 +153,8 @@ public class ServiceDelegateWorkflowService {
                     NodeActivityStep stoppingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPING);
                     NodeActivityStep stopStep = WorkflowUtils.addOperationStep(uninstallWorkflow, serviceNode.getId(), STANDARD, STOP);
                     NodeActivityStep stoppedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPED);
+                    NodeActivityStep deletingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETING);
+                    NodeActivityStep deletedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETED);
 
                     // Re-wire the workflow
                     stoppingStep.setPrecedingSteps(stepEntry.getValue().getPrecedingSteps());
@@ -165,11 +169,17 @@ public class ServiceDelegateWorkflowService {
                     stopStep.setFollowingSteps(Sets.newHashSet(stoppedStep.getName()));
 
                     stoppedStep.setPrecedingSteps(Sets.newHashSet(stopStep.getName()));
-                    stoppedStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
-                    for (String followerId : safe(stoppedStep.getFollowingSteps())) {
+                    stoppedStep.setFollowingSteps(Sets.newHashSet(deletingStep.getName()));
+
+                    deletingStep.setPrecedingSteps(Sets.newHashSet(stoppedStep.getName()));
+                    deletingStep.setFollowingSteps(Sets.newHashSet(deletedStep.getName()));
+
+                    deletedStep.setPrecedingSteps(Sets.newHashSet(deletingStep.getName()));
+                    deletedStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
+                    for (String followerId : safe(deletedStep.getFollowingSteps())) {
                         AbstractStep follower = uninstallWorkflow.getSteps().get(followerId);
                         follower.getPrecedingSteps().remove(stepEntry.getKey());
-                        follower.getPrecedingSteps().add(stoppedStep.getName());
+                        follower.getPrecedingSteps().add(deletedStep.getName());
                     }
 
                     // Remove old step
