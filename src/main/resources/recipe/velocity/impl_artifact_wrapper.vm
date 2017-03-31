@@ -95,7 +95,7 @@ env_map['A4C_EXECUTION_KEY'] = get_attribute_key(ctx.source)
 ## Make all node property an attribute
 #foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
 #if(!$util.common.isNull($propertyEntry.value))
-ctx.instance.runtime_properties['$propertyEntry.key'] = $util.property.formatValueForceEscape(false, 0, $propertyEntry.value)
+ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatTextValueToPython($util.property.formatValueForceEscape(false, 0, $propertyEntry.value))
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
 
@@ -103,7 +103,7 @@ ctx.instance.runtime_properties['$propertyEntry.key'] = $util.property.formatVal
 #foreach($capabilityEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.capabilities))
 #foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
 #if(!$util.common.isNull($propertyEntry.value))
-ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.property.formatValueForceEscape(false, 0, $propertyEntry.value)
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatTextValueToPython($util.property.formatValueForceEscape(false, 0, $propertyEntry.value))
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
 ## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
