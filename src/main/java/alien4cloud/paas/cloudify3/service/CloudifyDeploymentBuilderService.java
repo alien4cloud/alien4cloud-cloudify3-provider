@@ -257,6 +257,7 @@ public class CloudifyDeploymentBuilderService {
         for (PaaSNodeTemplate template : nonNatives) {
             if (template.getTemplate() instanceof ServiceNodeTemplate) {
                 serviceDelegateWorkflowService.replaceInstallServiceDelegate(template, workflowsMap.get(INSTALL));
+                serviceDelegateWorkflowService.replaceUnInstallServiceDelegate(template, workflowsMap.get(UNINSTALL));
             }
         }
     }
