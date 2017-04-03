@@ -280,10 +280,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
             FunctionPropertyValue functionPropertyValue) {
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
-            if (ToscaFunctionConstants.TARGET.equals(functionPropertyValue.getTemplateName().toUpperCase())
+            if (ToscaFunctionConstants.R_TARGET.equals(functionPropertyValue.getTemplateName().toUpperCase())
                     && relationshipTemplate.getTemplate().getTargetedCapabilityName() != null) {
                 // If fetching from target and we know then try to fetch attribute from the target capability first and then the from the node.
-                return "get_target_capa_or_node_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", 'capabilities."
+                return "get_target_capa_or_node_attribute(ctx." + ToscaFunctionConstants.TARGET.toLowerCase() + context + ", 'capabilities."
                         + relationshipTemplate.getTemplate().getTargetedCapabilityName() + "." + functionPropertyValue.getElementNameToFetch() + "', '"
                         + functionPropertyValue.getElementNameToFetch() + "')";
             } else if (ToscaFunctionConstants.SOURCE.equals(functionPropertyValue.getTemplateName().toUpperCase())) {
