@@ -206,7 +206,7 @@ public class StatusService {
                         execution.getCreatedAt(), execution.getWorkflowId(), execution.getStatus());
             }
             Set<String> relevantExecutionsForStatus = Sets.newHashSet(Workflow.INSTALL, Workflow.DELETE_DEPLOYMENT_ENVIRONMENT,
-                    Workflow.CREATE_DEPLOYMENT_ENVIRONMENT, Workflow.UNINSTALL);
+                    Workflow.CREATE_DEPLOYMENT_ENVIRONMENT, Workflow.UNINSTALL, Workflow.UPDATE_DEPLOYMENT);
             // Only consider install/uninstall workflow to check for deployment status
             if (relevantExecutionsForStatus.contains(execution.getWorkflowId())) {
                 if (lastExecution == null) {
@@ -260,6 +260,16 @@ public class StatusService {
                     return DeploymentStatus.UNDEPLOYED;
                 } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
                     return DeploymentStatus.FAILURE;
+                } else {
+                    return DeploymentStatus.UNKNOWN;
+                }
+            case Workflow.UPDATE_DEPLOYMENT:
+                if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
+                    return DeploymentStatus.UPDATE_IN_PROGRESS;
+                } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                    return DeploymentStatus.UPDATED;
+                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                    return DeploymentStatus.UPDATE_FAILURE;
                 } else {
                     return DeploymentStatus.UNKNOWN;
                 }
