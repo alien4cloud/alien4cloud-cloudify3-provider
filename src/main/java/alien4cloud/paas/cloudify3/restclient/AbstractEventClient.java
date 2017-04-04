@@ -42,8 +42,8 @@ public abstract class AbstractEventClient extends AbstractClient {
         if (fromDate != null) {
             Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             calendar.setTime(fromDate);
-            // FIXME event 2.1 api is broken on ronge filters. We have to add 4 hours to the real request date, and set the manager timezone to UTC
-            // calendar.add(Calendar.HOUR, 4);
+            // FIXME event 2.1 api is broken on range filters. We have to add 4 hours to the real request date, and set the manager timezone to UTC
+            calendar.add(Calendar.HOUR, 4);
             request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(calendar) + ",");
         }
         request.put("_offset", from);
