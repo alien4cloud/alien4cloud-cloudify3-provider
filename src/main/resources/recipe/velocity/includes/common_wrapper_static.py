@@ -12,6 +12,7 @@ import sys
 import time
 import threading
 import platform
+import json
 
 def convert_env_value_to_string(envDict):
     for key, value in envDict.items():

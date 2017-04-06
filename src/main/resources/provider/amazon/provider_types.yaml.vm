@@ -1,0 +1,11 @@
+  cloudify.aws.nodes.WindowsInstance:
+    derived_from: cloudify.aws.nodes.Instance
+    properties:
+      use_password:
+        default: true
+      os_family:
+        default: windows
+      agent_config:
+        type: cloudify.datatypes.AgentConfig
+        default:
+          port: 5985

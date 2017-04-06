@@ -115,16 +115,8 @@ node_types:
     tags:
       _a4c_c3_derived_from: cloudify.aws.nodes.WindowsInstance
       _a4c_c3_prop_map: >
-        {"user": "agent_config.user", "password": "agent_config.password", "port": "agent_config.port", "key_pair": null, "private_key_path": null, "use_password": "agent_config.use_password"}
+        {"user": "agent_config.user", "password": "agent_config.password", "port": "agent_config.port", "key_pair": null, "private_key_path": null}
     properties:
-      use_password:
-        type: boolean
-        required: true
-        description: |
-          Whether or not to generate a password for authentication.
-          If set to true, you might want to provide for keypair based authentication's informations.
-          If set to false, you MUST provide for a password for authentication.
-        default: true
       user:
         type: string
         required: true
