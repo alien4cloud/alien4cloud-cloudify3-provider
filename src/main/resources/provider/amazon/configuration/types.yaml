@@ -154,7 +154,7 @@ node_types:
   alien.cloudify.aws.nodes.DeletableVolume:
     derived_from: tosca.nodes.BlockStorage
     description: >
-      This represents a Block Storage (Volume) instance on AWS. Cloudify 3 can create this block and will delete it when the application is undeployed,
+      This represents a Block Storage (Volume) instance on AWS. Cloudify 4 can create this block and will delete it when the application is undeployed,
       even if the volume id is provided.
     properties:
       device:
@@ -182,7 +182,7 @@ node_types:
   alien.cloudify.aws.nodes.Volume:
     derived_from: alien.cloudify.aws.nodes.DeletableVolume
     description: >
-      This represents a Block Storage (Volume) instance on AWS. Cloudify 3 can create this block but will not delete it when the application is undeployed.
+      This represents a Block Storage (Volume) instance on AWS. Cloudify 4 can create this block but will not delete it when the application is undeployed.
       In case the volume is created, it's id will be injected back into alien's deployment topology so next deployment reuse it.
     tags:
       _a4c_persistent_resources: >

@@ -42,7 +42,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Handle cloudify 3 events request
+ * Handle cloudify events request
  */
 @Component("cloudify-event-service")
 @Slf4j

@@ -29,7 +29,7 @@ import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 @Order(ManagementServerProperties.ACCESS_OVERRIDE_ORDER)
 @Configuration
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3" })
-@ImportResource("classpath:cloudify3-plugin-properties-config.xml")
+@ImportResource("classpath:plugin-properties-config.xml")
 public class PluginContextConfiguration {
 
     @Bean(name = "cloudify-rest-template")

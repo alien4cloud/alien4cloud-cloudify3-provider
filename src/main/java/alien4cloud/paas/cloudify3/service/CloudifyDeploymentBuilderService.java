@@ -432,7 +432,7 @@ public class CloudifyDeploymentBuilderService {
 
     /**
      * Map the networks from the topology to either public or private network.
-     * Cloudify 3 plugin indeed maps the public network to floating ips while private network are mapped to network and subnets.
+     * Cloudify plugin indeed maps the public network to floating ips while private network are mapped to network and subnets.
      *
      * @param cloudifyDeployment The cloudify deployment context with private and public networks mapped.
      * @param deploymentContext The deployment context from alien 4 cloud.

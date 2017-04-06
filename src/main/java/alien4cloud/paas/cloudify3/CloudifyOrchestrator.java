@@ -48,11 +48,13 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The cloudify 3 PaaS Provider implementation
+ * The cloudify PaaS Provider implementation
  */
 @Slf4j
 @Component("cloudify-paas-provider-bean")
 public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfiguration> {
+
+    public static String TYPE = "Cloudify4";
 
     @Resource(name = "cloudify-deployment-service")
     private DeploymentService deploymentService;
@@ -118,7 +120,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
                     + " is active (must undeploy first) or is in unknown state (must wait for status available)"));
             return;
         }
-        // Cloudify 3 will use recipe id to identify a blueprint and a deployment instead of deployment id
+        // Cloudify will use recipe id to identify a blueprint and a deployment instead of deployment id
         log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeployment(deploymentContext.getDeploymentPaaSId());

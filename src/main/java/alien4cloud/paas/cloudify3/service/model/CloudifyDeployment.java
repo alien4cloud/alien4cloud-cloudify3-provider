@@ -23,7 +23,7 @@ import alien4cloud.paas.model.PaaSNodeTemplate;
 public class CloudifyDeployment {
 
     /**
-     * This id is a human readable paaS id that will be used to identify deployment on cloudify 3
+     * This id is a human readable paaS id that will be used to identify deployment on cloudify
      */
     private String deploymentPaaSId;
 

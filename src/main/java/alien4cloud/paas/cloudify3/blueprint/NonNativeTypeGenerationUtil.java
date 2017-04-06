@@ -264,7 +264,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
-     * @return the formatted parameter understandable by Cloudify 3
+     * @return the formatted parameter understandable by Cloudify
      */
     public String formatNodeFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
@@ -285,7 +285,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      *
      * @param functionPropertyValue the input which can be a function or a scalar
      * @param relationshipTemplate The relationship template for which to format the function request.
-     * @return the formatted parameter understandable by Cloudify 3
+     * @return the formatted parameter understandable by Cloudify
      */
     private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
             FunctionPropertyValue functionPropertyValue) {

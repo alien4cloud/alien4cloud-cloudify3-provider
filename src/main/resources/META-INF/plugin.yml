@@ -1,12 +1,12 @@
-id: alien-cloudify-3-orchestrator
-name: Cloudify 3 Orchestrator Plugin
+id: alien-cloudify-4-orchestrator
+name: Cloudify 4 Orchestrator Plugin
 version: ${project.version}
 description: >
-  Plugin that contains the Orchestrator for cloudify v3.
+  Plugin that contains the Orchestrator for cloudify v4.
 configuration_class: alien4cloud.paas.cloudify3.PluginFactoryConfiguration
 component_descriptors:
   - bean_name: cloudify-orchestrator
-    name: Cloudify 3 Orchestrator
+    name: Cloudify 4 Orchestrator
     description: >
-      An orchestrator that deploys applications on cloudify 3.x
+      An orchestrator that deploys applications on cloudify 4.x
       Make sure that you configure the url of the cloudify Rest API and the list of images and flavors.

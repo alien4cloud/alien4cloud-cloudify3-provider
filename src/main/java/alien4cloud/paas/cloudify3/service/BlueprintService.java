@@ -182,7 +182,7 @@ public class BlueprintService {
             }
         }
 
-        // Wrap all implementation script into a wrapper so it can be called from cloudify 3 with respect of TOSCA.
+        // Wrap all implementation script into a wrapper so it can be called from cloudify with respect of TOSCA.
         for (PaaSNodeTemplate node : alienDeployment.getNonNatives()) {
             if (node.getTemplate() instanceof ServiceNodeTemplate) {
                 generateServiceCreateOperation(node, util, context, generatedBlueprintDirectoryPath);

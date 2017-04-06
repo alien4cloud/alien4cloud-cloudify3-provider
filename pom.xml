@@ -6,9 +6,9 @@
     <artifactId>alien4cloud-parent</artifactId>
     <version>1.4.0-SNAPSHOT</version>
   </parent>
-  <artifactId>alien4cloud-cloudify3-provider</artifactId>
+  <artifactId>alien4cloud-cloudify4-provider</artifactId>
   <version>1.4.0-SNAPSHOT</version>
-  <name>Cloudify 3.x PaaS Provider for Alien 4 Cloud</name>
+  <name>Cloudify 4.x PaaS Provider for Alien 4 Cloud</name>
 
   <repositories>
     <repository>

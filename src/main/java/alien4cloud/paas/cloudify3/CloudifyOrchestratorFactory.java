@@ -104,8 +104,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public CloudifyOrchestrator newInstance() {
         /**
          * Hierarchy of context (parent on the left) :
-         * Alien Context --> Factory Context --> Real Cloudify 3 context
-         * Each cloud will create a different cloudify 3 context
+         * Alien Context --> Factory Context --> Real orchestrator context
+         * Each orchestrator will create a different context
          */
         AnnotationConfigApplicationContext pluginContext = new AnnotationConfigApplicationContext();
         pluginContext.setParent(factoryContext);
@@ -114,7 +114,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
             pluginContext.register(PluginContextConfiguration.class);
             pluginContext.refresh();
         });
-        log.info("Created new Cloudify 3 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
+        log.info("Created new Cloudify 4 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
         CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
         contextMap.put(provider, pluginContext);
         return provider;
@@ -149,7 +149,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     @Override
     public String getType() {
-        return "Cloudify3";
+        return CloudifyOrchestrator.TYPE;
     }
 
 }

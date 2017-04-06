@@ -1,5 +1,5 @@
 #*
-This template is used to generate cloudify 3 recipe from alien model
+This template is used to generate cloudify 4 recipe from alien model
 - $mapping --> contains global alien --> cloudify mapping
 - $providerMapping --> contains IaaS provider specific mapping configuration
 - $cloud --> contains alien4cloud.paas.cloudify3.configuration.CloudConfiguration instance

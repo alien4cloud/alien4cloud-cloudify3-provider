@@ -15,7 +15,7 @@ import alien4cloud.paas.cloudify3.restclient.AbstractEventClient;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Handle cloudify 3 events request, with offset when needed
+ * Handle cloudify events request, with offset when needed
  * This uses a local cache to store last received events
  */
 @Slf4j
