@@ -15,7 +15,7 @@ public class RestAPITest {
 
     public static void main(String[] args) {
         AuthenticationInterceptor authenticationInterceptor = new AuthenticationInterceptor();
-        PluginContextConfiguration fake = Mockito.mock(PluginContextConfiguration.class);
+        PluginFactoryConfiguration fake = Mockito.mock(PluginFactoryConfiguration.class);
         Mockito.when(fake.asyncRestTemplate()).thenCallRealMethod();
         Mockito.when(fake.restTemplate()).thenCallRealMethod();
         AsyncRestTemplate asyncRestTemplate = fake.asyncRestTemplate();

@@ -5,8 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import javax.inject.Inject;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,17 +15,22 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.utils.FileUtil;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
 public class BlueprintClient extends AbstractClient {
-
     public static final String BLUEPRINT_PATH = "/blueprints";
+
+    @Inject
+    private CloudConfigurationHolder configurationHolder;
 
     @Override
     protected String getPath() {
@@ -37,7 +41,7 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("List blueprint");
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), Blueprint[].class));
+        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl()), Blueprint[].class));
     }
 
     @SneakyThrows
@@ -61,7 +65,7 @@ public class BlueprintClient extends AbstractClient {
         try {
             MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
             headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-            return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}", "application_file_name"), HttpMethod.PUT,
+            return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl(getManagerUrl(), "/{id}", "application_file_name"), HttpMethod.PUT,
                     new HttpEntity<>(Files.readAllBytes(destination.toPath()), headers), Blueprint.class, id, sourceName));
         } finally {
             destination.delete();
@@ -77,7 +81,7 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read blueprint {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), Blueprint.class, id));
+        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl(getManagerUrl(), "/{id}"), Blueprint.class, id));
     }
 
     @SneakyThrows
@@ -89,11 +93,15 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Delete blueprint {}", id);
         }
-        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl("/{id}"), id));
+        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl(getManagerUrl(), "/{id}"), id));
     }
 
     @SneakyThrows
     public void delete(String id) {
         asyncDelete(id).get();
+    }
+
+    private String getManagerUrl() {
+        return configurationHolder.getConfiguration().getUrl();
     }
 }

@@ -13,6 +13,8 @@ import lombok.Setter;
 @EqualsAndHashCode
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Event extends AbstractCloudifyModel {
+    @JsonIgnore
+    private String id;
 
     private String eventType;
 
@@ -27,10 +29,13 @@ public class Event extends AbstractCloudifyModel {
 
     @JsonIgnore
     public String getId() {
-        StringBuilder buffer = new StringBuilder(eventType).append("_").append(timestamp);
-        if (context != null) {
-            buffer.append(context.getExecutionId()).append("_").append(context.getNodeId()).append("_").append(context.getOperation());
+        if (id == null) {
+            StringBuilder buffer = new StringBuilder(eventType).append("_").append(timestamp);
+            if (context != null) {
+                buffer.append(context.getExecutionId()).append("_").append(context.getNodeId()).append("_").append(context.getOperation());
+            }
+            id = buffer.toString();
         }
-        return buffer.toString();
+        return id;
     }
 }

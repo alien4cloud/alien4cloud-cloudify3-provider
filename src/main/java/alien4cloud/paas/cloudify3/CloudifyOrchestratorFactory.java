@@ -6,6 +6,9 @@ import java.util.Map;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.service.EventService;
+import alien4cloud.paas.cloudify3.shared.EventServiceMultiplexer;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -46,6 +49,9 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+
+    @Inject
+    private EventServiceMultiplexer eventServiceMultiplexer;
 
     private Map<IPaaSProvider, AnnotationConfigApplicationContext> contextMap = Collections
             .synchronizedMap(Maps.<IPaaSProvider, AnnotationConfigApplicationContext> newIdentityHashMap());
@@ -90,8 +96,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
         // Kubernetes Configuration
         KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
-        kubernetesConfiguration.setImports(Lists.newArrayList(
-                "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
+        kubernetesConfiguration.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/fabric-plugin/" + CFY_FABRIC_VERSION + "/plugin.yaml",
                 "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml"));
         cloudConfiguration.setKubernetes(kubernetesConfiguration);
 
@@ -114,6 +119,24 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         });
         log.info("Created new Cloudify 3 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
         CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
+        // Register the event service
+        EventService eventService = pluginContext.getBean(EventService.class);
+        CloudConfigurationHolder cloudConfigurationHolder = pluginContext.getBean(CloudConfigurationHolder.class);
+        cloudConfigurationHolder.registerListener(newConfiguration -> {
+            if (newConfiguration.getUrl() != null && !newConfiguration.getUrl().isEmpty()) {
+                new Thread(() -> {
+                    try {
+                        while (eventService.getOrchestratorId() == null) {
+                            Thread.sleep(5000);
+                        }
+                        eventServiceMultiplexer.register(newConfiguration.getUrl(), eventService.getOrchestratorId(), eventService);
+                    } catch (InterruptedException e) {
+                        log.error("Failed to register orchestrator {}", eventService.getOrchestratorId());
+                    }
+                }).start();
+            }
+        });
+
         contextMap.put(provider, pluginContext);
         return provider;
     }
@@ -126,6 +149,13 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     @Override
     public void destroy(CloudifyOrchestrator instance) {
         AnnotationConfigApplicationContext context = contextMap.remove(instance);
+        EventService eventService = context.getBean(EventService.class);
+        CloudConfigurationHolder cloudConfigurationHolder = context.getBean(CloudConfigurationHolder.class);
+        if (cloudConfigurationHolder.getConfiguration() != null && cloudConfigurationHolder.getConfiguration().getUrl() != null
+                && !cloudConfigurationHolder.getConfiguration().getUrl().isEmpty() && eventService.getOrchestratorId() != null) {
+            eventServiceMultiplexer.unRegister(cloudConfigurationHolder.getConfiguration().getUrl(), eventService.getOrchestratorId());
+        }
+
         if (context == null) {
             log.warn("Context not found for paaS provider instance {}", instance);
         } else {

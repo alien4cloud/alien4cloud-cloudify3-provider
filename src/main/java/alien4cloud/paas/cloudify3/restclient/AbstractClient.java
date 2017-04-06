@@ -2,9 +2,6 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import javax.annotation.Resource;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -12,19 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import lombok.Setter;
 
 public abstract class AbstractClient {
 
     @Resource(name = "cloudify-async-rest-template")
     @Setter
     private AsyncRestTemplate restTemplate;
-
-    @Resource
-    @Getter
-    @Setter
-    private CloudConfigurationHolder configurationHolder;
 
     @Resource
     private AuthenticationInterceptor authenticationInterceptor;
@@ -36,8 +28,8 @@ public abstract class AbstractClient {
      * @param parameterNames all parameters' name
      * @return the url suffixed
      */
-    public String getSuffixedUrl(String suffix, String... parameterNames) {
-        String urlPrefix = configurationHolder.getConfiguration().getUrl() + getPath() + (suffix != null ? suffix : "");
+    public String getSuffixedUrl(String managerUrl, String suffix, String... parameterNames) {
+        String urlPrefix = managerUrl + getPath() + (suffix != null ? suffix : "");
         if (parameterNames != null && parameterNames.length > 0) {
             StringBuilder urlBuilder = new StringBuilder(urlPrefix);
             urlBuilder.append("?");
@@ -82,8 +74,8 @@ public abstract class AbstractClient {
      * @param parameterNames all parameters' name
      * @return the url
      */
-    public String getBaseUrl(String... parameterNames) {
-        return getSuffixedUrl(null, parameterNames);
+    public String getBaseUrl(String managerUrl, String... parameterNames) {
+        return getSuffixedUrl(managerUrl, null, parameterNames);
     }
 
     protected abstract String getPath();

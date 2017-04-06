@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3.restclient;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -10,11 +11,15 @@ import alien4cloud.paas.cloudify3.util.FutureUtil;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import javax.inject.Inject;
+
 @Slf4j
 @Component
 public class NodeClient extends AbstractClient {
-
     public static final String NODES_PATH = "/nodes";
+
+    @Inject
+    private CloudConfigurationHolder configurationHolder;
 
     @Override
     protected String getPath() {
@@ -29,9 +34,9 @@ public class NodeClient extends AbstractClient {
             throw new IllegalArgumentException("Deployment id must not be null or empty");
         }
         if (nodeId != null) {
-            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id", "node_id"), Node[].class, deploymentId, nodeId));
+            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl(),"deployment_id", "node_id"), Node[].class, deploymentId, nodeId));
         } else {
-            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id"), Node[].class, deploymentId));
+            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl(),"deployment_id"), Node[].class, deploymentId));
         }
     }
 
@@ -40,4 +45,7 @@ public class NodeClient extends AbstractClient {
         return asyncList(deploymentId, nodeId).get();
     }
 
+    private String getManagerUrl() {
+        return configurationHolder.getConfiguration().getUrl();
+    }
 }

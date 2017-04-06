@@ -3,9 +3,6 @@ package alien4cloud.paas.cloudify3.restclient;
 import java.util.Date;
 import java.util.Map;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import org.elasticsearch.index.query.QueryBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -14,15 +11,17 @@ import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.model.GetEventsResult;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-import alien4cloud.rest.utils.JsonUtil;
-
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.model.GetEventsResult;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import alien4cloud.rest.utils.JsonUtil;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Base class for event access
@@ -32,7 +31,7 @@ public abstract class AbstractEventClient extends AbstractClient {
 
     public static final String EVENTS_PATH = "/events";
 
-    protected abstract QueryBuilder createEventsQuery(String executionId, Date timestamp);
+    protected abstract QueryBuilder createEventsQuery(Date timestamp);
 
     @Override
     protected String getPath() {
@@ -50,23 +49,23 @@ public abstract class AbstractEventClient extends AbstractClient {
     }
 
     @SneakyThrows
-    public ListenableFuture<Event[]> asyncGetBatch(String executionId, Date fromDate, int from, int batchSize) {
+    public ListenableFuture<Event[]> asyncGetBatch(String managerUrl, Date fromDate, int from, int batchSize) {
         Map<String, Object> request = Maps.newHashMap();
         request.put("from", from);
         request.put("size", batchSize);
         Map<String, Object>[] sorts = createSort();
         request.put("sort", sorts);
-        QueryBuilder eventsQuery = createEventsQuery(executionId, fromDate);
+        QueryBuilder eventsQuery = createEventsQuery(fromDate);
         String eventsQueryText = new String(eventsQuery.buildAsBytes().toBytes());
         Map<String, Object> query = JsonUtil.toMap(eventsQueryText);
         if (log.isTraceEnabled()) {
-            log.trace("Start get events for execution {} with offset {}, batch size {} and query {}", executionId, from, batchSize, eventsQueryText);
+            log.trace("Start get events for with offset {}, batch size {} and query {}", from, batchSize, eventsQueryText);
         }
         request.put("query", query);
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        ListenableFuture<GetEventsResult> eventsResultListenableFuture = FutureUtil.unwrapRestResponse(exchange(getBaseUrl(), HttpMethod.POST,
-                new HttpEntity<>(request, headers), GetEventsResult.class));
+        ListenableFuture<GetEventsResult> eventsResultListenableFuture = FutureUtil
+                .unwrapRestResponse(exchange(getBaseUrl(managerUrl), HttpMethod.POST, new HttpEntity<>(request, headers), GetEventsResult.class));
         Function<GetEventsResult, Event[]> eventsAdapter = new Function<GetEventsResult, Event[]>() {
             @Override
             public Event[] apply(GetEventsResult input) {
@@ -74,10 +73,5 @@ public abstract class AbstractEventClient extends AbstractClient {
             }
         };
         return Futures.transform(eventsResultListenableFuture, eventsAdapter);
-    }
-
-    @SneakyThrows
-    public Event[] getBatch(String executionId, Date fromDate, int from, int batchSize) {
-        return asyncGetBatch(executionId, fromDate, from, batchSize).get();
     }
 }
