@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
@@ -22,7 +23,7 @@ import alien4cloud.paas.model.PaaSNodeTemplate;
 public class CloudifyDeployment {
 
     /**
-     * This id is a human readable paaS id that will be used to identify deployment on cloudify 3
+     * This id is a human readable paaS id that will be used to identify deployment on cloudify
      */
     private String deploymentPaaSId;
 
@@ -60,7 +61,6 @@ public class CloudifyDeployment {
     /** Nodes that are custom resources (provided as types but native by nature). */
     private Map<String, PaaSNodeTemplate> customResources;
 
-
     private Map<String, List<PaaSNodeTemplate>> groups;
 
     /**
@@ -79,9 +79,13 @@ public class CloudifyDeployment {
 
     private Set<PaaSNodeTemplate> nodesToMonitor;
 
+    /** Maps containing all capability types (capability name, capability type)*/
+    private Map<String,CapabilityType> capabilityTypes;
+
     /**
      * * {elementType -> {propertyNamePath -> IPropertyMapping}}
      */
     private Map<String, Map<String, List<IPropertyMapping>>> propertyMappings;
+
 
 }

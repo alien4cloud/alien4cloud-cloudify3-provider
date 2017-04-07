@@ -25,15 +25,17 @@ import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.model.Token;
 import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.tosca.normative.ToscaFunctionConstants;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
 
 /**
@@ -64,6 +66,10 @@ public class CustomWorkflowService extends RuntimeService {
 
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
+
+    @Resource
+    private TokenClient tokenClient;
+
     @Inject
     private ArtifactRegistryService artifactRegistryService;
 
@@ -82,12 +88,18 @@ public class CustomWorkflowService extends RuntimeService {
             // operation can be null in case of operation only known at blueprint level
             inputParameters = operation.getInputParameters();
         }
+        // operation_kwargs --> process --> env
+        Map<String, Object> inputs = Maps.newHashMap();
+        workflowParameters.put("operation_kwargs", inputs);
+
+        // operation_kwargs --> cloudify_token
+        inputs.put(CLOUDIFY_TOKEN_KEY, tokenClient.get().getValue());
+
         if (MapUtils.isNotEmpty(inputParameters) || MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
-            Map<String, Object> inputs = Maps.newHashMap();
             Map<String, Object> process = Maps.newHashMap();
             Map<String, String> inputParameterValues = Maps.newHashMap();
+
             // operation_kwargs --> process --> env
-            workflowParameters.put("operation_kwargs", inputs);
             inputs.put("process", process);
             process.put("env", inputParameterValues);
             if (MapUtils.isNotEmpty(inputParameters)) {
@@ -130,7 +142,6 @@ public class CustomWorkflowService extends RuntimeService {
             // as we do not have the hand on the execute_operation wf, we consider a null parameter value to be an empty string
             replaceNullWithEmptyString(inputParameterValues);
         }
-
         return workflowParameters;
     }
 
@@ -201,14 +212,18 @@ public class CustomWorkflowService extends RuntimeService {
     }
 
     public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta) {
+        Token token = tokenClient.get();
         Map<String, Object> scaleParameters = Maps.newHashMap();
         scaleParameters.put("node_id", nodeId);
         scaleParameters.put("delta", delta);
         scaleParameters.put("scale_compute", true);
+        scaleParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
     }
 
     public ListenableFuture launchWorkflow(String deploymentPaaSId, String workflowName, Map<String, Object> workflowParameters) {
+        Token token = tokenClient.get();
+        workflowParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.A4C_PREFIX + workflowName, workflowParameters, true, false));
     }
 

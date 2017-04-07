@@ -1,15 +1,14 @@
-tosca_definitions_version: tosca_simple_yaml_1_0_0_wd03
+tosca_definitions_version: alien_dsl_1_3_0
 
 template_name: cloudify-amazon-types
-template_author: Alien4cloud
-template_version: 1.3.0
+template_author: alien4cloud
+template_version: 1.4.0-SNAPSHOT
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN12
   - cloudify3-common-types:1.3.0
 
 data_types:
-
   alien.data.aws.InstanceParameters:
     derived_from: tosca.datatypes.Root
     properties:
@@ -29,12 +28,37 @@ data_types:
       placement:
         type: string
         required: false
+        description: AWS Availability zone on which to create the instance.
+
+  alien.cloudify.aws.AwsConfig:
+      derived_from: tosca.datatypes.Root
+      properties:
+        aws_access_key_id:
+          type: string
+          required: false
+          description: >
+            AWS access key id of the aws account to bootstrap this instance.
+            Note that the property is optional as it may be configured globally on the cloudify manager. If not configured on the cloudify manager this property is required.
+        aws_secret_access_key:
+          type: string
+          required: false
+          description: >
+            AWS secret access key of the aws account to bootstrap this instance.
+            Note that the property is optional as it may be configured globally on the cloudify manager. If not configured on the cloudify manager this property is required.
+        ec2_region_name:
+          type: string
+          required: false
+          description: >
+            The AWS region on which to connect.
+            Note that the property is optional as it may be configured globally on the cloudify manager.
+            If not configured on the cloudify manager this property takes 'us-east-1' as a default value.
 
 node_types:
   # configuration types
   alien.cloudify.aws.nodes.Image:
     abstract: true
     derived_from: tosca.nodes.Root
+    description: AWS location configuration type that represents an amazon image (ami).
     properties:
       id:
         type: string
@@ -45,6 +69,7 @@ node_types:
   alien.cloudify.aws.nodes.InstanceType:
     abstract: true
     derived_from: tosca.nodes.Root
+    description: AWS location configuration type that represents an amazon flavor.
     properties:
       id:
         type: string
@@ -52,6 +77,7 @@ node_types:
       host:
         type: tosca.capabilities.Container
 
+  # Concrete types
   alien.cloudify.aws.nodes.Compute:
     derived_from: tosca.nodes.Compute
     tags:
@@ -74,8 +100,11 @@ node_types:
       instance_type:
         type: string
         default: ''
-      cloudify_agent:
+      agent_config:
         type: alien.datatypes.AgentConfig
+        required: false
+      aws_config:
+        type: alien.cloudify.aws.AwsConfig
         required: false
     attributes:
       ip_address: { get_attribute: [SELF, ip] }
@@ -86,7 +115,7 @@ node_types:
     tags:
       _a4c_c3_derived_from: cloudify.aws.nodes.WindowsInstance
       _a4c_c3_prop_map: >
-        {"user": "cloudify_agent.user", "password": "cloudify_agent.password", "port": "cloudify_agent.port", "key_pair": null, "private_key_path": null}
+        {"user": "agent_config.user", "password": "agent_config.password", "port": "agent_config.port", "key_pair": null, "private_key_path": null}
     properties:
       user:
         type: string
@@ -103,16 +132,16 @@ node_types:
         default: 5985
       key_pair:
         type: string
-        required: true
+        required: false
         description: |
           The existing keypair's name on Amazon.
-          The private key must be copied to the manager's machine (or manager's docker container) to the path defined in private_key_path
+          The private key must be copied to the manager's machine to the path defined in private_key_path
       private_key_path:
         type: string
-        required: true
+        required: false
         default: /root/.ssh/agent_key.pem
         description: |
-          Path to the private key of the keypair defined in key_pair property on the manager's machine (or manager's docker container).
+          Path to the private key of the keypair defined in key_pair property on the manager's machine.
           Default is set to the agent private key path
 
   alien.nodes.aws.PublicNetwork:
@@ -125,7 +154,7 @@ node_types:
   alien.cloudify.aws.nodes.DeletableVolume:
     derived_from: tosca.nodes.BlockStorage
     description: >
-      This represents a Block Storage (Volume) instance on AWS. Cloudify 3 can create this block and will delete it when the application is undeployed,
+      This represents a Block Storage (Volume) instance on AWS. Cloudify 4 can create this block and will delete it when the application is undeployed,
       even if the volume id is provided.
     properties:
       device:
@@ -138,6 +167,9 @@ node_types:
         required: false
         description: >
           The AWS availability zone.
+      aws_config:
+        type: alien.cloudify.aws.AwsConfig
+        required: false
     attributes:
       device: { get_attribute: [SELF, device] }
       zone: { get_attribute: [SELF, zone] }
@@ -150,7 +182,7 @@ node_types:
   alien.cloudify.aws.nodes.Volume:
     derived_from: alien.cloudify.aws.nodes.DeletableVolume
     description: >
-      This represents a Block Storage (Volume) instance on AWS. Cloudify 3 can create this block but will not delete it when the application is undeployed.
+      This represents a Block Storage (Volume) instance on AWS. Cloudify 4 can create this block but will not delete it when the application is undeployed.
       In case the volume is created, it's id will be injected back into alien's deployment topology so next deployment reuse it.
     tags:
       _a4c_persistent_resources: >

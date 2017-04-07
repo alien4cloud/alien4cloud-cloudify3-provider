@@ -8,6 +8,11 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.model.Token;
+import alien4cloud.paas.cloudify3.restclient.TokenClient;
+import alien4cloud.paas.cloudify3.restclient.DeploymentUpdateClient;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
@@ -36,8 +41,12 @@ import lombok.extern.slf4j.Slf4j;
 @Component("cloudify-deployment-service")
 @Slf4j
 public class DeploymentService extends RuntimeService {
+
     @Resource
     private DeploymentClient deploymentClient;
+
+    @Resource
+    private DeploymentUpdateClient deploymentUpdateClient;
 
     @Resource
     private BlueprintService blueprintService;
@@ -47,6 +56,9 @@ public class DeploymentService extends RuntimeService {
 
     @Resource
     private StatusService statusService;
+
+    @Resource
+    private TokenClient tokenClient;
 
     /**
      * Deploy a topology to cloudify.
@@ -101,13 +113,37 @@ public class DeploymentService extends RuntimeService {
         ListenableFuture<Deployment> createdDeployment = waitForDeploymentExecutionsFinish(creatingDeployment);
 
         // Trigger the install workflow and then wait until the install workflow is completed
-        ListenableFuture<Execution> installingExecution = Futures.transform(createdDeployment, installExecutionFunction(alienDeployment.getDeploymentPaaSId()));
+        AsyncFunction<Deployment, Execution> installExecutionFunction = installExecutionFunction(alienDeployment.getDeploymentPaaSId());
+        ListenableFuture<Execution> installingExecution = Futures.transform(createdDeployment, installExecutionFunction);
         ListenableFuture<Deployment> installedExecution = waitForExecutionFinish(installingExecution);
 
         // Add a callback to handled failures and provide alien with the correct events.
         addFailureCallback(installedExecution, "Deployment", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
                 DeploymentStatus.FAILURE);
         return installedExecution;
+    }
+
+    public ListenableFuture<Void> update(final CloudifyDeployment alienDeployment) {
+        // generate the blueprint and return in case of failure.
+        Path blueprintPath;
+        try {
+            blueprintPath = blueprintService.generateBlueprint(alienDeployment);
+        } catch (IOException e) {
+            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
+                    + alienDeployment.getDeploymentId(), e);
+
+            statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
+            return Futures.immediateFailedFuture(e);
+        }
+
+        // update the deployment.
+        ListenableFuture<Void> updatingDeployment = deploymentUpdateClient.asyncUpdate(alienDeployment.getDeploymentPaaSId(), blueprintPath.toString());
+
+        // Add a callback to handled failures and provide alien with the correct events.
+        addFailureCallback(updatingDeployment, "Update", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
+                DeploymentStatus.UPDATE_FAILURE);
+
+        return updatingDeployment;
     }
 
     /**
@@ -126,8 +162,11 @@ public class DeploymentService extends RuntimeService {
         return deployment -> {
             // now that the create_deployment_environment has been terminated we switch to DEPLOYMENT_IN_PROGRESS state
             // so from now, undeployment is possible
+            Map<String, Object> installParameters = Maps.newHashMap();
+            Token token = tokenClient.get();
+            installParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
             statusService.registerDeploymentStatus(paasDeploymentId, DeploymentStatus.DEPLOYMENT_IN_PROGRESS);
-            return executionClient.asyncStart(deployment.getId(), Workflow.INSTALL, null, false, false);
+            return executionClient.asyncStart(deployment.getId(), Workflow.INSTALL, installParameters, false, false);
         };
     }
 
@@ -167,7 +206,8 @@ public class DeploymentService extends RuntimeService {
         // Cancel all running executions for this deployment.
         ListenableFuture<NodeInstance[]> cancelRunningExecutionsFuture = cancelAllRunningExecutions(deploymentContext.getDeploymentPaaSId());
         // Once all executions are cancelled we start the un-deployment workflow.
-        ListenableFuture<Deployment> uninstalled = Futures.transform(cancelRunningExecutionsFuture, uninstallFunction(deploymentContext));
+        AsyncFunction<NodeInstance[], Deployment> uninstallFunction = uninstallFunction(deploymentContext);
+        ListenableFuture<Deployment> uninstalled = Futures.transform(cancelRunningExecutionsFuture, uninstallFunction);
         // Delete the deployment from cloudify.
         ListenableFuture<?> deletedDeployment = Futures.transform(uninstalled, deleteDeploymentFunction(deploymentContext));
         // Delete the blueprint from cloudify.
@@ -183,8 +223,11 @@ public class DeploymentService extends RuntimeService {
         return livingNodes -> {
             if (livingNodes != null && livingNodes.length > 0) {
                 // trigger the uninstall workflow only if there is some node instances.
+                Map<String, Object> uninstallParameters = Maps.newHashMap();
+                Token token = tokenClient.get();
+                uninstallParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
                 ListenableFuture<Execution> triggeredUninstallWorkflow = executionClient.asyncStart(deploymentContext.getDeploymentPaaSId(), Workflow.UNINSTALL,
-                        null, false, false);
+                        uninstallParameters, false, false);
                 // ensure that the workflow execution is finished.
                 return waitForExecutionFinish(triggeredUninstallWorkflow);
             } else {

@@ -12,17 +12,30 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import alien4cloud.tosca.PaaSUtils;
-import alien4cloud.tosca.ToscaNormativeUtil;
-import alien4cloud.tosca.normative.NormativeComputeConstants;
-import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.OperationOutput;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
+import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
@@ -40,7 +53,7 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.topology.TopologyUtils;
-import alien4cloud.tosca.normative.ToscaFunctionConstants;
+import alien4cloud.tosca.PaaSUtils;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -241,7 +254,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         if (owner instanceof PaaSNodeTemplate) {
             return formatNodeFunctionPropertyValue(context, functionPropertyValue);
         } else if (owner instanceof PaaSRelationshipTemplate) {
-            return formatRelationshipFunctionPropertyValue(context, functionPropertyValue);
+            return formatRelationshipFunctionPropertyValue(context, (PaaSRelationshipTemplate) owner, functionPropertyValue);
         } else {
             throw new NotSupportedException("Un-managed paaS template type " + owner.getClass().getSimpleName());
         }
@@ -251,7 +264,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
-     * @return the formatted parameter understandable by Cloudify 3
+     * @return the formatted parameter understandable by Cloudify
      */
     public String formatNodeFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
@@ -271,10 +284,24 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
-     * @return the formatted parameter understandable by Cloudify 3
+     * @param relationshipTemplate The relationship template for which to format the function request.
+     * @return the formatted parameter understandable by Cloudify
      */
-    public String formatRelationshipFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
+    private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
+            FunctionPropertyValue functionPropertyValue) {
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+            if (ToscaFunctionConstants.R_TARGET.equals(functionPropertyValue.getTemplateName().toUpperCase())
+                    && relationshipTemplate.getTemplate().getTargetedCapabilityName() != null) {
+                // If fetching from target and we know then try to fetch attribute from the target capability first and then the from the node.
+                return "get_target_capa_or_node_attribute(ctx." + ToscaFunctionConstants.TARGET.toLowerCase() + context + ", 'capabilities."
+                        + relationshipTemplate.getTemplate().getTargetedCapabilityName() + "." + functionPropertyValue.getElementNameToFetch() + "', '"
+                        + functionPropertyValue.getElementNameToFetch() + "')";
+            } else if (ToscaFunctionConstants.SOURCE.equals(functionPropertyValue.getTemplateName().toUpperCase())) {
+                // If fetching from source and we know then try to fetch attribute from the target requirement first and then the from the node.
+                return "get_target_capa_or_node_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", 'requirements."
+                        + relationshipTemplate.getTemplate().getRequirementName() + "." + functionPropertyValue.getElementNameToFetch() + "', '"
+                        + functionPropertyValue.getElementNameToFetch() + "')";
+            }
             if (functionPropertyValue.getParameters().size() > 2) {
                 StringBuilder builder = new StringBuilder();
                 builder.append("get_nested_attribute(ctx.").append(functionPropertyValue.getTemplateName().toLowerCase()).append(context).append(", [");
@@ -448,12 +475,11 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     /**
      * Utility method to know where the operation should be executed (on the host node or management node).
-     * 
+     *
      * @param operation The operation for which to check hosting.
      * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
      */
     public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
-
         if (isCustomResource(node)) {
             return false;
         }
@@ -482,15 +508,16 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         Set<String> cloudifyProperies = this.mappingConfiguration.getCloudifyProperties().get(cloudifyType);
         Map<String, String> propertyValuesAsString = this.getNodeProperties(node);
         Map<String, AbstractPropertyValue> result = Maps.newHashMap();
-        if (cloudifyProperies != null) {
-            for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
-                if (cloudifyProperies.contains(e.getKey())) {
-                    // for custom native nodes we add inherited cloudify properties
-                    result.put(e.getKey(), e.getValue());
-                } else if (propertyValuesAsString.containsKey(e.getKey())) {
-                    // for kubernetes we add simple scalar properties
-                    result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
-                }
+        if (cloudifyProperies == null) {
+            cloudifyProperies = Sets.newHashSet();
+        }
+        for (Entry<String, AbstractPropertyValue> e : node.getTemplate().getProperties().entrySet()) {
+            if (cloudifyProperies.contains(e.getKey())) {
+                // for custom native nodes we add inherited cloudify properties
+                result.put(e.getKey(), e.getValue());
+            } else if (propertyValuesAsString.containsKey(e.getKey())) {
+                // for kubernetes we add simple scalar properties
+                result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
             }
         }
         return result;
@@ -522,7 +549,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
      * </ul>
-     * 
+     *
      * @param node
      * @return true is the node is considered as a custom template.
      */
@@ -538,4 +565,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return node.getTemplate() instanceof ServiceNodeTemplate;
     }
 
+    public boolean isEndpoint(String capabilityTypeName) {
+        CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capabilityTypeName);
+        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId())
+                || (capabilityType.getDerivedFrom() != null && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
+    }
 }

@@ -2,9 +2,6 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import java.util.Map;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -13,11 +10,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import alien4cloud.paas.cloudify3.model.Execution;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-
+import com.google.common.base.Function;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.model.Execution;
+import alien4cloud.paas.cloudify3.model.ListExecutionResponse;
+import alien4cloud.paas.cloudify3.model.ListResponse;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -30,15 +33,19 @@ public class ExecutionClient extends AbstractClient {
         return EXECUTIONS_PATH;
     }
 
+    private ListenableFuture<Execution[]> unwrapListResponse(ListenableFuture<ListExecutionResponse> listExecutionResponse) {
+        return Futures.transform(listExecutionResponse, (Function<ListExecutionResponse, Execution[]>) ListResponse::getItems);
+    }
+
     public ListenableFuture<Execution[]> asyncList(String deploymentId, boolean includeSystemWorkflow) {
         if (log.isDebugEnabled()) {
             log.debug("List execution");
         }
         if (deploymentId != null && deploymentId.length() > 0) {
-            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id", "include_system_workflows"), Execution[].class, deploymentId,
-                    includeSystemWorkflow));
+            return unwrapListResponse(FutureUtil.unwrapRestResponse(
+                    getForEntity(getBaseUrl("deployment_id", "_include_system_workflows"), ListExecutionResponse.class, deploymentId, includeSystemWorkflow)));
         } else {
-            return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), Execution[].class));
+            return unwrapListResponse(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListExecutionResponse.class)));
         }
     }
 

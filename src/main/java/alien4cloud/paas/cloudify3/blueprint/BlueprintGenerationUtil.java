@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Some utilities method which help generating Cloudify 3 blueprint
+ * Some utilities method which help generating Cloudify blueprint
  *
  * @author Minh Khang VU
  */

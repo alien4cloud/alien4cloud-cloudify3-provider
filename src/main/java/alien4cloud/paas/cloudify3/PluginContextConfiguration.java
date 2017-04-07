@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 import org.springframework.boot.actuate.autoconfigure.ManagementServerProperties;
@@ -30,7 +29,7 @@ import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 @Order(ManagementServerProperties.ACCESS_OVERRIDE_ORDER)
 @Configuration
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3" })
-@ImportResource("classpath:cloudify3-plugin-properties-config.xml")
+@ImportResource("classpath:plugin-properties-config.xml")
 public class PluginContextConfiguration {
 
     @Bean(name = "cloudify-rest-template")
@@ -38,7 +37,6 @@ public class PluginContextConfiguration {
         // Object mapper configuration
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
-        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
         MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
         jackson2HttpMessageConverter.setObjectMapper(objectMapper);

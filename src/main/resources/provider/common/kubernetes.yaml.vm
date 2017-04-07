@@ -44,6 +44,12 @@
 #foreach($node in $deployment.dockerTypes)
   ${node.id}:
     type: alien.cloudify.kubernetes.nodes.Microservice
+#if($node.scalingPolicy)
+    capabilities:
+      scalable:
+        properties:
+          default_instances: $node.scalingPolicy.initialInstances
+#end## if($node.scalingPolicy)
     properties:
       name: ${node.id}
       ssh_username: ubuntu
@@ -68,7 +74,12 @@
 #set($env_index=$env_index+1)
 #end## foreach($entry in $docker_envs.get($node.id).values())
 #end## if($doOverride)
-        - file: ./${node.id}-service.yaml
+#foreach($capabilityEntrySet in $node.template.getCapabilities().entrySet())
+#set($capabilityType=$deployment.capabilityTypes.get($capabilityEntrySet.getValue().getType()))
+#if($util.common.isFromType("tosca.capabilities.Endpoint", $capabilityType))
+        - file: ./${node.id}-${capabilityEntrySet.getKey()}-service.yaml
+#end## if($util.common.isFromType("tosca.capabilities.Endpoint", $capabilityType))
+#end## foreach($capabilityEntrySet in $node.template.getCapabilities().entrySet())
     relationships:
       - type: cloudify.kubernetes.relationships.connected_to_master
         target: kubernetes_proxy

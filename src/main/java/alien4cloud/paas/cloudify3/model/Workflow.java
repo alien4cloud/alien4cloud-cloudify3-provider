@@ -28,6 +28,8 @@ public class Workflow extends AbstractCloudifyModel {
 
     public static final String DELETE_DEPLOYMENT_ENVIRONMENT = "delete_deployment_environment";
 
+    public static final String UPDATE_DEPLOYMENT = "update";
+
     public static final String SCALE = A4C_PREFIX + "scale";
 
     private Date createdAt;

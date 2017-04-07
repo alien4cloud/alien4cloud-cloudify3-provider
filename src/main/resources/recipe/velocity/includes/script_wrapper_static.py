@@ -1,3 +1,8 @@
+def convert_env_value_to_string(envDict):
+    for key, value in envDict.items():
+        envDict[str(key)] = str(envDict.pop(key))
+
+
 def parse_output(output):
     # by convention, the last output is the result of the operation
     last_output = None
@@ -12,6 +17,7 @@ def parse_output(output):
             output_value = match.group(2)
             outputs[output_name] = output_value
     return {'last_output': last_output, 'outputs': outputs}
+
 
 def execute(script_path, process, outputNames, command_prefix=None, cwd=None):
     os.chmod(script_path, 0755)
@@ -97,3 +103,4 @@ class OutputConsumer(object):
 
     def join(self):
         self.consumer.join()
+

@@ -1,4 +1,3 @@
-#set($pod_name=$dockerType.id.toLowerCase())
 #foreach( $capa in $dockerType.template.capabilities.values() )
 #if($capa.type=="alien.capabilities.endpoint.Docker")
 #set($dockerEndpoint=$capa)
@@ -17,6 +16,8 @@ spec:
       name: ${pod_name}
       labels:
         app: ${pod_name}
+        a4c_id: ${deployment_id}
+        a4c_name: ${deployment_id_name}
     spec:
       containers:
       - name: ${pod_name}
@@ -35,5 +36,22 @@ spec:
 #foreach( $var in $envMap.entrySet() )
         - name: $var.key
           value: '$var.value'
+#end## end foreach var in env
+#end## if env
+#if( $dockerType.template.properties["cpu_share"] || $dockerType.template.properties["mem_share"] )
+        resources:
+          limits:
+#if( $dockerType.template.properties["cpu_share"] )
+            cpu: "${dockerType.template.properties["cpu_share"].value}"
 #end
+#if( $dockerType.template.properties["mem_share"] )
+            memory: ${util.common.getValueInUnit($dockerType, "mem_share", "MB", true)}M
 #end
+          requests:
+#if( $dockerType.template.properties["cpu_share"] )
+            cpu: "${dockerType.template.properties["cpu_share"].value}"
+#end
+#if( $dockerType.template.properties["mem_share"] )
+            memory: ${util.common.getValueInUnit($dockerType, "mem_share", "MB", true)}M
+#end
+#end## resources

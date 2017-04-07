@@ -15,8 +15,15 @@
 #end## if($util.nonNative.mapHasEntries($nodeProperties))
 #if($util.nonNative.isServiceNodeTemplate($template))
     interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: ${util.nonNative.getArtifactWrapperPath($template, 'org.alien4cloud.interfaces.cfy.lifecycle', 'NodeInit')}
+          executor: central_deployment_agent
       cloudify.interfaces.lifecycle:
         create:
+          implementation: ${util.nonNative.getArtifactWrapperPath($template, 'tosca.interfaces.node.lifecycle.Standard', 'create')}
+          executor: central_deployment_agent
+        start:
           implementation: ${util.nonNative.getArtifactWrapperPath($template, 'tosca.interfaces.node.lifecycle.Standard', 'create')}
           executor: central_deployment_agent
 #else## node is not a service
@@ -51,7 +58,7 @@
 #foreach($operationEntry in ${interfaceEntry.value.operations.entrySet()})
             $util.nonNative.tryToMapToCloudifyRelationshipSourceInterfaceOperation($operationEntry.key):
               implementation: ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
-#if(!$util.nonNative.isHostAgent($template, $operationEntry.value))
+#if($util.nonNative.isServiceNodeTemplate($template) || !$util.nonNative.isHostAgent($template, $operationEntry.value))
               executor: central_deployment_agent
 #end
 #end
@@ -65,7 +72,7 @@
 #foreach($operationEntry in ${interfaceEntry.value.operations.entrySet()})
             $util.nonNative.tryToMapToCloudifyRelationshipTargetInterfaceOperation($operationEntry.key):
               implementation: ${util.nonNative.getArtifactWrapperPath($relationship, $interfaceEntry.key, $operationEntry.key)}
-#if(!$util.nonNative.isHostAgent($util.nonNative.getTargetNode($relationship),  $operationEntry.value))
+#if($util.nonNative.isServiceNodeTemplate($util.nonNative.getTargetNode($relationship)) || !$util.nonNative.isHostAgent($util.nonNative.getTargetNode($relationship),  $operationEntry.value))
               executor: central_deployment_agent
 #end
 #end

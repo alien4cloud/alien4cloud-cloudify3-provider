@@ -24,7 +24,7 @@ CRON_FILE=$MONITORING_DIR/policycron
 rm $CRON_FILE
 rm $MONITORING_DIR/log
 
-COMMAND="/root/${DPLID}/env/bin/python ${LOC} \"${NTM}\" ${DPLID} $MONITORING_DIR >> $MONITORING_DIR/log 2>&1"
+COMMAND="/opt/mgmtworker/env/bin/python ${LOC} \"${NTM}\" ${DPLID} $MONITORING_DIR >> $MONITORING_DIR/log 2>&1"
 echo "*/$MONITORING_INTERVAL * * * * $COMMAND" >> $CRON_FILE
 
 (crontab -l ; cat $CRON_FILE) 2>&1 | grep -v "no crontab" | sort | uniq | crontab -

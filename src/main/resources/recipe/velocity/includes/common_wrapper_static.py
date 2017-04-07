@@ -1,21 +1,18 @@
 from cloudify import ctx
+from cloudify import utils
 from cloudify.exceptions import NonRecoverableError
-from cloudify.state import ctx_parameters as inputs
-import subprocess
+from StringIO import StringIO
+
+import base64
 import os
+import platform
 import re
+import subprocess
 import sys
 import time
 import threading
 import platform
-from StringIO import StringIO
-from cloudify_rest_client import CloudifyClient
-from cloudify import utils
-
-if 'MANAGER_REST_PROTOCOL' in os.environ and os.environ['MANAGER_REST_PROTOCOL'] == "https":
-  client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port(), protocol='https', trust_all=True)
-else:
-  client = CloudifyClient(host=utils.get_manager_ip(), port=utils.get_manager_rest_service_port())
+import json
 
 def convert_env_value_to_string(envDict):
     for key, value in envDict.items():
@@ -112,6 +109,12 @@ def get_attribute(entity, attribute_name):
     # Nothing is found
     return ""
 
+def get_target_capa_or_node_attribute(entity, capability_attribute_name, attribute_name):
+    attribute_value = entity.instance.runtime_properties.get(capability_attribute_name, None)
+    if attribute_value is not None:
+        ctx.logger.debug('Found the capability attribute {0} with value {1} on the node {2}'.format(attribute_name, attribute_value, entity.node.id))
+        return attribute_value
+    return get_attribute(entity, attribute_name)
 
 def _all_instances_get_attribute(entity, attribute_name):
     result_map = {}
@@ -128,6 +131,22 @@ def _all_instances_get_attribute(entity, attribute_name):
             result_map[node_instance.id + '_'] = prop_value
     return result_map
 
+# Same as previous method but will first try to find the attribute on the capability.
+def _all_instances_get_target_capa_or_node_attribute(entity, capability_attribute_name, attribute_name):
+    result_map = {}
+    node = client.nodes.get(ctx.deployment.id, entity.node.id)
+    all_node_instances = client.node_instances.list(ctx.deployment.id, entity.node.id)
+    for node_instance in all_node_instances:
+        attribute_value = node_instance.runtime_properties.get(capability_attribute_name, None)
+        if attribute_value is not None:
+            prop_value = attribute_value
+        else:
+            prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
+        if prop_value is not None:
+            ctx.logger.debug('Found the property/attribute {0} with value {1} on the node {2} instance {3}'.format(attribute_name, prop_value, entity.node.id,
+                                                                                                                   node_instance.id))
+            result_map[node_instance.id + '_'] = prop_value
+    return result_map
 
 def get_property(entity, property_name):
     # Try to get the property value on the node
@@ -175,7 +194,6 @@ def __has_attribute_mapping(node, attribute_name):
             return True
     return False
 
-
 def __process_attribute_mapping(node, node_instance, attribute_name, data_retriever_function):
     # This is where attribute mapping is defined in the cloudify type
     mapping_configuration = node.properties['_a4c_att_' + attribute_name]
@@ -192,7 +210,6 @@ def __process_attribute_mapping(node, node_instance, attribute_name, data_retrie
                 target_node = client.nodes.get(ctx.deployment.id, target_instance.node_id)
                 return data_retriever_function(target_node, target_instance, mapping_configuration['parameters'][2])
     return None
-
 
 def __recursively_get_instance_data(node, node_instance, attribute_name):
     if __has_attribute_mapping(node, attribute_name):
@@ -211,3 +228,10 @@ def __recursively_get_instance_data(node, node_instance, attribute_name):
         return None
     else:
         return None
+
+def get_public_or_private_ip(entity):
+    public_ip = get_attribute(entity, 'public_ip_address')
+    if not public_ip:
+        return get_attribute(entity, 'ip_address')
+    return public_ip
+

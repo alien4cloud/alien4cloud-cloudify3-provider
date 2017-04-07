@@ -1,12 +1,15 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
+
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.collections4.MapUtils;
+
+import com.google.common.collect.Lists;
 
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
@@ -20,8 +23,7 @@ import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.OperationCallActivity;
 import alien4cloud.paas.wf.SetStateActivity;
 import alien4cloud.paas.wf.Workflow;
-
-import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class WorkflowGenerationUtil extends AbstractGenerationUtil {
@@ -49,9 +51,9 @@ public class WorkflowGenerationUtil extends AbstractGenerationUtil {
 
     public List<WorkflowStepLink> getExternalLinkns(Workflows workflows, String workflowName) {
         switch (workflowName) {
-        case Workflow.INSTALL_WF:
+        case INSTALL:
             return getExternalLinks(workflows.getInstallHostWorkflows());
-        case Workflow.UNINSTALL_WF:
+        case UNINSTALL:
             return getExternalLinks(workflows.getUninstallHostWorkflows());
         default:
             return null;

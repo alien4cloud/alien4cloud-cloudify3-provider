@@ -30,14 +30,14 @@ import lombok.extern.slf4j.Slf4j;
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
-    public static final String CFY_VERSION = "3.4";
+    public static final String CFY_VERSION = "4.0";
 
     public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
 
-    public static final String CFY_DIAMOND_VERSION = "1.3.1";
-    public static final String CFY_FABRIC_VERSION = "1.4.1";
+    public static final String CFY_DIAMOND_VERSION = "1.3.4";
+    public static final String CFY_FABRIC_VERSION = "1.4.2";
 
     @Resource
     private ApplicationContext factoryContext;
@@ -59,6 +59,9 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public CloudConfiguration getDefaultConfiguration() {
         CloudConfiguration cloudConfiguration = new CloudConfiguration();
         cloudConfiguration.setUrl("http://yourManagerIP");
+        cloudConfiguration.setUserName("username");
+        cloudConfiguration.setPassword("password");
+        cloudConfiguration.setTenant("default_tenant");
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
         cloudConfiguration.setDelayBetweenInProgressDeploymentStatusPolling(5);
@@ -90,8 +93,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
         // Kubernetes Configuration
         KubernetesConfiguration kubernetesConfiguration = new KubernetesConfiguration();
-        kubernetesConfiguration.setImports(Lists.newArrayList(
-                "http://www.getcloudify.org/spec/fabric-plugin/"+CFY_FABRIC_VERSION+"/plugin.yaml",
+        kubernetesConfiguration.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/fabric-plugin/" + CFY_FABRIC_VERSION + "/plugin.yaml",
                 "plugins/cloudify-kubernetes-plugin/plugin-remote.yaml"));
         cloudConfiguration.setKubernetes(kubernetesConfiguration);
 
@@ -102,8 +104,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public CloudifyOrchestrator newInstance() {
         /**
          * Hierarchy of context (parent on the left) :
-         * Alien Context --> Factory Context --> Real Cloudify 3 context
-         * Each cloud will create a different cloudify 3 context
+         * Alien Context --> Factory Context --> Real orchestrator context
+         * Each orchestrator will create a different context
          */
         AnnotationConfigApplicationContext pluginContext = new AnnotationConfigApplicationContext();
         pluginContext.setParent(factoryContext);
@@ -112,7 +114,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
             pluginContext.register(PluginContextConfiguration.class);
             pluginContext.refresh();
         });
-        log.info("Created new Cloudify 3 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
+        log.info("Created new Cloudify 4 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
         CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
         contextMap.put(provider, pluginContext);
         return provider;
@@ -147,7 +149,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     @Override
     public String getType() {
-        return "Cloudify3";
+        return CloudifyOrchestrator.TYPE;
     }
 
 }

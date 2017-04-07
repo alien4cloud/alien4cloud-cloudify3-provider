@@ -1,5 +1,5 @@
 #*
-This template is used to generate cloudify 3 recipe from alien model
+This template is used to generate cloudify 4 recipe from alien model
 - $mapping --> contains global alien --> cloudify mapping
 - $providerMapping --> contains IaaS provider specific mapping configuration
 - $cloud --> contains alien4cloud.paas.cloudify3.configuration.CloudConfiguration instance
@@ -68,12 +68,10 @@ node_templates:
 #if($util.collectionHasElement($deployment.dockerTypes))
 #parse("provider/common/kubernetes.yaml.vm")
 #end## #if($util.collectionHasElement($deployment.dockerTypes))
-#if($deployment.locationType != "kubernetes")
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
 #nonNativeNodes($deployment.nonNatives)
-#end## #if($deployment.locationType != "kubernetes")
 
 #parse("provider/common/monitor_node.yaml.vm")
 
@@ -115,7 +113,12 @@ plugins:
 
 workflows:
 #foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})
-  a4c_${wfEntry.key}: custom_wf_plugin.plugin.workflows.a4c_${wfEntry.key}
+  a4c_${wfEntry.key}:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_${wfEntry.key}
+    parameters:
+      cloudify_token:
+        description: A token to connect to Cloudify REST API
+        default:
 #end
   a4c_scale:
     mapping: custom_wf_plugin.plugin.workflows.a4c_scale
@@ -137,6 +140,9 @@ workflows:
         default: true
       ignore_failure:
         default: false
+      cloudify_token:
+        description: A token to connect to Cloudify REST API
+        default:
   a4c_heal:
     mapping: custom_wf_plugin.plugin.workflows.a4c_heal
     parameters:
@@ -145,3 +151,6 @@ workflows:
       diagnose_value:
         description: Diagnosed reason of failure
         default: Not provided
+      cloudify_token:
+        description: A token to connect to Cloudify REST API
+        default:

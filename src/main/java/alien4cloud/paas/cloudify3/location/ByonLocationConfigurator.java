@@ -25,8 +25,8 @@ public class ByonLocationConfigurator extends AbstractLocationConfigurator {
     }
 
     @Override
-    public List<LocationResourceTemplate> instances(ILocationResourceAccessor resourceAccessor) {
-        return null;
+    public List<LocationResourceTemplate> instances(ILocationResourceAccessor resourceAccessor) throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("Auto-config is not supported for this location.");
     }
 
     @Override

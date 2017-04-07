@@ -28,15 +28,16 @@ import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
 import alien4cloud.paas.cloudify3.service.DeploymentService;
-import alien4cloud.paas.cloudify3.service.EventService;
 import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
 import alien4cloud.paas.cloudify3.service.PluginArchiveService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.StatusService;
+import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
+import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.AbstractMonitorEvent;
 import alien4cloud.paas.model.DeploymentStatus;
@@ -47,11 +48,13 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The cloudify 3 PaaS Provider implementation
+ * The cloudify PaaS Provider implementation
  */
 @Slf4j
 @Component("cloudify-paas-provider-bean")
 public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfiguration> {
+
+    public static String TYPE = "Cloudify4";
 
     @Resource(name = "cloudify-deployment-service")
     private DeploymentService deploymentService;
@@ -117,7 +120,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
                     + " is active (must undeploy first) or is in unknown state (must wait for status available)"));
             return;
         }
-        // Cloudify 3 will use recipe id to identify a blueprint and a deployment instead of deployment id
+        // Cloudify will use recipe id to identify a blueprint and a deployment instead of deployment id
         log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeployment(deploymentContext.getDeploymentPaaSId());
@@ -134,6 +137,40 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             FutureUtil.associateFutureToPaaSCallback(deploymentService.deploy(deployment), callback);
         } catch (Throwable e) {
             statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
+            callback.onFailure(e);
+        }
+    }
+
+    @Override
+    public void update(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback callback) {
+        // first of all, let's check this deployment's status
+        DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
+        if (!(DeploymentStatus.DEPLOYED.equals(currentStatus) || DeploymentStatus.UPDATED.equals(currentStatus))) {
+            log.warn("Not possible to update {} for alien deployment {}: deployment is not active on Cloudify.", deploymentContext.getDeploymentPaaSId(),
+                    deploymentContext.getDeploymentId());
+            callback.onFailure(new PaaSNotYetDeployedException("Deployment " + deploymentContext.getDeploymentPaaSId()
+                    + " is not active (must be deployed to be updated) or is in unknown state (must wait for status available)"));
+            return;
+        }
+
+        log.info("Updating {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+        eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+        statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UPDATE_IN_PROGRESS);
+
+        applicationContext.publishEvent(new AboutToDeployTopologyEvent(this, deploymentContext));
+        try {
+            // TODO Better do it in Alien4Cloud or in plugin ?
+            propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
+
+            // pre-process the topology to add availability zones.
+            osAzPPolicyService.process(deploymentContext);
+
+            CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
+            ListenableFuture<Void> deploymentUpdate = deploymentService.update(deployment);
+            FutureUtil.associateFutureToPaaSCallback(deploymentUpdate, callback);
+
+        } catch (Throwable e) {
+            statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UPDATE_FAILURE);
             callback.onFailure(e);
         }
     }
@@ -211,7 +248,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback callback) {
-        FutureUtil.associateFutureToPaaSCallback(customWorkflowService.scale(deploymentContext.getDeploymentPaaSId(), nodeTemplateId, instances), callback);
+        ListenableFuture scale = customWorkflowService.scale(deploymentContext.getDeploymentPaaSId(), nodeTemplateId, instances);
+        FutureUtil.associateFutureToPaaSCallback(scale, callback);
     }
 
     @Override

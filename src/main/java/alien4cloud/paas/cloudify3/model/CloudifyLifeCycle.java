@@ -1,5 +1,8 @@
 package alien4cloud.paas.cloudify3.model;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class CloudifyLifeCycle {
 
     private CloudifyLifeCycle() {
@@ -31,6 +34,7 @@ public class CloudifyLifeCycle {
         case DELETE:
             return NodeInstanceStatus.DELETED;
         default:
+            log.debug("Unknown lifeCycle: <{}>", lifeCycle);
             return null;
         }
     }

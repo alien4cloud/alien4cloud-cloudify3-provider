@@ -51,7 +51,6 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
     @Override
     @Before
     public void before() throws Exception {
-        // Assert.assertTrue("This test only works on Java version 1.7", System.getProperty("java.version").startsWith("1.7"));
         super.before();
     }
 

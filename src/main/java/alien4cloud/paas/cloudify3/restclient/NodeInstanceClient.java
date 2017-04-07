@@ -1,14 +1,17 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Component;
 
+import com.google.common.base.Function;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.model.ListNodeInstanceResponse;
+import alien4cloud.paas.cloudify3.model.ListResponse;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -25,7 +28,8 @@ public class NodeInstanceClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("List node instances for deployment {}", deploymentId);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id"), NodeInstance[].class, deploymentId));
+        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id"), ListNodeInstanceResponse.class, deploymentId)),
+                (Function<ListNodeInstanceResponse, NodeInstance[]>) ListResponse::getItems);
     }
 
     @SneakyThrows

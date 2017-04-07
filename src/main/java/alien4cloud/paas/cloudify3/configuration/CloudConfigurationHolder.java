@@ -10,8 +10,10 @@ import com.google.common.collect.Lists;
 
 import alien4cloud.paas.cloudify3.error.BadConfigurationException;
 import alien4cloud.paas.cloudify3.model.Blueprint;
+import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Version;
 import alien4cloud.paas.cloudify3.restclient.BlueprintClient;
+import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.VersionClient;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.cloudify3.restclient.auth.SSLContextManager;
@@ -35,9 +37,14 @@ public class CloudConfigurationHolder {
 
     @Resource
     @Setter
+    private DeploymentClient deploymentClient;
+
+    @Resource
+    @Setter
     private AuthenticationInterceptor authenticationInterceptor;
 
     @Resource
+    @Setter
     private SSLContextManager sslContextManager;
 
     private List<ICloudConfigurationChangeListener> listeners = Lists.newArrayList();
@@ -48,12 +55,16 @@ public class CloudConfigurationHolder {
             public void onConfigurationChange(CloudConfiguration newConfiguration) throws Exception {
                 authenticationInterceptor.setUserName(newConfiguration.getUserName());
                 authenticationInterceptor.setPassword(newConfiguration.getPassword());
+                authenticationInterceptor.setTenant(newConfiguration.getTenant());
                 sslContextManager.disableSSLVerification(configuration.getDisableSSLVerification() != null && configuration.getDisableSSLVerification());
                 Version version = versionClient.read();
                 Blueprint[] blueprints = blueprintClient.list();
                 int numberOfBlueprints = blueprints != null ? blueprints.length : 0;
+                Deployment[] deployments = deploymentClient.list();
+                int numberOfDeployments = deployments != null ? deployments.length : 0;
                 log.info(
-                        "Configure PaaS provider for Cloudify version " + version.getVersion() + ", manager has " + numberOfBlueprints + " active deployments");
+                        "Configured PaaS provider for Cloudify version " + version.getVersion() + ". Manager has: " + numberOfBlueprints
+                                + " uploaded blueprint, " + numberOfDeployments + " active deployments.");
             }
         });
     }

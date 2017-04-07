@@ -2,18 +2,18 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import javax.annotation.Resource;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import lombok.Getter;
+import lombok.Setter;
 
 public abstract class AbstractClient {
 
@@ -27,7 +27,10 @@ public abstract class AbstractClient {
     private CloudConfigurationHolder configurationHolder;
 
     @Resource
+    @Setter
     private AuthenticationInterceptor authenticationInterceptor;
+
+    private static String API_VERSION = "v3";
 
     /**
      * Get the url appended with the given suffix
@@ -37,15 +40,14 @@ public abstract class AbstractClient {
      * @return the url suffixed
      */
     public String getSuffixedUrl(String suffix, String... parameterNames) {
-        String urlPrefix = configurationHolder.getConfiguration().getUrl() + getPath() + (suffix != null ? suffix : "");
+        String urlPrefix = configurationHolder.getConfiguration().getUrl() + "/api/" + getApiVersion() + getPath()
+                + (suffix != null ? suffix : "");
         if (parameterNames != null && parameterNames.length > 0) {
-            StringBuilder urlBuilder = new StringBuilder(urlPrefix);
-            urlBuilder.append("?");
+            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(urlPrefix);
             for (String parameterName : parameterNames) {
-                urlBuilder.append(parameterName).append("={").append(parameterName).append("}&");
+                uriComponentsBuilder.queryParam(parameterName, "{" + parameterName + "}");
             }
-            urlBuilder.setLength(urlBuilder.length() - 1);
-            return urlBuilder.toString();
+            return uriComponentsBuilder.build().toUriString();
         } else {
             return urlPrefix;
         }
@@ -87,4 +89,13 @@ public abstract class AbstractClient {
     }
 
     protected abstract String getPath();
+
+    /**
+     * Other clients can override this to use a different api version
+     * 
+     * @return
+     */
+    protected String getApiVersion() {
+        return API_VERSION;
+    }
 }

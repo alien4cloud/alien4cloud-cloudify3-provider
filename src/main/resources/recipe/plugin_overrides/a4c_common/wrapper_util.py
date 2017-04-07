@@ -18,10 +18,10 @@ class Lock:
 
   def acquire(self):
     fcntl.flock(self.handle, fcntl.LOCK_EX)
-      
+
   def release(self):
     fcntl.flock(self.handle, fcntl.LOCK_UN)
-      
+
   def __del__(self):
     self.handle.close()
 
@@ -64,7 +64,7 @@ def handle_resource_ids():
     else:
       ctx.logger.warning("[A4C_VOLUME] Create new volume for instance {} as there isn't enough existing volume ids on the list {}".format(ctx.instance.id, resource_ids))
       ctx.instance.runtime_properties[resource_id_key] = None
-      ctx.instance.runtime_properties[USE_EXTERNAL_RESOURCE_KEY] = False 
+      ctx.instance.runtime_properties[USE_EXTERNAL_RESOURCE_KEY] = False
   finally:
     lock.release()
 
@@ -81,5 +81,8 @@ def _write_index(filepath, index):
   with open(filepath, 'w') as f:
     f.write(str(index))
 
+def _get_working_dir():
+  return "./deployments/{}/{}".format(ctx.tenant_name, ctx.deployment.id)
+
 def _get_volume_filepath():
-  return "./deployments/{}/volume_index_{}.dat".format(ctx.deployment.id, ctx.node.id)
+  return "{}/volume_index_{}.dat".format(_get_working_dir(), ctx.node.id)

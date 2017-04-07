@@ -2,19 +2,20 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import java.util.Map;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import alien4cloud.paas.cloudify3.model.Deployment;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.model.ListDeploymentResponse;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -31,7 +32,7 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("List deployment");
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), Deployment[].class));
+        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListDeploymentResponse.class)), ListDeploymentResponse::getItems);
     }
 
     @SneakyThrows

@@ -1,17 +1,14 @@
-#set($pod_name=$dockerType.id.toLowerCase())
-#foreach( $capa in $dockerType.template.capabilities.values() )
-#if($capa.getType().contains("capabilities.endpoint"))
-#set($dockerEndpoint=$capa)
-#end
-#end
 apiVersion: v1
 kind: Service
 metadata:
-  name: ${pod_name}-service
+  name: ${pod_service_name}
+  labels:
+    a4c_id: ${deployment_id}
+    a4c_name: ${deployment_id_name}
 spec:
   selector:
     app: ${pod_name}
   ports:
     - protocol: TCP
-      port: ${dockerEndpoint.properties["port"].value}
+      port: ${service_capability.properties["port"].value}
   type: NodePort

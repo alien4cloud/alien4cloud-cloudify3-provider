@@ -1,0 +1,36 @@
+#**
+Include static wrapper python (functions etc.) in the current file.
+TODO: For smaller packages we should improve that and actually make a python package to import (from )
+*#
+#include("includes/common_wrapper_static.py")
+
+ctx.instance.runtime_properties['tosca_id'] = ctx.node.id
+ctx.instance.runtime_properties['tosca_name'] = ctx.instance.id
+
+## Make all node property an attribute
+#foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
+#if(!$util.common.isNull($propertyEntry.value))
+ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatTextValueToPython($util.property.formatValue(false, 0, $propertyEntry.value))
+#end
+#end##foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
+
+## Make all node capability property an attribute
+#foreach($capabilityEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.capabilities))
+#foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
+#if(!$util.common.isNull($propertyEntry.value))
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatTextValueToPython($util.property.formatValue(false, 0, $propertyEntry.value))
+#end
+#end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
+## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
+#if($util.nonNative.isEndpoint($capabilityEntry.value.type))
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.ip_address'] = get_public_or_private_ip(ctx)
+#end
+#end##foreach($capabilityEntry in $util.common.safeEntrySet(template.nodeTemplate.capabilities))
+
+## For service exposure we may want to actually expose the requirement ip_address
+#foreach($requirementEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.requirements))
+## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
+#if($util.nonNative.isEndpoint($requirementEntry.value.type))
+ctx.instance.runtime_properties['requirements.${requirementEntry.key}.ip_address'] = get_public_or_private_ip(ctx)
+#end
+#end##foreach($capabilityEntry in $util.common.safeEntrySet(template.nodeTemplate.capabilities))
