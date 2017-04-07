@@ -1,5 +1,7 @@
 package alien4cloud.paas.cloudify3.restclient;
 
+import java.util.Map;
+
 import javax.annotation.Resource;
 
 import org.springframework.http.HttpEntity;
@@ -9,9 +11,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 
+import com.google.common.collect.Maps;
+
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public abstract class AbstractClient {
 
     @Resource(name = "cloudify-async-rest-template")
@@ -20,6 +26,18 @@ public abstract class AbstractClient {
 
     @Resource
     private AuthenticationInterceptor authenticationInterceptor;
+
+    private Map<String, AuthenticationInterceptor> authenticationInterceptorByManager = Maps.newHashMap();
+
+    /** Allows registration of authentication interceptors by manager for the multiplexer. */
+    public void registerAuthenticationManager(String managerUrl, AuthenticationInterceptor authenticationInterceptor) {
+        if (authenticationInterceptorByManager.containsKey(managerUrl)) {
+            log.info("Overriding authentication interceptor for manager {}", managerUrl);
+        } else {
+            log.info("Register an authentication interceptor for manager {}", managerUrl);
+        }
+        authenticationInterceptorByManager.put(managerUrl, authenticationInterceptor);
+    }
 
     /**
      * Get the url appended with the given suffix
@@ -43,29 +61,37 @@ public abstract class AbstractClient {
         }
     }
 
-    protected HttpEntity<?> createHttpEntity() {
-        return createHttpEntity(new HttpHeaders());
+    protected HttpEntity<?> createHttpEntity(String managerUrl) {
+        return createHttpEntity(managerUrl, new HttpHeaders());
     }
 
-    protected HttpEntity<?> createHttpEntity(HttpHeaders httpHeaders) {
-        return authenticationInterceptor.addAuthenticationHeader(new HttpEntity(httpHeaders));
+    protected HttpEntity<?> createHttpEntity(String managerUrl, HttpHeaders httpHeaders) {
+        AuthenticationInterceptor interceptor = authenticationInterceptorByManager.get(managerUrl);
+        if (interceptor == null) {
+            interceptor = authenticationInterceptor;
+        }
+        return interceptor.addAuthenticationHeader(new HttpEntity(httpHeaders));
     }
 
     protected <T> HttpEntity<T> createHttpEntity(T body, HttpHeaders httpHeaders) {
         return authenticationInterceptor.addAuthenticationHeader(new HttpEntity<>(body, httpHeaders));
     }
 
-    protected <T> ListenableFuture<ResponseEntity<T>> getForEntity(String url, Class<T> responseType, Object... uriVariables) {
-        return restTemplate.exchange(url, HttpMethod.GET, createHttpEntity(), responseType, uriVariables);
+    protected <T> ListenableFuture<ResponseEntity<T>> getForEntity(String managerUrl, Class<T> responseType, Object... uriVariables) {
+        return restTemplate.exchange(managerUrl, HttpMethod.GET, createHttpEntity(managerUrl), responseType, uriVariables);
     }
 
-    protected ListenableFuture<?> delete(String url, Object... urlVariables) {
-        return restTemplate.exchange(url, HttpMethod.DELETE, createHttpEntity(), (Class<?>) null, urlVariables);
+    protected ListenableFuture<?> delete(String managerUrl, Object... urlVariables) {
+        return restTemplate.exchange(managerUrl, HttpMethod.DELETE, createHttpEntity(managerUrl), (Class<?>) null, urlVariables);
     }
 
-    protected <T> ListenableFuture<ResponseEntity<T>> exchange(String url, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType,
+    protected <T> ListenableFuture<ResponseEntity<T>> exchange(String managerUrl, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType,
             Object... uriVariables) {
-        return restTemplate.exchange(url, method, authenticationInterceptor.addAuthenticationHeader(requestEntity), responseType, uriVariables);
+        AuthenticationInterceptor interceptor = authenticationInterceptorByManager.get(managerUrl);
+        if (interceptor == null) {
+            interceptor = authenticationInterceptor;
+        }
+        return restTemplate.exchange(managerUrl, method, interceptor.addAuthenticationHeader(requestEntity), responseType, uriVariables);
     }
 
     /**

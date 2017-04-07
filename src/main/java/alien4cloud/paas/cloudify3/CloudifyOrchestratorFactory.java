@@ -129,7 +129,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
                         while (eventService.getOrchestratorId() == null) {
                             Thread.sleep(5000);
                         }
-                        eventServiceMultiplexer.register(newConfiguration.getUrl(), eventService.getOrchestratorId(), eventService);
+                        eventServiceMultiplexer.register(newConfiguration.getUrl(), newConfiguration.getUserName(), newConfiguration.getPassword(),
+                                eventService.getOrchestratorId(), eventService);
                     } catch (InterruptedException e) {
                         log.error("Failed to register orchestrator {}", eventService.getOrchestratorId());
                     }

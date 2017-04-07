@@ -6,6 +6,8 @@ import java.util.Set;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import com.google.common.collect.Maps;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +35,13 @@ public class EventServiceMultiplexer {
 
     // When a new one registers with a previous date then we have to re-poll older events but not dispatch events to listener that already processed them...
 
-    public synchronized void register(final String managerUrl, String consumerId, IEventConsumer eventConsumer) {
+    public synchronized void register(final String managerUrl, final String username, final String password, String consumerId, IEventConsumer eventConsumer) {
+        // Register a new authentication interceptor for the manager (this will not be taken in account if one is already registered).
+        AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
+        interceptor.setUserName(username);
+        interceptor.setPassword(password);
+        logEventClient.registerAuthenticationManager(managerUrl, interceptor);
+
         EventServiceInstance logEventServiceInstance = eventServices.get(managerUrl);
         if (logEventServiceInstance == null) {
             log.info("Creating a new event listener for cloudify manager with url {}", managerUrl);
