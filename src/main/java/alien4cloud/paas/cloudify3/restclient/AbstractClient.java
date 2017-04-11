@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.restclient;
 
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.annotation.Resource;
 
@@ -66,7 +67,7 @@ public abstract class AbstractClient {
     }
 
     protected HttpEntity<?> createHttpEntity(String managerUrl, HttpHeaders httpHeaders) {
-        AuthenticationInterceptor interceptor = authenticationInterceptorByManager.get(managerUrl);
+        AuthenticationInterceptor interceptor = getInterceptorForUrl(managerUrl);
         if (interceptor == null) {
             interceptor = authenticationInterceptor;
         }
@@ -87,11 +88,20 @@ public abstract class AbstractClient {
 
     protected <T> ListenableFuture<ResponseEntity<T>> exchange(String managerUrl, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType,
             Object... uriVariables) {
-        AuthenticationInterceptor interceptor = authenticationInterceptorByManager.get(managerUrl);
+        AuthenticationInterceptor interceptor = getInterceptorForUrl(managerUrl);
         if (interceptor == null) {
             interceptor = authenticationInterceptor;
         }
         return restTemplate.exchange(managerUrl, method, interceptor.addAuthenticationHeader(requestEntity), responseType, uriVariables);
+    }
+
+    private AuthenticationInterceptor getInterceptorForUrl(String queryUrl) {
+        for (Entry<String, AuthenticationInterceptor> interceptorEntry : authenticationInterceptorByManager.entrySet()) {
+            if (queryUrl.startsWith(interceptorEntry.getKey())) {
+                return interceptorEntry.getValue();
+            }
+        }
+        return null;
     }
 
     /**
