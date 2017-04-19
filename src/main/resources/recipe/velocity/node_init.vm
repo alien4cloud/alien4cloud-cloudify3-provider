@@ -4,8 +4,8 @@ TODO: For smaller packages we should improve that and actually make a python pac
 *#
 #include("includes/common_wrapper_static.py")
 
-ctx.instance.runtime_properties['tosca_id'] = ctx.node.id
-ctx.instance.runtime_properties['tosca_name'] = ctx.instance.id
+ctx.instance.runtime_properties['tosca_id'] = ctx.instance.id
+ctx.instance.runtime_properties['tosca_name'] = ctx.node.id
 
 ## Make all node property an attribute
 #foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
