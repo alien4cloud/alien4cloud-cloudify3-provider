@@ -145,6 +145,8 @@ public class PropertyEvaluatorService {
                                 func = new FunctionPropertyValue(value.getFunction(), Lists.newArrayList(ToscaFunctionConstants.SELF, propertyName));
                                 evaluated = FunctionEvaluator.evaluateGetPropertyFunction(func, target, allNodes);
                             }
+                        }
+                        if (evaluated != null) {
                             return evaluated;
                         }
                     }
