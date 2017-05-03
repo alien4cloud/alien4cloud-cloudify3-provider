@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient.auth;
+package alien4cloud.paas.cloudify3.shared.restclient.auth;
 
 import lombok.Setter;
 import org.springframework.http.HttpEntity;
@@ -11,9 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Getter
-@Component
 public class AuthenticationInterceptor {
-
     private static final String CLOUDIFY_TENANT_HEADER = "Tenant";
     private static final String CLOUDIFY_DEFAULT_TENANT = "default_tenant";
 

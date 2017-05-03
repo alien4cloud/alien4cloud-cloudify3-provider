@@ -19,14 +19,14 @@ public class ListResponse<T> {
     @Getter
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class MetaData {
+    public static class MetaData {
         private Pagination pagination;
     }
 
     @Getter
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class Pagination {
+    public static class Pagination {
         private long total;
         private long offset;
         private long size;

@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -9,44 +9,45 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import com.google.common.base.Function;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.model.ListBlueprintResponse;
-import alien4cloud.paas.cloudify3.model.ListResponse;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.utils.FileUtil;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-@Component
 @Slf4j
-public class BlueprintClient extends AbstractClient {
+public class BlueprintClient {
+    private static final String BLUEPRINT_PATH = "/api/v3/blueprints";
+    private static final String ID_BLUEPRINT_PATH = BLUEPRINT_PATH + "/{id}";
+    private final ApiHttpClient client;
 
-    public static final String BLUEPRINT_PATH = "/blueprints";
-
-    @Override
-    protected String getPath() {
-        return BLUEPRINT_PATH;
+    public BlueprintClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
-    public ListenableFuture<Blueprint[]> asyncList() {
+    public ListenableFuture<ListBlueprintResponse> asyncList(int offset, int size) {
         if (log.isDebugEnabled()) {
             log.debug("List blueprint");
         }
-        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListBlueprintResponse.class)),
-                (Function<ListBlueprintResponse, Blueprint[]>) ListResponse::getItems);
+        return FutureUtil
+                .unwrapRestResponse(client.getForEntity(client.buildRequestUrl(BLUEPRINT_PATH, "_offset", "_size"), ListBlueprintResponse.class, offset, size));
     }
 
     @SneakyThrows
-    public Blueprint[] list() {
-        return asyncList().get();
+    public ListBlueprintResponse list(int offset, int size) {
+        return asyncList(offset, size).get();
+    }
+
+    @SneakyThrows
+    public long count() {
+        return client.getForEntity(client.buildRequestUrl(BLUEPRINT_PATH, "_offset", "_size"), ListBlueprintResponse.class, 0, 0).get().getBody().getMetaData()
+                .getPagination().getTotal();
     }
 
     @SneakyThrows
@@ -65,7 +66,7 @@ public class BlueprintClient extends AbstractClient {
         try {
             MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
             headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-            return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}", "application_file_name"), HttpMethod.PUT,
+            return FutureUtil.unwrapRestResponse(client.exchange(client.buildRequestUrl(ID_BLUEPRINT_PATH, "application_file_name"), HttpMethod.PUT,
                     new HttpEntity<>(Files.readAllBytes(destination.toPath()), headers), Blueprint.class, id, sourceName));
         } finally {
             destination.delete();
@@ -81,7 +82,7 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read blueprint {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), Blueprint.class, id));
+        return FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(ID_BLUEPRINT_PATH), Blueprint.class, id));
     }
 
     @SneakyThrows
@@ -93,7 +94,7 @@ public class BlueprintClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Delete blueprint {}", id);
         }
-        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl("/{id}"), id));
+        return FutureUtil.toGuavaFuture(client.delete(client.buildRequestUrl(ID_BLUEPRINT_PATH), id));
     }
 
     @SneakyThrows

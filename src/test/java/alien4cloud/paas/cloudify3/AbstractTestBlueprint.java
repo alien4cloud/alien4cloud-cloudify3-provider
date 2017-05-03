@@ -86,7 +86,10 @@ public abstract class AbstractTestBlueprint extends AbstractTest {
             FileUtil.delete(Paths.get(recordedDirectory));
             FileUtil.copy(generatedDirectory, Paths.get(recordedDirectory), StandardCopyOption.REPLACE_EXISTING);
             if (isVerifyBlueprintUpload()) {
-                deploymentLauncher.verifyBlueprintUpload(topology, generated.toString());
+                deploymentLauncher.initializeCloudifyManagerConnection();
+
+                cloudConfigurationHolder.getApiClient().getBlueprintClient().create(topology, generated.toString());
+                cloudConfigurationHolder.getApiClient().getBlueprintClient().delete(topology);
             }
         } else {
             FileTestUtil.assertFilesAreSame(Paths.get(recordedDirectory), generatedDirectory, ".+.zip", ".+/cloudify-openstack-plugin/.+", ".+/monitor/.+");

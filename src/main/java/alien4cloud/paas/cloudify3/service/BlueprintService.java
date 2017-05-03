@@ -18,6 +18,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
@@ -48,7 +49,7 @@ import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.error.BlueprintGenerationException;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -74,7 +75,7 @@ public class BlueprintService {
     public static final String TOSCA_DOCKER_CONTAINER_TYPE = "tosca.nodes.Container.Application.DockerContainer";
     public static final String TOSCA_CAPABILITIES_ENDPOINT = "tosca.capabilities.Endpoint";
     @Resource
-    private CloudConfigurationHolder cloudConfigurationHolder;
+    private CfyConnectionManager connectionManager;
     @Resource
     private MappingConfigurationHolder mappingConfigurationHolder;
     @Resource
@@ -160,7 +161,7 @@ public class BlueprintService {
 
         // The velocity context will be filed up with information in order to be able to generate deployment
         Map<String, Object> context = Maps.newHashMap();
-        context.put("cloud", cloudConfigurationHolder.getConfiguration());
+        context.put("cloud", connectionManager.getConfiguration());
         context.put("mapping", mappingConfigurationHolder.getMappingConfiguration());
         context.put("util", util);
         context.put("deployment", alienDeployment);
@@ -340,7 +341,7 @@ public class BlueprintService {
             VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
 
             // Generate service file
-            for (Map.Entry<String, Capability> entry: nonNative.getTemplate().getCapabilities().entrySet()) {
+            for (Map.Entry<String, Capability> entry : nonNative.getTemplate().getCapabilities().entrySet()) {
                 Capability capability = entry.getValue();
                 CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
                 if (ToscaNormativeUtil.isFromType(TOSCA_CAPABILITIES_ENDPOINT, capabilityType)) {
@@ -404,7 +405,7 @@ public class BlueprintService {
             operationContext.put("executor_template", "artifacts/scripts.vm");
         } else {
             operationContext.put("executor_template", cloudifyImplementationArtifact.getVelocityWrapperPath());
-            cloudifyImplementationArtifact.updateVelocityWrapperContext(operationContext, cloudConfigurationHolder.getConfiguration());
+            cloudifyImplementationArtifact.updateVelocityWrapperContext(operationContext, connectionManager.getConfiguration());
         }
 
         if (cloudifyImplementationArtifact instanceof NodeInitArtifact) {

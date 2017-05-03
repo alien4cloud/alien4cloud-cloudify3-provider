@@ -41,7 +41,7 @@ import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.service.model.OperationWrapper;

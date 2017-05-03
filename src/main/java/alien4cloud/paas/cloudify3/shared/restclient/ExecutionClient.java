@@ -1,36 +1,34 @@
-package alien4cloud.paas.cloudify3.restclient;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.util.Map;
 
+import alien4cloud.paas.cloudify3.model.ListResponse;
+import com.google.common.base.Function;
+import com.google.common.util.concurrent.Futures;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ListExecutionResponse;
-import alien4cloud.paas.cloudify3.model.ListResponse;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-@Component
 @Slf4j
-public class ExecutionClient extends AbstractClient {
+public class ExecutionClient {
+    private static final String EXECUTIONS_PATH = "/api/v3/executions";
+    private static final String ID_EXECUTIONS_PATH = EXECUTIONS_PATH + "/{id}";
+    private final ApiHttpClient client;
 
-    public static final String EXECUTIONS_PATH = "/executions";
-
-    @Override
-    protected String getPath() {
-        return EXECUTIONS_PATH;
+    public ExecutionClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
     private ListenableFuture<Execution[]> unwrapListResponse(ListenableFuture<ListExecutionResponse> listExecutionResponse) {
@@ -42,15 +40,17 @@ public class ExecutionClient extends AbstractClient {
             log.debug("List execution");
         }
         if (deploymentId != null && deploymentId.length() > 0) {
-            return unwrapListResponse(FutureUtil.unwrapRestResponse(
-                    getForEntity(getBaseUrl("deployment_id", "_include_system_workflows"), ListExecutionResponse.class, deploymentId, includeSystemWorkflow)));
+            return unwrapListResponse(
+                    FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(EXECUTIONS_PATH, "deployment_id", "_include_system_workflows"),
+                            ListExecutionResponse.class, deploymentId, includeSystemWorkflow)));
         } else {
-            return unwrapListResponse(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListExecutionResponse.class)));
+            return unwrapListResponse(FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(EXECUTIONS_PATH), ListExecutionResponse.class)));
         }
     }
 
     @SneakyThrows
     public Execution[] list(String deploymentId, boolean includeSystemWorkflow) {
+        // Note that there should not be many open executions for a given deployment so we don't use pagination parameters.
         return asyncList(deploymentId, includeSystemWorkflow).get();
     }
 
@@ -67,7 +67,8 @@ public class ExecutionClient extends AbstractClient {
         request.put("force", force);
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return FutureUtil.unwrapRestResponse(exchange(getBaseUrl(), HttpMethod.POST, new HttpEntity<>(request, headers), Execution.class));
+        return FutureUtil.unwrapRestResponse(
+                client.exchange(client.buildRequestUrl(EXECUTIONS_PATH), HttpMethod.POST, new HttpEntity<>(request, headers), Execution.class));
     }
 
     @SneakyThrows
@@ -87,7 +88,8 @@ public class ExecutionClient extends AbstractClient {
         }
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}"), HttpMethod.POST, new HttpEntity<>(request, headers), Execution.class, id));
+        return FutureUtil.unwrapRestResponse(
+                client.exchange(client.buildRequestUrl(ID_EXECUTIONS_PATH), HttpMethod.POST, new HttpEntity<>(request, headers), Execution.class, id));
     }
 
     @SneakyThrows
@@ -99,7 +101,7 @@ public class ExecutionClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read execution {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), Execution.class, id));
+        return FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(ID_EXECUTIONS_PATH), Execution.class, id));
     }
 
     @SneakyThrows

@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import javax.xml.bind.DatatypeConverter;
-
-import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -22,37 +20,33 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Base class for event access
+ * Note, we for now use api v2.1 for events, since v3 is constantly changing. when stabilized, we should use it
  */
 @Slf4j
-public abstract class AbstractEventClient extends AbstractClient {
+public class EventClient {
+    public static final String EVENTS_PATH = "/api/v2.1/events";
+    private final ApiHttpClient client;
 
-    public static final String EVENTS_PATH = "/events";
-
-    protected abstract Map<String, Object> createEventsQuery();
-
-    @Override
-    protected String getPath() {
-        return EVENTS_PATH;
+    public EventClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
     @SneakyThrows
-    public ListenableFuture<Event[]> asyncGetBatch(String executionId, Date fromDate, int from, int batchSize) {
+    public ListenableFuture<Event[]> asyncGetBatch(Date fromDate, int from, int batchSize) {
         Map<String, Object> request = Maps.newLinkedHashMap();
         if (fromDate != null) {
             Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             calendar.setTime(fromDate);
             // FIXME event 2.1 api is broken on range filters. We have to add 4 hours to the real request date, and set the manager timezone to UTC
             calendar.add(Calendar.HOUR, 4);
+            // FIXME check that range performs a greater than equals
             request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(calendar) + ",");
         }
         request.put("_offset", from);
         request.put("_size", batchSize);
         request.put("_sort", "@timestamp");
-        if (StringUtils.isNotBlank(executionId)) {
-            request.put("execution_id", executionId);
-        }
-        request.putAll(createEventsQuery());
+
+        // FIXME filter results on context.deployment_id
         String[] paramsNames = request.keySet().toArray(new String[request.size()]);
         Object[] paramsValues = request.values().toArray(new Object[request.size()]);
         List<String> allParamsNames = Lists.newArrayList();
@@ -70,20 +64,10 @@ public abstract class AbstractEventClient extends AbstractClient {
                 allParamsValues.add(paramValue);
             }
         }
+
         ListenableFuture<ListEventResponse> eventsResultListenableFuture = FutureUtil
-                .unwrapRestResponse(getForEntity(getSuffixedUrl(null, allParamsNames.toArray(new String[allParamsNames.size()])), ListEventResponse.class,
-                        allParamsValues.toArray(new Object[allParamsValues.size()])));
+                .unwrapRestResponse(client.getForEntity(client.buildRequestUrl(EVENTS_PATH, allParamsNames.toArray(new String[allParamsNames.size()])),
+                        ListEventResponse.class, allParamsValues.toArray(new Object[allParamsValues.size()])));
         return Futures.transform(eventsResultListenableFuture, ListEventResponse::getItems);
-    }
-
-    @SneakyThrows
-    public Event[] getBatch(String executionId, Date fromDate, int from, int batchSize) {
-        return asyncGetBatch(executionId, fromDate, from, batchSize).get();
-    }
-
-    @Override
-    protected String getApiVersion() {
-        // TODO now lets use api v2.1 for events, since v3 is constantly changing. when stabilized, we should use it
-        return "v2.1";
     }
 }

@@ -11,12 +11,8 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
-import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
@@ -30,14 +26,13 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import alien4cloud.component.ICSARRepositorySearchService;
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.model.components.IndexedModelUtils;
 import alien4cloud.model.orchestrators.locations.Location;
 import alien4cloud.model.orchestrators.locations.LocationResources;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.locations.services.LocationService;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.error.SingleLocationRequiredException;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
@@ -50,7 +45,6 @@ import alien4cloud.paas.cloudify3.util.mapping.PropertiesMappingUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.paas.wf.AbstractStep;
 import alien4cloud.paas.wf.NodeActivityStep;
 import alien4cloud.paas.wf.Workflow;
@@ -66,7 +60,7 @@ public class CloudifyDeploymentBuilderService {
     @Inject
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Inject
-    private CloudConfigurationHolder cloudConfigurationHolder;
+    private CfyConnectionManager connectionManager;
     @Inject
     @Lazy(true)
     private ILocationResourceService locationResourceService;
@@ -219,8 +213,8 @@ public class CloudifyDeploymentBuilderService {
     private void setNodesToMonitor(CloudifyDeployment cloudifyDeployment) {
         String autoHeal = deploymentPropertiesService.getValueOrDefault(cloudifyDeployment.getProviderDeploymentProperties(),
                 DeploymentPropertiesNames.AUTO_HEAL);
-        boolean isDisableDiamond = cloudConfigurationHolder.getConfiguration().getDisableDiamondMonitorAgent() == null ? false
-                : cloudConfigurationHolder.getConfiguration().getDisableDiamondMonitorAgent();
+        boolean isDisableDiamond = connectionManager.getConfiguration().getDisableDiamondMonitorAgent() == null ? false
+                : connectionManager.getConfiguration().getDisableDiamondMonitorAgent();
         if (Boolean.parseBoolean(autoHeal) && !isDisableDiamond) {
             cloudifyDeployment.setNodesToMonitor(getNodesToMonitor(cloudifyDeployment.getComputes()));
         }

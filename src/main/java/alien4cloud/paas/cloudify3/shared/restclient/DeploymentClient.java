@@ -1,14 +1,12 @@
-package alien4cloud.paas.cloudify3.restclient;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.paas.cloudify3.model.Deployment;
@@ -17,27 +15,33 @@ import alien4cloud.paas.cloudify3.util.FutureUtil;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-@Component
 @Slf4j
-public class DeploymentClient extends AbstractClient {
+public class DeploymentClient {
+    private static final String DEPLOYMENTS_PATH = "/api/v3/deployments";
+    private static final String ID_DEPLOYMENTS_PATH = DEPLOYMENTS_PATH + "/{id}";
+    private final ApiHttpClient client;
 
-    public static final String DEPLOYMENTS_PATH = "/deployments";
-
-    @Override
-    protected String getPath() {
-        return DEPLOYMENTS_PATH;
+    public DeploymentClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
-    public ListenableFuture<Deployment[]> asyncList() {
+    public ListenableFuture<ListDeploymentResponse> asyncList(int offset, int size) {
         if (log.isDebugEnabled()) {
             log.debug("List deployment");
         }
-        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), ListDeploymentResponse.class)), ListDeploymentResponse::getItems);
+        return FutureUtil.unwrapRestResponse(
+                client.getForEntity(client.buildRequestUrl(DEPLOYMENTS_PATH, "_offset", "_size"), ListDeploymentResponse.class, offset, size));
     }
 
     @SneakyThrows
-    public Deployment[] list() {
-        return asyncList().get();
+    public ListDeploymentResponse list(int offset, int size) {
+        return asyncList(offset, size).get();
+    }
+
+    @SneakyThrows
+    public long count() {
+        return client.getForEntity(client.buildRequestUrl(DEPLOYMENTS_PATH, "_offset", "_size"), ListDeploymentResponse.class, 0, 0).get().getBody()
+                .getMetaData().getPagination().getTotal();
     }
 
     public ListenableFuture<Deployment> asyncCreate(String id, String blueprintId, Map<String, Object> inputs) {
@@ -49,7 +53,8 @@ public class DeploymentClient extends AbstractClient {
         request.put("inputs", inputs);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}"), HttpMethod.PUT, createHttpEntity(request, headers), Deployment.class, id));
+        return FutureUtil.unwrapRestResponse(
+                client.exchange(client.buildRequestUrl(ID_DEPLOYMENTS_PATH), HttpMethod.PUT, client.createHttpEntity(request, headers), Deployment.class, id));
     }
 
     @SneakyThrows
@@ -61,7 +66,7 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read deployment {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), Deployment.class, id));
+        return FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(ID_DEPLOYMENTS_PATH), Deployment.class, id));
     }
 
     @SneakyThrows
@@ -73,7 +78,7 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Delete deployment {}", id);
         }
-        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl("/{id}"), id));
+        return FutureUtil.toGuavaFuture(client.delete(client.buildRequestUrl(ID_DEPLOYMENTS_PATH), id));
     }
 
     @SneakyThrows

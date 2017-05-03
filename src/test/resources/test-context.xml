@@ -49,9 +49,9 @@
         </bean>
     </util:list>
 
-    <bean id="authenticationInterceptor" class="alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor"/>
+    <bean id="authenticationInterceptor" class="alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor"/>
 
-    <bean id="sslContextManager" class="alien4cloud.paas.cloudify3.restclient.auth.SSLContextManager"/>
+    <bean id="sslContextManager" class="alien4cloud.paas.cloudify3.shared.restclient.auth.SSLContextManager"/>
 
     <bean id="syncRestTemplate" class="org.springframework.web.client.RestTemplate">
         <constructor-arg name="messageConverters" ref="restTemplateDeserializerList"/>

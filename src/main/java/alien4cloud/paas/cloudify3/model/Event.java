@@ -29,10 +29,9 @@ public class Event extends AbstractCloudifyModel {
 
     @JsonIgnore
     public String getId() {
-        StringJoiner buffer = new StringJoiner("_");
-        buffer.add(eventType).add(timestamp);
+        StringBuilder buffer = new StringBuilder(eventType).append("::").append(timestamp);
         if (context != null) {
-            buffer.add(context.getNodeId()).add(context.getOperation());
+            buffer.append(context.getExecutionId()).append("::").append(context.getNodeId()).append("::").append(context.getOperation());
         }
         return buffer.toString();
     }

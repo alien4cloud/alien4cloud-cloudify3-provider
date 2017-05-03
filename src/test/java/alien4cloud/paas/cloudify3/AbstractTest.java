@@ -26,7 +26,7 @@ import com.google.common.collect.Sets;
 import alien4cloud.model.components.CSARSource;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.util.CSARUtil;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.utils.FileUtil;
@@ -84,7 +84,7 @@ public abstract class AbstractTest {
     private CloudifyOrchestrator cloudifyOrchestrator;
 
     @Inject
-    protected CloudConfigurationHolder cloudConfigurationHolder;
+    protected CfyConnectionManager cloudConfigurationHolder;
 
     public static final Path tempPluginDataPath = Paths.get("target/alien/plugin");
 

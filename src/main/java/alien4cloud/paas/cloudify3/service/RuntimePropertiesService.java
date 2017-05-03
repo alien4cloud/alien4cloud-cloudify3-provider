@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
@@ -16,14 +17,13 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.AbstractCloudifyModel;
 import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.Relationship;
 import alien4cloud.paas.cloudify3.model.RelationshipInstance;
-import alien4cloud.paas.cloudify3.restclient.NodeClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.exception.NotSupportedException;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -34,19 +34,14 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class RuntimePropertiesService {
-
-    @Resource
-    private NodeInstanceClient nodeInstanceClient;
-
-    @Resource
-    private NodeClient nodeClient;
-
     @Resource
     private MappingConfigurationHolder mappingConfigurationHolder;
+    @Inject
+    private CfyConnectionManager configurationHolder;
 
     public ListenableFuture<Map<String, Object>> evaluate(String deploymentId, final String nodeName, final String attributeName) {
-        ListenableFuture<NodeInstance[]> futureNodeInstances = nodeInstanceClient.asyncList(deploymentId);
-        ListenableFuture<Node[]> futureNodes = nodeClient.asyncList(deploymentId, nodeName);
+        ListenableFuture<NodeInstance[]> futureNodeInstances = configurationHolder.getApiClient().getNodeInstanceClient().asyncList(deploymentId);
+        ListenableFuture<Node[]> futureNodes = configurationHolder.getApiClient().getNodeClient().asyncList(deploymentId, nodeName);
         ListenableFuture<List<AbstractCloudifyModel[]>> nodeAndNodeInstancesFutures = Futures.allAsList(futureNodeInstances, futureNodes);
 
         Function<List<AbstractCloudifyModel[]>, Map<String, Object>> adapter = new Function<List<AbstractCloudifyModel[]>, Map<String, Object>>() {

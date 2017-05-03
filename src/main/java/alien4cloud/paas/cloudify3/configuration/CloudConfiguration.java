@@ -8,6 +8,7 @@ import alien4cloud.exception.NotFoundException;
 import alien4cloud.ui.form.annotation.FormProperties;
 import alien4cloud.ui.form.annotation.FormPropertyConstraint;
 import alien4cloud.ui.form.annotation.FormPropertyDefinition;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,14 +16,12 @@ import lombok.Setter;
 @Setter
 @FormProperties({ "url", "locations", "userName", "password", "tenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
         "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent", "kubernetes" })
+@EqualsAndHashCode(of = { "url", "userName", "password", "tenant" })
 public class CloudConfiguration {
 
     @FormPropertyConstraint(pattern = "http\\:.+(?:\\d+)")
     @NotNull
     private String url;
-
-    @NotNull
-    private LocationConfigurations locations;
 
     @NotNull
     private String userName;
@@ -35,6 +34,9 @@ public class CloudConfiguration {
 
     @NotNull
     private Boolean disableSSLVerification;
+
+    @NotNull
+    private LocationConfigurations locations;
 
     @NotNull
     private Integer delayBetweenDeploymentStatusPolling;

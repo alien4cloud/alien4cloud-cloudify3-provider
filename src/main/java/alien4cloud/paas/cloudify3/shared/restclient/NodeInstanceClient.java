@@ -1,6 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient;
-
-import org.springframework.stereotype.Component;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
@@ -14,22 +12,25 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Component
-public class NodeInstanceClient extends AbstractClient {
+public class NodeInstanceClient {
+    private static final String NODE_INSTANCES_PATH = "/api/v3/node-instances";
+    private static final String ID_NODE_INSTANCES_PATH = NODE_INSTANCES_PATH + "/{id}";
 
-    public static final String NODE_INSTANCES_PATH = "/node-instances";
+    private final ApiHttpClient client;
 
-    @Override
-    protected String getPath() {
-        return NODE_INSTANCES_PATH;
+    public NodeInstanceClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
     public ListenableFuture<NodeInstance[]> asyncList(String deploymentId) {
         if (log.isDebugEnabled()) {
             log.debug("List node instances for deployment {}", deploymentId);
         }
-        return Futures.transform(FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl("deployment_id"), ListNodeInstanceResponse.class, deploymentId)),
+        return Futures.transform(
+                FutureUtil.unwrapRestResponse(
+                        client.getForEntity(client.buildRequestUrl(NODE_INSTANCES_PATH, "deployment_id"), ListNodeInstanceResponse.class, deploymentId)),
                 (Function<ListNodeInstanceResponse, NodeInstance[]>) ListResponse::getItems);
+
     }
 
     @SneakyThrows
@@ -41,7 +42,7 @@ public class NodeInstanceClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read node instance {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), NodeInstance.class, id));
+        return FutureUtil.unwrapRestResponse(client.getForEntity(client.buildRequestUrl(ID_NODE_INSTANCES_PATH), NodeInstance.class, id));
     }
 
     @SneakyThrows

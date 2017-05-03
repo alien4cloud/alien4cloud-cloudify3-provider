@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient.auth;
+package alien4cloud.paas.cloudify3.shared.restclient.auth;
 
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;

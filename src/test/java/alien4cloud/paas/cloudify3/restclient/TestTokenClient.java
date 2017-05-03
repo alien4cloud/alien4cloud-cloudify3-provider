@@ -1,26 +1,22 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import alien4cloud.paas.cloudify3.model.Token;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import javax.xml.bind.DatatypeConverter;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import alien4cloud.paas.cloudify3.model.Token;
+import alien4cloud.paas.cloudify3.shared.restclient.TokenClient;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class TestTokenClient extends AbstractRestClientTest{
+public class TestTokenClient extends AbstractRestClientTest {
 
-    private static TokenClient tokenClient ;
+    private static TokenClient tokenClient;
 
     @BeforeClass
     public static void before() {
         initializeContext();
-        tokenClient = configureClient(new TokenClient());
+        tokenClient = getApiClient().getTokenClient();
     }
 
     @Test

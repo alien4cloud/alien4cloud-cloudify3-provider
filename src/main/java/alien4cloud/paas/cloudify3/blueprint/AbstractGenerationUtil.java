@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.alien4cloud.tosca.model.types.NodeType;

@@ -22,7 +22,7 @@ import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
@@ -63,7 +63,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     private CustomWorkflowService customWorkflowService;
 
     @Resource(name = "cloudify-configuration-holder")
-    private CloudConfigurationHolder cloudConfigurationHolder;
+    private CfyConnectionManager cloudConfigurationHolder;
 
     @Resource(name = "cloudify-event-service")
     private EventService eventService;
@@ -197,14 +197,14 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     }
 
     @Override
-    public void setConfiguration(CloudConfiguration newConfiguration) throws PluginConfigurationException {
+    public void setConfiguration(String orchestratorId, CloudConfiguration newConfiguration) throws PluginConfigurationException {
         if (newConfiguration == null) {
-            throw new PluginConfigurationException("Configuration is null");
+            throw new PluginConfigurationException("Configuration must not be null");
         }
         if (newConfiguration.getUrl() == null) {
-            throw new PluginConfigurationException("Url is null");
+            throw new PluginConfigurationException("Url must be defined.");
         }
-        cloudConfigurationHolder.setConfigurationAndNotifyListeners(newConfiguration);
+        cloudConfigurationHolder.setConfiguration(newConfiguration);
     }
 
     /**

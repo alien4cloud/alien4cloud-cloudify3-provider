@@ -11,6 +11,7 @@ import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -22,20 +23,18 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.Token;
 import alien4cloud.paas.cloudify3.model.Workflow;
-import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
-import alien4cloud.paas.cloudify3.restclient.TokenClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import alien4cloud.utils.MapUtil;
 
 /**
@@ -45,33 +44,20 @@ import alien4cloud.utils.MapUtil;
  */
 @Component("cloudify-custom-workflow-service")
 public class CustomWorkflowService extends RuntimeService {
-
-    @Resource
-    private ExecutionClient executionDAO;
-
-    @Resource
-    private NodeInstanceClient nodeInstanceDAO;
-
     @Resource
     private MappingConfigurationHolder mappingConfigurationHolder;
-
     @Resource
     private RuntimePropertiesService runtimePropertiesService;
-
     @Resource
     private BlueprintService blueprintService;
-
     @Resource
     private PropertyEvaluatorService propertyEvaluatorService;
-
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
-
-    @Resource
-    private TokenClient tokenClient;
-
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+    @Inject
+    private CfyConnectionManager configurationHolder;
 
     private Map<String, Object> buildWorkflowParameters(CloudifyDeployment deployment, BlueprintGenerationUtil util,
             NodeOperationExecRequest nodeOperationExecRequest, PaaSNodeTemplate node, Operation operation) {
@@ -93,7 +79,7 @@ public class CustomWorkflowService extends RuntimeService {
         workflowParameters.put("operation_kwargs", inputs);
 
         // operation_kwargs --> cloudify_token
-        inputs.put(CLOUDIFY_TOKEN_KEY, tokenClient.get().getValue());
+        inputs.put(CLOUDIFY_TOKEN_KEY, configurationHolder.getApiClient().getTokenClient().get().getValue());
 
         if (MapUtils.isNotEmpty(inputParameters) || MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
             Map<String, Object> process = Maps.newHashMap();
@@ -177,12 +163,14 @@ public class CustomWorkflowService extends RuntimeService {
             }
         }
 
-        ListenableFuture<Deployment> operationExecutionFuture = waitForExecutionFinish(executionDAO.asyncStart(deployment.getDeploymentPaaSId(),
-                Workflow.EXECUTE_OPERATION, buildWorkflowParameters(deployment, util, nodeOperationExecRequest, node, operation), true, false));
+        ListenableFuture<Deployment> operationExecutionFuture = waitForExecutionFinish(
+                configurationHolder.getApiClient().getExecutionClient().asyncStart(deployment.getDeploymentPaaSId(), Workflow.EXECUTE_OPERATION,
+                        buildWorkflowParameters(deployment, util, nodeOperationExecRequest, node, operation), true, false));
         AsyncFunction<Deployment, Map<String, String>> getOperationResultFunction = new AsyncFunction<Deployment, Map<String, String>>() {
             @Override
             public ListenableFuture<Map<String, String>> apply(Deployment input) throws Exception {
-                ListenableFuture<NodeInstance[]> allInstances = nodeInstanceDAO.asyncList(deployment.getDeploymentPaaSId());
+                ListenableFuture<NodeInstance[]> allInstances = configurationHolder.getApiClient().getNodeInstanceClient()
+                        .asyncList(deployment.getDeploymentPaaSId());
                 Function<NodeInstance[], Map<String, String>> nodeInstanceToResultFunction = new Function<NodeInstance[], Map<String, String>>() {
                     @Override
                     public Map<String, String> apply(NodeInstance[] nodeInstances) {
@@ -212,19 +200,20 @@ public class CustomWorkflowService extends RuntimeService {
     }
 
     public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta) {
-        Token token = tokenClient.get();
+        Token token = configurationHolder.getApiClient().getTokenClient().get();
         Map<String, Object> scaleParameters = Maps.newHashMap();
         scaleParameters.put("node_id", nodeId);
         scaleParameters.put("delta", delta);
         scaleParameters.put("scale_compute", true);
         scaleParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
-        return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
+        return waitForExecutionFinish(
+                configurationHolder.getApiClient().getExecutionClient().asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
     }
 
     public ListenableFuture launchWorkflow(String deploymentPaaSId, String workflowName, Map<String, Object> workflowParameters) {
-        Token token = tokenClient.get();
+        Token token = configurationHolder.getApiClient().getTokenClient().get();
         workflowParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
-        return waitForExecutionFinish(executionDAO.asyncStart(deploymentPaaSId, Workflow.A4C_PREFIX + workflowName, workflowParameters, true, false));
+        return waitForExecutionFinish(configurationHolder.getApiClient().getExecutionClient().asyncStart(deploymentPaaSId, Workflow.A4C_PREFIX + workflowName,
+                workflowParameters, true, false));
     }
-
 }

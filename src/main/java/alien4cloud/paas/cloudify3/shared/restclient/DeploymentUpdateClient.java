@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.restclient;
+package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -9,7 +9,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -23,16 +22,15 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Created by xdegenne on 06/03/2017.
  */
-@Component
 @Slf4j
-public class DeploymentUpdateClient extends AbstractClient {
+public class DeploymentUpdateClient {
+    private static final String DEPLOYMENT_UPDATE_PATH = "/api/v3/deployment-updates/{id}/update/initiate";
 
     // FIXME: actually we can not query anything but backend REST API
-    public static final String DEPLOYMENT_UPDATE_PATH = "/deployment-updates";
+    private final ApiHttpClient client;
 
-    @Override
-    protected String getPath() {
-        return DEPLOYMENT_UPDATE_PATH;
+    public DeploymentUpdateClient(ApiHttpClient apiHttpClient) {
+        this.client = apiHttpClient;
     }
 
     @SneakyThrows
@@ -51,7 +49,7 @@ public class DeploymentUpdateClient extends AbstractClient {
         try {
             MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
             headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-            return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}/update/initiate", "application_file_name"), HttpMethod.POST,
+            return FutureUtil.unwrapRestResponse(client.exchange(client.buildRequestUrl(DEPLOYMENT_UPDATE_PATH, "application_file_name"), HttpMethod.POST,
                     new HttpEntity<>(Files.readAllBytes(destination.toPath()), headers), Void.class, deploymentId, sourceName));
         } finally {
             destination.delete();
