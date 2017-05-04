@@ -66,7 +66,7 @@ public class ApiClientFactoryService {
 
         registration = new Registration();
         registration.cloudConfiguration = cloudConfiguration;
-        registration.apiClient = new ApiClient(new ApiHttpClient(restTemplate, managerUrls, interceptor));
+        registration.apiClient = new ApiClient(new ApiHttpClient(restTemplate, managerUrls, interceptor, cloudConfiguration.getFailOverRetry(), cloudConfiguration.getFailOverDelay()));
 
         clientRegistrations.put(cloudConfiguration, registration);
         return registration.apiClient;

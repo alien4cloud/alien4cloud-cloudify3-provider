@@ -39,15 +39,16 @@ public final class ApiHttpClient {
      * @param managerUrls The urls of the manager(s) part of the cluster to connect to.
      * @param authenticationInterceptor The authentication interceptor to use to add the authentication headers.
      */
-    public ApiHttpClient(AsyncRestTemplate restTemplate, List<String> managerUrls, AuthenticationInterceptor authenticationInterceptor) {
+    public ApiHttpClient(AsyncRestTemplate restTemplate, List<String> managerUrls, AuthenticationInterceptor authenticationInterceptor, Integer failOverRetry,
+            Integer failOverDelay) {
         log.info("Creating api client for managers {}", managerUrls);
         this.restTemplate = restTemplate;
         this.managerUrls = managerUrls;
         this.currentManagerUrl = managerUrls.get(0);
         this.authenticationInterceptor = authenticationInterceptor;
 
-        this.maxRetry = 10;
-        this.retrySleep = 1000;
+        this.maxRetry = failOverRetry == null ? 60 : failOverRetry;
+        this.retrySleep = failOverDelay == null ? 1000 : failOverDelay;
     }
 
     public <T> ListenableFuture<ResponseEntity<T>> getForEntity(final RequestUrlBuilder requestUrlBuilder, final Class<T> responseType,

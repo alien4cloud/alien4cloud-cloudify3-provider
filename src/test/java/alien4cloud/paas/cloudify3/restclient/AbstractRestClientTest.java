@@ -37,7 +37,7 @@ public abstract class AbstractRestClientTest {
         authenticationInterceptor.setUserName(MANAGER_USER);
         authenticationInterceptor.setPassword(MANAGER_USER_PWD);
 
-        ApiHttpClient apiHttpClient = new ApiHttpClient(asyncRestTemplate, Lists.newArrayList(cloudifyManagerURL), authenticationInterceptor);
+        ApiHttpClient apiHttpClient = new ApiHttpClient(asyncRestTemplate, Lists.newArrayList(cloudifyManagerURL), authenticationInterceptor, null, null);
         apiClient = new ApiClient(apiHttpClient);
     }
 
