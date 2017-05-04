@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
+import java.text.DateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -37,9 +38,6 @@ public class EventClient {
         if (fromDate != null) {
             Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             calendar.setTime(fromDate);
-            // FIXME event 2.1 api is broken on range filters. We have to add 4 hours to the real request date, and set the manager timezone to UTC
-            calendar.add(Calendar.HOUR, 4);
-            // FIXME check that range performs a greater than equals
             request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(calendar) + ",");
         }
         request.put("_offset", from);

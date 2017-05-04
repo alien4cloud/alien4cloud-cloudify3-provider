@@ -28,6 +28,7 @@ public class CfyConnectionManager {
     @Inject
     private EventService eventService;
 
+    @Getter
     private String orchestratorId;
     private CloudConfiguration configuration;
     @Getter

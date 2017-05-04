@@ -151,7 +151,7 @@ public abstract class AbstractTest {
                 }
             }
         }
-        cloudConfigurationHolder.setConfiguration(new CloudifyOrchestratorFactory().getDefaultConfiguration());
+        cloudConfigurationHolder.setConfiguration("orchestratorId", new CloudifyOrchestratorFactory().getDefaultConfiguration());
     }
 
     protected abstract Map<String, ILocationConfiguratorPlugin> getLocationsConfigurators();

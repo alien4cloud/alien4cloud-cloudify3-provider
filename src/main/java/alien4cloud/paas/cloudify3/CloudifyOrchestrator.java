@@ -204,7 +204,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         if (newConfiguration.getUrl() == null) {
             throw new PluginConfigurationException("Url must be defined.");
         }
-        cloudConfigurationHolder.setConfiguration(newConfiguration);
+        cloudConfigurationHolder.setConfiguration(orchestratorId, newConfiguration);
     }
 
     /**

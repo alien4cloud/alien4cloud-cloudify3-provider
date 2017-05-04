@@ -52,7 +52,7 @@ public class DeploymentLauncher {
         cloudConfiguration.setUserName("admin");
         cloudConfiguration.setPassword("admin");
         cloudConfiguration.setDisableSSLVerification(true);
-        cloudConfigurationHolder.setConfiguration(cloudConfiguration);
+        cloudConfigurationHolder.setConfiguration("orchestratorId", cloudConfiguration);
         initialized = true;
     }
 
