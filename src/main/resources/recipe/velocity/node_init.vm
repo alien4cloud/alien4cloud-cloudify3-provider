@@ -23,14 +23,24 @@ ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyE
 #end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
 ## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
 #if($util.nonNative.isEndpoint($capabilityEntry.value.type))
+## If the endpoint uses PUBLIC network_name, try to retrieve the public ip address. Otherwise retrieve the private one.
+#if( ${capabilityEntry.value.properties.containsKey('network_name')} && ${capabilityEntry.value.properties['network_name'].value} == "PUBLIC" )
 ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.ip_address'] = get_public_or_private_ip(ctx)
-#end
+#else
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.ip_address'] = get_attribute(ctx, 'ip_address')
+#end##if "PUBLIC"
+#end##if Endpoint
 #end##foreach($capabilityEntry in $util.common.safeEntrySet(template.nodeTemplate.capabilities))
 
 ## For service exposure we may want to actually expose the requirement ip_address
 #foreach($requirementEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.requirements))
 ## Inject the host ip address into every tosca.capabilities.Endpoint capabilities
 #if($util.nonNative.isEndpoint($requirementEntry.value.type))
+## If the endpoint uses PUBLIC network_name, try to retrieve the public ip address. Otherwise retrieve the private one.
+#if( ${requirementEntry.value.properties.containsKey('network_name')} && ${requirementEntry.value.properties['network_name'].value} == "PUBLIC" )
 ctx.instance.runtime_properties['requirements.${requirementEntry.key}.ip_address'] = get_public_or_private_ip(ctx)
-#end
-#end##foreach($capabilityEntry in $util.common.safeEntrySet(template.nodeTemplate.capabilities))
+#else
+ctx.instance.runtime_properties['requirements.${requirementEntry.key}.ip_address'] = get_attribute(ctx, 'ip_address')
+#end##if "PUBLIC"
+#end##if Endpoint
+#end##foreach($requirementEntry in $util.common.safeEntrySet(template.nodeTemplate.requirements))
