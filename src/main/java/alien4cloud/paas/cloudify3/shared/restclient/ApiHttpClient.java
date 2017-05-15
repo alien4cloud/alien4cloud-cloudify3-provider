@@ -47,7 +47,7 @@ public final class ApiHttpClient {
         this.currentManagerUrl = managerUrls.get(0);
         this.authenticationInterceptor = authenticationInterceptor;
 
-        this.maxRetry = failOverRetry == null ? 60 : failOverRetry;
+        this.maxRetry = failOverRetry == null ? 1 : failOverRetry;
         this.retrySleep = failOverDelay == null ? 1000 : failOverDelay;
     }
 
@@ -147,7 +147,7 @@ public final class ApiHttpClient {
         }, throwable -> {
             if (throwable instanceof NotClusterMasterException || throwable instanceof ConnectException) {
                 retryCounter.increment();
-                if (retryCounter.loopedRetry < maxRetry) {
+                if (retryCounter.loopedRetry <= maxRetry) {
                     // Select next url to try out.
                     this.currentManagerUrl = this.managerUrls.get(retryCounter.modulo());
                     log.warn("Unable to communicate with manager, unit retry {} / all managers retry {} on {}, with url {}", retryCounter.unitRetry,
