@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.service;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -17,7 +18,9 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import alien4cloud.deployment.DeploymentLoggingService;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
+import alien4cloud.paas.cloudify3.error.CloudifyAPIException;
 import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
@@ -28,6 +31,8 @@ import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -43,6 +48,8 @@ public class DeploymentService extends RuntimeService {
     private StatusService statusService;
     @Inject
     private CfyConnectionManager configurationHolder;
+    @Inject
+    private DeploymentLoggingService deploymentLoggingService;
 
     /**
      * Deploy a topology to cloudify.
@@ -257,9 +264,29 @@ public class DeploymentService extends RuntimeService {
                     // User wants to send back an intermediary status before the real one then sends it
                     statusService.registerDeploymentStatus(deploymentPaaSId, status);
                 }
+                // save the error as log so that it should appear in the log view
+                saveExceptionAsLog(t, operationName, deploymentId, deploymentPaaSId);
+
                 // Send the real status later, status service takes care of not sending anything if the status has not changed
                 statusService.registerDeploymentStatus(deploymentPaaSId, statusService.getStatusFromCloudify(deploymentPaaSId));
             }
         });
+    }
+
+    private void saveExceptionAsLog(Throwable throwable, String operationName, String deploymentId, String deploymentPaaSId) {
+        if (!(throwable instanceof CloudifyAPIException)) {
+            return;
+        }
+
+        StringBuilder logContentBuilder = new StringBuilder("'" + operationName + "' ");
+        logContentBuilder.append(throwable.getMessage());
+        PaaSDeploymentLog log = new PaaSDeploymentLog();
+        log.setDeploymentId(deploymentId);
+        log.setDeploymentPaaSId(deploymentPaaSId);
+        log.setContent(logContentBuilder.toString());
+        log.setLevel(PaaSDeploymentLogLevel.ERROR);
+        log.setTimestamp(new Date());
+
+        deploymentLoggingService.save(log);
     }
 }

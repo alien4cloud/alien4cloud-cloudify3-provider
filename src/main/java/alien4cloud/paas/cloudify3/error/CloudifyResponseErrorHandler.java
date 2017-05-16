@@ -1,8 +1,7 @@
 package alien4cloud.paas.cloudify3.error;
 
 import java.io.IOException;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.StringJoiner;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
@@ -11,6 +10,8 @@ import org.springframework.web.client.HttpStatusCodeException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CloudifyResponseErrorHandler extends DefaultResponseErrorHandler {
@@ -44,7 +45,9 @@ public class CloudifyResponseErrorHandler extends DefaultResponseErrorHandler {
                     // Ignore if we cannot indent error
                 }
             }
-            throw exception;
+            StringJoiner joiner = new StringJoiner("\n");
+            joiner.add(exception.getMessage() + " With error body: ").add(formattedError);
+            throw new CloudifyAPIException(exception.getStatusCode(), joiner.toString(), exception);
         }
     }
 }

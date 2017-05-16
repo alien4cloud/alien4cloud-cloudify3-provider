@@ -3,6 +3,7 @@ package alien4cloud.paas.cloudify3.service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -15,7 +16,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Function;
@@ -34,6 +34,7 @@ import alien4cloud.dao.model.GetMultipleDataResult;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
+import alien4cloud.paas.cloudify3.error.CloudifyAPIException;
 import alien4cloud.paas.cloudify3.model.AbstractCloudifyModel;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
@@ -171,8 +172,8 @@ public class StatusService {
         ListenableFuture<DeploymentStatus> statusFuture = Futures.transform(executionsFuture, deploymentStatusAdapter);
         return Futures.withFallback(statusFuture, throwable -> {
             // In case of error we give back unknown status and let the next polling determine the application status
-            if (throwable instanceof HttpClientErrorException) {
-                if (((HttpClientErrorException) throwable).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+            if (throwable instanceof CloudifyAPIException) {
+                if (Objects.equals(HttpStatus.NOT_FOUND, ((CloudifyAPIException) throwable).getStatusCode())) {
                     // Only return undeployed for an application if we received a 404 which means it was deleted
                     log.info("Application " + deploymentPaaSId + " is not found on cloudify");
                     return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
