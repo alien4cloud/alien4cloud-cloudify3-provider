@@ -44,7 +44,7 @@ public class EventServiceInstance {
     // The requests uses a start date including which is also the date of the last consumed events (to not loose events that may have the same timestamp but not
     // indexed when our request was performed)
     // In order to not dispatch the same events twice we keep their ids.
-    private Set<String> startIntervalEvents = Sets.newHashSet();
+    private Set<String> alreadyPolledEvents = Sets.newHashSet();
 
     /**
      * Create a new event service instance to fetch events.
@@ -143,7 +143,7 @@ public class EventServiceInstance {
                     from = events.length;
                 } else {
                     from = 0;
-                    startIntervalEvents.clear();
+                    alreadyPolledEvents.clear();
                     pollingFromDate = lastPolledEventDate;
                 }
                 addLastPollingDateEvents(lastPolledEventDate, events);
@@ -168,7 +168,7 @@ public class EventServiceInstance {
     private void addLastPollingDateEvents(Date lastPolledEventDate, Event[] events) {
         for (Event event : events) {
             if (lastPolledEventDate.equals(DatatypeConverter.parseDateTime(event.getTimestamp()).getTime())) {
-                startIntervalEvents.add(event.getId());
+                alreadyPolledEvents.add(event.getId());
             }
         }
     }
@@ -186,6 +186,9 @@ public class EventServiceInstance {
         // Prepare batch of events per consumers
         for (Event event : events) {
             // if event has already be consumed just ignore it
+            if (alreadyPolledEvents.contains(event.getId())) {
+                continue;
+            }
 
             CloudifyEvent cloudifyEvent = new CloudifyEvent();
             cloudifyEvent.setEvent(event);
