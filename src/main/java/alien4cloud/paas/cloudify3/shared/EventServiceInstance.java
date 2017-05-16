@@ -188,6 +188,9 @@ public class EventServiceInstance {
         // Prepare batch of events per consumers
         for (Event event : events) {
             // if event has already be consumed just ignore it
+            if (startIntervalEvents.contains(event.getId())) {
+                continue;
+            }
 
             CloudifyEvent cloudifyEvent = new CloudifyEvent();
             cloudifyEvent.setEvent(event);

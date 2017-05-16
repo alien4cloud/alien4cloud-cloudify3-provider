@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.shared;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -21,7 +22,7 @@ public class EventClient extends AbstractEventClient {
     protected QueryBuilder createEventsQuery(Date timestamp) {
         BoolQueryBuilder eventsQuery = QueryBuilders.boolQuery();
         if (timestamp != null) {
-            Calendar calendar = Calendar.getInstance();
+            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             calendar.setTime(timestamp);
             eventsQuery.must(QueryBuilders.rangeQuery("@timestamp").gte(DatatypeConverter.printDateTime(calendar)));
         }
