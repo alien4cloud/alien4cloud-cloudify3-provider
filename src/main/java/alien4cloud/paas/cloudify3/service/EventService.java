@@ -134,8 +134,7 @@ public class EventService implements IEventConsumer {
             log.info("Cfy Manager recovering events from the last in elasticsearch {} of type {}", lastEventDate, lastEvent.getClass().getName());
             this.lastPollingDate = lastEventDate;
         } else {
-            this.lastPollingDate = new Date();
-            log.debug("No monitor events found, the last polling date will be current date {}", this.lastPollingDate);
+            log.debug("No monitor events found");
         }
     }
 
@@ -175,7 +174,7 @@ public class EventService implements IEventConsumer {
         List<AbstractMonitorEvent> alienEvents = toAlienEvents(filteredEvents);
         for (AbstractMonitorEvent event : alienEvents) {
             internalProviderEventsQueue.add(event);
-            if (lastPollingDate.getTime() < event.getDate()) {
+            if (lastPollingDate == null || lastPollingDate.getTime() < event.getDate()) {
                 lastPollingDate = new Date(event.getDate());
             }
         }

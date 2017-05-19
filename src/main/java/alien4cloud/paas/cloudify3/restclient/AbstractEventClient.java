@@ -31,7 +31,7 @@ public abstract class AbstractEventClient extends AbstractClient {
 
     public static final String EVENTS_PATH = "/events";
 
-    protected abstract QueryBuilder createEventsQuery(Date timestamp);
+    protected abstract QueryBuilder createEventsQuery(Date fromDate, Date toDate);
 
     @Override
     protected String getPath() {
@@ -49,13 +49,13 @@ public abstract class AbstractEventClient extends AbstractClient {
     }
 
     @SneakyThrows
-    public ListenableFuture<Event[]> asyncGetBatch(String managerUrl, Date fromDate, int from, int batchSize) {
+    public ListenableFuture<Event[]> asyncGetBatch(String managerUrl, Date fromDate, Date toDate, int from, int batchSize) {
         Map<String, Object> request = Maps.newHashMap();
         request.put("from", from);
         request.put("size", batchSize);
         Map<String, Object>[] sorts = createSort();
         request.put("sort", sorts);
-        QueryBuilder eventsQuery = createEventsQuery(fromDate);
+        QueryBuilder eventsQuery = createEventsQuery(fromDate, toDate);
         String eventsQueryText = new String(eventsQuery.buildAsBytes().toBytes());
         Map<String, Object> query = JsonUtil.toMap(eventsQueryText);
         if (log.isTraceEnabled()) {
