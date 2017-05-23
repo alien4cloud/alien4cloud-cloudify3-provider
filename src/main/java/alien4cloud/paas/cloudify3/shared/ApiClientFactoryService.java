@@ -7,7 +7,6 @@ import java.util.Set;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
-import alien4cloud.exception.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
@@ -15,6 +14,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
+import alien4cloud.exception.NotFoundException;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
@@ -63,10 +63,11 @@ public class ApiClientFactoryService {
         AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
         interceptor.setUserName(cloudConfiguration.getUserName());
         interceptor.setPassword(cloudConfiguration.getPassword());
-
+        interceptor.setTenant(cloudConfiguration.getTenant());
         registration = new Registration();
         registration.cloudConfiguration = cloudConfiguration;
-        registration.apiClient = new ApiClient(new ApiHttpClient(restTemplate, managerUrls, interceptor, cloudConfiguration.getFailOverRetry(), cloudConfiguration.getFailOverDelay()));
+        registration.apiClient = new ApiClient(
+                new ApiHttpClient(restTemplate, managerUrls, interceptor, cloudConfiguration.getFailOverRetry(), cloudConfiguration.getFailOverDelay()));
 
         clientRegistrations.put(cloudConfiguration, registration);
         return registration.apiClient;

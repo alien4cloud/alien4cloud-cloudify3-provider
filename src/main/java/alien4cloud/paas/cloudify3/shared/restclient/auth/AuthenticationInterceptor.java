@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Getter
 public class AuthenticationInterceptor {
-    private static final String CLOUDIFY_TENANT_HEADER = "Tenant";
+    private static final String CLOUDIFY_TENANT_HEADER = "tenant";
     private static final String CLOUDIFY_DEFAULT_TENANT = "default_tenant";
 
     private String userName;
