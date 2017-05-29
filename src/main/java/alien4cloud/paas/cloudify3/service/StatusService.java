@@ -3,6 +3,7 @@ package alien4cloud.paas.cloudify3.service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -15,7 +16,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Function;
@@ -32,8 +32,9 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.dao.model.GetMultipleDataResult;
 import alien4cloud.paas.IPaaSCallback;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
+import alien4cloud.paas.cloudify3.error.CloudifyAPIException;
 import alien4cloud.paas.cloudify3.model.AbstractCloudifyModel;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
@@ -42,10 +43,6 @@ import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
 import alien4cloud.paas.cloudify3.model.Workflow;
-import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
-import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
-import alien4cloud.paas.cloudify3.restclient.NodeClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.model.DeploymentStatus;
@@ -54,7 +51,6 @@ import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -75,19 +71,7 @@ public class StatusService {
     private EventService eventService;
 
     @Resource
-    private ExecutionClient executionDAO;
-
-    @Resource
-    private NodeInstanceClient nodeInstanceDAO;
-
-    @Resource
-    private NodeClient nodeDAO;
-
-    @Resource
-    private DeploymentClient deploymentDAO;
-
-    @Resource
-    private CloudConfigurationHolder cloudConfigurationHolder;
+    private CfyConnectionManager cloudConfigurationHolder;
 
     @Resource(name = "alien-monitor-es-dao")
     private IGenericSearchDAO alienMonitorDao;
@@ -180,15 +164,16 @@ public class StatusService {
     }
 
     private ListenableFuture<DeploymentStatus> asyncGetStatus(String deploymentPaaSId) {
-        ListenableFuture<Deployment> deploymentFuture = deploymentDAO.asyncRead(deploymentPaaSId);
-        AsyncFunction<Deployment, Execution[]> executionsAdapter = deployment -> executionDAO.asyncList(deployment.getId(), false);
+        ListenableFuture<Deployment> deploymentFuture = cloudConfigurationHolder.getApiClient().getDeploymentClient().asyncRead(deploymentPaaSId);
+        AsyncFunction<Deployment, Execution[]> executionsAdapter = deployment -> cloudConfigurationHolder.getApiClient().getExecutionClient()
+                .asyncList(deployment.getId(), false);
         ListenableFuture<Execution[]> executionsFuture = Futures.transform(deploymentFuture, executionsAdapter);
         Function<Execution[], DeploymentStatus> deploymentStatusAdapter = this::doGetStatus;
         ListenableFuture<DeploymentStatus> statusFuture = Futures.transform(executionsFuture, deploymentStatusAdapter);
         return Futures.withFallback(statusFuture, throwable -> {
             // In case of error we give back unknown status and let the next polling determine the application status
-            if (throwable instanceof HttpClientErrorException) {
-                if (((HttpClientErrorException) throwable).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+            if (throwable instanceof CloudifyAPIException) {
+                if (Objects.equals(HttpStatus.NOT_FOUND, ((CloudifyAPIException) throwable).getStatusCode())) {
                     // Only return undeployed for an application if we received a 404 which means it was deleted
                     log.info("Application " + deploymentPaaSId + " is not found on cloudify");
                     return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
@@ -410,8 +395,10 @@ public class StatusService {
         } finally {
             cacheLock.readLock().unlock();
         }
-        ListenableFuture<NodeInstance[]> instancesFuture = nodeInstanceDAO.asyncList(deploymentContext.getDeploymentPaaSId());
-        ListenableFuture<Node[]> nodesFuture = nodeDAO.asyncList(deploymentContext.getDeploymentPaaSId(), null);
+
+        ListenableFuture<NodeInstance[]> instancesFuture = cloudConfigurationHolder.getApiClient().getNodeInstanceClient()
+                .asyncList(deploymentContext.getDeploymentPaaSId());
+        ListenableFuture<Node[]> nodesFuture = cloudConfigurationHolder.getApiClient().getNodeClient().asyncList(deploymentContext.getDeploymentPaaSId(), null);
         ListenableFuture<List<AbstractCloudifyModel[]>> combinedFutures = Futures.allAsList(instancesFuture, nodesFuture);
         Futures.addCallback(combinedFutures, new FutureCallback<List<AbstractCloudifyModel[]>>() {
             @Override

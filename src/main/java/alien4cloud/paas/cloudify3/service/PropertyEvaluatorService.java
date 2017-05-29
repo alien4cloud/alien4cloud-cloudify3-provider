@@ -103,7 +103,7 @@ public class PropertyEvaluatorService {
         }
     }
 
-    private IValue processSimpleFunction(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
+    private AbstractPropertyValue processSimpleFunction(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
         if (ToscaFunctionConstants.GET_PROPERTY.equals(value.getFunction())) {
             String evaluatedValue = evaluateGetPropertyFunction(value, node, allNodes);
             return new ScalarPropertyValue(evaluatedValue);

@@ -1,4 +1,4 @@
-package alien4cloud.paas.cloudify3.service;
+package alien4cloud.paas.cloudify3.shared;
 
 import java.util.Map;
 import java.util.Set;

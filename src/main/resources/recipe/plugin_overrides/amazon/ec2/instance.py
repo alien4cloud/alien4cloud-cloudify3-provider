@@ -16,6 +16,7 @@
 
 # Third-party Imports
 import boto.exception
+import json
 
 # Cloudify imports
 from ec2 import utils
@@ -41,7 +42,7 @@ def run_instances(**_):
 
     ctx.logger.info(
         'Attempting to create EC2 Instance with these API parameters: {0}.'
-        .format(instance_parameters))
+        .format(json.dumps(instance_parameters)))
 
     instance_id = _run_instances_if_needed(ec2_client, instance_parameters)
 
@@ -279,7 +280,7 @@ def _get_instance_parameters():
         parameters['placement'] = ctx.instance.runtime_properties['placement']
       else:
         parameters.pop('placement', None)
-    ctx.logger.debug("[OVERRIDE] parameters={}".format(parameters))
+    ctx.logger.debug("[OVERRIDE] parameters={}".format(json.dumps(parameters)))
     # end [a4c_override]
 
     return parameters

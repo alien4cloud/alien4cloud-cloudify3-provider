@@ -21,8 +21,9 @@ import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.configuration.KubernetesConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfigurations;
-import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
+import alien4cloud.paas.cloudify3.shared.ApiClientFactoryService;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.utils.ClassLoaderUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,16 +37,17 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
 
-    public static final String CFY_DIAMOND_VERSION = "1.3.4";
+    public static final String CFY_DIAMOND_VERSION = "1.3.5";
     public static final String CFY_FABRIC_VERSION = "1.4.2";
 
     @Resource
     private ApplicationContext factoryContext;
-
     @Resource
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Inject
     private ArtifactRegistryService artifactRegistryService;
+    @Inject
+    private ApiClientFactoryService eventServiceMultiplexer;
 
     private Map<IPaaSProvider, AnnotationConfigApplicationContext> contextMap = Collections
             .synchronizedMap(Maps.<IPaaSProvider, AnnotationConfigApplicationContext> newIdentityHashMap());
@@ -62,6 +64,8 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         cloudConfiguration.setUserName("username");
         cloudConfiguration.setPassword("password");
         cloudConfiguration.setTenant("default_tenant");
+        cloudConfiguration.setFailOverRetry(60);
+        cloudConfiguration.setFailOverDelay(1000);
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
         cloudConfiguration.setDelayBetweenInProgressDeploymentStatusPolling(5);
@@ -107,16 +111,17 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
          * Alien Context --> Factory Context --> Real orchestrator context
          * Each orchestrator will create a different context
          */
-        AnnotationConfigApplicationContext pluginContext = new AnnotationConfigApplicationContext();
-        pluginContext.setParent(factoryContext);
-        pluginContext.setClassLoader(factoryContext.getClassLoader());
+        AnnotationConfigApplicationContext orchestratorInstanceContext = new AnnotationConfigApplicationContext();
+        orchestratorInstanceContext.setParent(factoryContext);
+        orchestratorInstanceContext.setClassLoader(factoryContext.getClassLoader());
         ClassLoaderUtil.runWithContextClassLoader(factoryContext.getClassLoader(), () -> {
-            pluginContext.register(PluginContextConfiguration.class);
-            pluginContext.refresh();
+            orchestratorInstanceContext.register(PluginContextConfiguration.class);
+            orchestratorInstanceContext.refresh();
         });
-        log.info("Created new Cloudify 4 context {} for factory {}", pluginContext.getId(), factoryContext.getId());
-        CloudifyOrchestrator provider = pluginContext.getBean(CloudifyOrchestrator.class);
-        contextMap.put(provider, pluginContext);
+        log.info("Created new Cloudify 4 context {} for factory {}", orchestratorInstanceContext.getId(), factoryContext.getId());
+        CloudifyOrchestrator provider = orchestratorInstanceContext.getBean(CloudifyOrchestrator.class);
+
+        contextMap.put(provider, orchestratorInstanceContext);
         return provider;
     }
 

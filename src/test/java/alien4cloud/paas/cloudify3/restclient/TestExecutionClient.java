@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -17,6 +18,12 @@ import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
 import alien4cloud.paas.cloudify3.model.Node;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
+import alien4cloud.paas.cloudify3.shared.restclient.BlueprintClient;
+import alien4cloud.paas.cloudify3.shared.restclient.DeploymentClient;
+import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
+import alien4cloud.paas.cloudify3.shared.restclient.ExecutionClient;
+import alien4cloud.paas.cloudify3.shared.restclient.NodeClient;
+import alien4cloud.paas.cloudify3.shared.restclient.NodeInstanceClient;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -28,7 +35,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
 
     private static ExecutionClient executionClient;
 
-    private static DeploymentEventClient deploymentEventClient;
+    private static EventClient eventClient;
 
     private static NodeClient nodeClient;
 
@@ -37,12 +44,12 @@ public class TestExecutionClient extends AbstractRestClientTest {
     @BeforeClass
     public static void before() {
         initializeContext();
-        blueprintClient = configureClient(new BlueprintClient());
-        deploymentClient = configureClient(new DeploymentClient());
-        executionClient = configureClient(new ExecutionClient());
-        deploymentEventClient = configureClient(new DeploymentEventClient());
-        nodeClient = configureClient(new NodeClient());
-        nodeInstanceClient = configureClient(new NodeInstanceClient());
+        blueprintClient = getApiClient().getBlueprintClient();
+        deploymentClient = getApiClient().getDeploymentClient();
+        executionClient = getApiClient().getExecutionClient();
+        eventClient = getApiClient().getEventClient();
+        nodeClient = getApiClient().getNodeClient();
+        nodeInstanceClient = getApiClient().getNodeInstanceClient();
     }
 
     private static void waitForAllExecutionToFinish(String blueprintId) {
@@ -65,12 +72,12 @@ public class TestExecutionClient extends AbstractRestClientTest {
     @Test
     public void testCreateDeployment() {
         String blueprintId = "testRest";
-        Deployment[] deployments = deploymentClient.list();
+        Deployment[] deployments = deploymentClient.list(0, 1000).getItems();
         Assert.assertEquals(0, deployments.length);
         try {
             blueprintClient.create(blueprintId, "src/test/resources/restclient/blueprint/blueprint.yaml");
             deploymentClient.create(blueprintId, blueprintId, Maps.newHashMap());
-            deployments = deploymentClient.list();
+            deployments = deploymentClient.list(0, 1000).getItems();
             Assert.assertEquals(1, deployments.length);
             for (Deployment deployment : deployments) {
                 log.info(deployment.getId() + " = " + deployment);
@@ -84,7 +91,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
     }
 
     @Test
-    public void testExecution() {
+    public void testExecution() throws ExecutionException, InterruptedException {
         String blueprintId = "testRest";
         try {
             blueprintClient.create(blueprintId, "src/test/resources/restclient/blueprint/blueprint.yaml");
@@ -102,7 +109,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
             Assert.assertNotNull(executionClient.read(installExecution.getId()));
             waitForAllExecutionToFinish(blueprintId);
 
-            Event[] installEvents = deploymentEventClient.getBatch(installExecution.getId(), installExecution.getCreatedAt(), 0, Integer.MAX_VALUE);
+            Event[] installEvents = eventClient.asyncGetBatch(installExecution.getCreatedAt(), 0, Integer.MAX_VALUE).get();
             Assert.assertTrue(installEvents.length > 0);
             assertLifecycleEvents(installEvents, CloudifyLifeCycle.CREATE, CloudifyLifeCycle.START);
 
@@ -120,16 +127,16 @@ public class TestExecutionClient extends AbstractRestClientTest {
             Assert.assertNotNull(nodeInstance.getRuntimeProperties());
             Assert.assertFalse(nodeInstance.getRuntimeProperties().isEmpty());
         } finally {
-            // processUninstall(blueprintId);
+            processUninstall(blueprintId);
         }
     }
 
-    private void processUninstall(String blueprintId) {
+    private void processUninstall(String blueprintId) throws ExecutionException, InterruptedException {
         Execution uninstallExecution = executionClient.start(blueprintId, "uninstall", null, false, false);
         sleep();
         Assert.assertNotNull(executionClient.read(uninstallExecution.getId()));
         waitForAllExecutionToFinish(blueprintId);
-        Event[] events = deploymentEventClient.getBatch(uninstallExecution.getId(), uninstallExecution.getCreatedAt(), 0, Integer.MAX_VALUE);
+        Event[] events = eventClient.asyncGetBatch(uninstallExecution.getCreatedAt(), 0, Integer.MAX_VALUE).get();
         deploymentClient.delete(blueprintId);
         blueprintClient.delete(blueprintId);
         Assert.assertTrue(events.length > 0);

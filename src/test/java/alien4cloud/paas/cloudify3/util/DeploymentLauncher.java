@@ -15,8 +15,7 @@ import alien4cloud.model.orchestrators.locations.Location;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.CloudifyOrchestrator;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
-import alien4cloud.paas.cloudify3.restclient.BlueprintClient;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.plan.TopologyTreeBuilderService;
@@ -30,21 +29,14 @@ public class DeploymentLauncher {
 
     @Resource(name = "cfy3-applicationUtil")
     private ApplicationUtil applicationUtil;
-
     @Resource
     private TopologyTreeBuilderService topologyTreeBuilderService;
-
     @Resource
     private CloudifyOrchestrator cloudifyPaaSProvider;
-
     @Resource
     private WorkflowsBuilderService workflowBuilderService;
-
     @Resource
-    private CloudConfigurationHolder cloudConfigurationHolder;
-
-    @Resource
-    private BlueprintClient blueprintDAO;
+    private CfyConnectionManager cloudConfigurationHolder;
 
     private boolean initialized = false;
 
@@ -60,7 +52,7 @@ public class DeploymentLauncher {
         cloudConfiguration.setUserName("admin");
         cloudConfiguration.setPassword("admin");
         cloudConfiguration.setDisableSSLVerification(true);
-        cloudConfigurationHolder.setConfigurationAndNotifyListeners(cloudConfiguration);
+        cloudConfigurationHolder.setConfiguration("orchestratorId", cloudConfiguration);
         initialized = true;
     }
 
@@ -121,12 +113,5 @@ public class DeploymentLauncher {
         String deploymentId = stackTraceElements[2].getMethodName();
         launch(buildPaaSDeploymentContext(deploymentId, topologyName, "amazon", deploymentProperties));
         return deploymentId;
-    }
-
-    public void verifyBlueprintUpload(String topology, String path) throws PluginConfigurationException {
-        initializeCloudifyManagerConnection();
-        // Check if cloudify accept the blueprint
-        blueprintDAO.create(topology, path);
-        blueprintDAO.delete(topology);
     }
 }

@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AsyncFunction;
@@ -16,9 +18,6 @@ import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
-import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,20 +25,12 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public abstract class RuntimeService {
-
     public static final String CLOUDIFY_TOKEN_KEY = "cloudify_token";
 
     @Resource
-    private NodeInstanceClient nodeInstanceClient;
-
-    @Resource
-    protected ExecutionClient executionClient;
-
-    @Resource
-    protected DeploymentClient deploymentClient;
-
-    @Resource
     protected ListeningScheduledExecutorService scheduledExecutorService;
+    @Inject
+    private CfyConnectionManager configurationHolder;
 
     private ListenableFuture<Execution> internalWaitForExecutionFinish(final ListenableFuture<Execution> futureExecution) {
         AsyncFunction<Execution, Execution> waitFunc = execution -> {
@@ -48,8 +39,8 @@ public abstract class RuntimeService {
                 return futureExecution;
             } else {
                 // If it's not finished, schedule another poll in 2 seconds
-                ListenableFuture<Execution> newFutureExecution = Futures
-                        .dereference(scheduledExecutorService.schedule(() -> executionClient.asyncRead(execution.getId()), 2, TimeUnit.SECONDS));
+                ListenableFuture<Execution> newFutureExecution = Futures.dereference(scheduledExecutorService
+                        .schedule(() -> configurationHolder.getApiClient().getExecutionClient().asyncRead(execution.getId()), 2, TimeUnit.SECONDS));
                 return internalWaitForExecutionFinish(newFutureExecution);
             }
         };
@@ -61,8 +52,8 @@ public abstract class RuntimeService {
             if (deployment == null) {
                 return Futures.immediateFuture(null);
             } else {
-                ListenableFuture<Deployment> newFutureExecution = Futures
-                        .dereference(scheduledExecutorService.schedule(() -> deploymentClient.asyncRead(deployment.getId()), 2, TimeUnit.SECONDS));
+                ListenableFuture<Deployment> newFutureExecution = Futures.dereference(scheduledExecutorService
+                        .schedule(() -> configurationHolder.getApiClient().getDeploymentClient().asyncRead(deployment.getId()), 2, TimeUnit.SECONDS));
                 return Futures.withFallback(internalWaitForDeploymentDeleted(newFutureExecution), throwable -> Futures.immediateFuture(null));
             }
         };
@@ -70,7 +61,8 @@ public abstract class RuntimeService {
     }
 
     protected ListenableFuture<Deployment> waitForDeploymentDeleted(String deploymentPaaSId) {
-        return internalWaitForDeploymentDeleted(Futures.withFallback(deploymentClient.asyncRead(deploymentPaaSId), throwable -> Futures.immediateFuture(null)));
+        return internalWaitForDeploymentDeleted(Futures.withFallback(configurationHolder.getApiClient().getDeploymentClient().asyncRead(deploymentPaaSId),
+                throwable -> Futures.immediateFuture(null)));
     }
 
     /**
@@ -83,7 +75,7 @@ public abstract class RuntimeService {
     protected ListenableFuture<Deployment> waitForExecutionFinish(final ListenableFuture<Execution> futureExecution) {
         ListenableFuture<Execution> finishedExecution = internalWaitForExecutionFinish(futureExecution);
         final AsyncFunction<Execution, Deployment> waitSystemWorkflow = execution -> waitForDeploymentExecutionsFinish(
-                deploymentClient.asyncRead(execution.getDeploymentId()));
+                configurationHolder.getApiClient().getDeploymentClient().asyncRead(execution.getDeploymentId()));
         return Futures.transform(finishedExecution, waitSystemWorkflow);
     }
 
@@ -99,7 +91,7 @@ public abstract class RuntimeService {
         }
         AsyncFunction<Deployment, Deployment> waitFunc = deployment -> {
             final ListenableFuture<Execution[]> futureExecutions = waitForDeploymentExecutionsFinish(deployment.getId(),
-                    executionClient.asyncList(deployment.getId(), true));
+                    configurationHolder.getApiClient().getExecutionClient().asyncList(deployment.getId(), true));
             Function<Execution[], Deployment> adaptFunc = input -> {
                 log.info("All execution has finished for deployment {}", deployment.getId());
                 return deployment;
@@ -132,8 +124,8 @@ public abstract class RuntimeService {
                 return futureExecutions;
             } else {
                 // If it's not finished, schedule another poll in 2 seconds
-                ListenableFuture<Execution[]> newFutureExecutions = Futures
-                        .dereference(scheduledExecutorService.schedule(() -> executionClient.asyncList(deploymentId, true), 2, TimeUnit.SECONDS));
+                ListenableFuture<Execution[]> newFutureExecutions = Futures.dereference(scheduledExecutorService
+                        .schedule(() -> configurationHolder.getApiClient().getExecutionClient().asyncList(deploymentId, true), 2, TimeUnit.SECONDS));
                 return waitForDeploymentExecutionsFinish(deploymentId, newFutureExecutions);
             }
         };
@@ -141,14 +133,15 @@ public abstract class RuntimeService {
     }
 
     protected ListenableFuture<NodeInstance[]> cancelAllRunningExecutions(final String deploymentPaaSId) {
-        ListenableFuture<Execution[]> currentExecutions = executionClient.asyncList(deploymentPaaSId, true);
+        ListenableFuture<Execution[]> currentExecutions = configurationHolder.getApiClient().getExecutionClient().asyncList(deploymentPaaSId, true);
         AsyncFunction<Execution[], ?> abortCurrentExecutionsFunction = (AsyncFunction<Execution[], List<Object>>) executions -> {
             List<ListenableFuture<?>> abortExecutions = Lists.newArrayList();
             for (Execution execution : executions) {
                 if (!ExecutionStatus.isTerminated(execution.getStatus())) {
                     if (!execution.getIsSystemWorkflow()) {
                         log.info("Cancel running user workflow execution " + execution.getWorkflowId());
-                        abortExecutions.add(waitForExecutionFinish(executionClient.asyncCancel(execution.getId(), true)));
+                        abortExecutions
+                                .add(waitForExecutionFinish(configurationHolder.getApiClient().getExecutionClient().asyncCancel(execution.getId(), true)));
                     } else {
                         log.info("Wait for system execution finished " + execution.getWorkflowId());
                         abortExecutions.add(waitForExecutionFinish(Futures.immediateFuture(execution)));
@@ -158,7 +151,8 @@ public abstract class RuntimeService {
             return Futures.allAsList(abortExecutions);
         };
         ListenableFuture<?> abortCurrentExecutionsFuture = Futures.transform(currentExecutions, abortCurrentExecutionsFunction);
-        AsyncFunction<Object, NodeInstance[]> livingNodesRetrievalFunction = input -> nodeInstanceClient.asyncList(deploymentPaaSId);
+        AsyncFunction<Object, NodeInstance[]> livingNodesRetrievalFunction = input -> configurationHolder.getApiClient().getNodeInstanceClient()
+                .asyncList(deploymentPaaSId);
         return Futures.transform(abortCurrentExecutionsFuture, livingNodesRetrievalFunction);
     }
 }
