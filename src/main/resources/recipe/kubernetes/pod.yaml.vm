@@ -21,6 +21,9 @@ spec:
     spec:
       containers:
       - name: ${pod_name}
+#if( $dockerType.template.properties["kubernetes"] && $dockerType.template.properties["kubernetes"].value["imagePullPolicy"] )
+        imagePullPolicy: ${dockerType.template.properties["kubernetes"].value["imagePullPolicy"]}
+#end## end if imagePullPolicy
 #set($imageref=${dockerType.interfaces["tosca.interfaces.node.lifecycle.Standard"].operations["create"].implementationArtifact.artifactRef})
         image: ${imageref}
 #if( $dockerType.template.properties["docker_run_cmd"] )
@@ -55,3 +58,7 @@ spec:
             memory: ${util.common.getValueInUnit($dockerType, "mem_share", "MB", true)}M
 #end
 #end## resources
+#if( $dockerType.template.properties["kubernetes"] && $dockerType.template.properties["kubernetes"].value["imagePullSecrets"] )
+      imagePullSecrets:
+        - name: "${dockerType.template.properties["kubernetes"].value["imagePullSecrets"]}"
+#end## end if imagePullSecrets
