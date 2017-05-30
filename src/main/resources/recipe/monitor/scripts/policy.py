@@ -2,64 +2,28 @@ import sys
 from cloudify_rest_client import CloudifyClient
 from influxdb.influxdb08 import InfluxDBClient
 from influxdb.influxdb08.client import InfluxDBClientError
+from cloudify import utils
 
-from os import utime
 from os import getpid
-from os import path
 
 import json
-import time
 import datetime
-import base64
 
 # check against influxdb which nodes are available CPUtotal
 # change status of missing nodes comparing to the node_instances that are taken from cloudify
 # do it only for compute nodes
-
-rest_conf_file = '/opt/manager/rest-security.conf'
-
-CLOUDIFY_USER_KEY = 'cloudify_user'
-CLOUDIFY_PASSWORD_KEY = 'cloudify_password'
-
-
-def _read_rest_conf():
-    if not path.isfile(rest_conf_file):
-        return None
-    with open(rest_conf_file) as config:
-        # The rest_conf_file is not a valide json format.
-        # We should read it with a yaml.loads() but the yaml library is not include in the mgmworker env
-        # So in order not to bother with yaml library, we just do this little trick which will suffice at the moment
-        data = config.read().replace("'",'"').replace('True', '"True"').replace('False','"False"')
-        rest_conf = json.loads(data)
-        return rest_conf
-
-def is_ssl_enabled():
-    # Since this script is executed from the manager machine, it searches directly into the rest-security configuration file to find out if the rest is secured.
-    rest_conf = _read_rest_conf()
-    if 'ssl' in rest_conf and 'enabled' in rest_conf['ssl'] and rest_conf['ssl']['enabled'] == True:
-        return True
-    return False
-
-
-def get_cloudify_credentials():
-    rest_conf = _read_rest_conf()
-    if 'enabled' in rest_conf and rest_conf['enabled']:
-        return { CLOUDIFY_USER_KEY : rest_conf['admin_username'], CLOUDIFY_PASSWORD_KEY : rest_conf['admin_password'] }
-    return None
-
 
 def log(message, level='INFO'):
     print "{date} [{level}] {message}".format(date=str(datetime.datetime.now()), level=level, message=message)
 
 
 def check_liveness(nodes_to_monitor,depl_id):
-    cloudify_credentials = get_cloudify_credentials()
-    if cloudify_credentials:
-        headers = {'Authorization': 'Basic ' + base64.b64encode(cloudify_credentials[CLOUDIFY_USER_KEY] + ':' + cloudify_credentials[CLOUDIFY_PASSWORD_KEY])}
-    if is_ssl_enabled():
-        c = CloudifyClient(host='localhost', port=8101, protocol='https', trust_all=True, headers=headers)
-    else:
-        c = CloudifyClient(host='localhost', headers=headers)
+    c = CloudifyClient(host=utils.get_manager_ip(),
+                       port=utils.get_manager_rest_service_port(),
+                       protocol='https',
+                       cert=utils.get_local_rest_certificate(),
+                       token= utils.get_rest_token(),
+                       tenant= utils.get_tenant_name())
 
     c_influx = InfluxDBClient(host='localhost', port=8086, database='cloudify')
     log ('nodes_to_monitor: {0}'.format(nodes_to_monitor))
@@ -87,9 +51,6 @@ def check_liveness(nodes_to_monitor,depl_id):
                       log ('Setting state to error for instance {0} and its children'.format(instance.id))
                       update_nodes_tree_state(c, depl_id, instance, 'error')
                       params = {'node_instance_id': instance.id}
-                      if cloudify_credentials:
-                          cloudify_token = c.tokens.get();
-                          params['cloudify_token'] = cloudify_token['value']
                       log ('Calling Auto-healing workflow for container instance {0}'.format(instance.id))
                       c.executions.start(depl_id, 'a4c_heal', params)
                   else:

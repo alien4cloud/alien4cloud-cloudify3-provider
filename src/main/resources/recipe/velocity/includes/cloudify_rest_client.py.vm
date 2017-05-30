@@ -9,4 +9,4 @@ client = CloudifyClient(host=utils.get_manager_ip(),
                         protocol='https',
                         cert=utils.get_local_rest_certificate(),
                         token= utils.get_rest_token(),
-                        tenant='$cloud.tenant')
+                        tenant= utils.get_tenant_name())
