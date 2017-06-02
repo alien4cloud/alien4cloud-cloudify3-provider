@@ -195,12 +195,12 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     }
 
     @Override
-    public void setConfiguration(CloudConfiguration newConfiguration) throws PluginConfigurationException {
+    public void setConfiguration(String orchestratorId, CloudConfiguration newConfiguration) throws PluginConfigurationException {
         if (newConfiguration == null) {
-            throw new PluginConfigurationException("Configuration is null");
+            throw new PluginConfigurationException("Configuration must not be null");
         }
         if (newConfiguration.getUrl() == null) {
-            throw new PluginConfigurationException("Url is null");
+            throw new PluginConfigurationException("Url must be defined.");
         }
         cloudConfigurationHolder.setConfigurationAndNotifyListeners(newConfiguration);
     }
