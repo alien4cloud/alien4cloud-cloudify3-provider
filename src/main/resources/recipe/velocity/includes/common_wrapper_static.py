@@ -127,7 +127,7 @@ def _all_instances_get_attribute(entity, attribute_name):
         prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
         if prop_value is not None:
             # ctx.logger.debug('Found the property/attribute {0} with value {1} on the node {2} instance {3}'.format(attribute_name, json.dumps(prop_value), entity.node.id,
-                                                                                                                  node_instance.id))
+                                                                                                                #   node_instance.id))
             result_map[node_instance.id + '_'] = prop_value
     return result_map
 
@@ -144,7 +144,7 @@ def _all_instances_get_target_capa_or_node_attribute(entity, capability_attribut
             prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
         if prop_value is not None:
             # ctx.logger.debug('Found the property/attribute {0} with value {1} on the node {2} instance {3}'.format(attribute_name, json.dumps(prop_value), entity.node.id,
-                                                                                                                   node_instance.id))
+                                                                                                                #    node_instance.id))
             result_map[node_instance.id + '_'] = prop_value
     return result_map
 
