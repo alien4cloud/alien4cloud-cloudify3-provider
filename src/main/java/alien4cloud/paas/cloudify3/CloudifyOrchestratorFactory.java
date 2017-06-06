@@ -64,7 +64,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         cloudConfiguration.setUserName("username");
         cloudConfiguration.setPassword("password");
         cloudConfiguration.setTenant("default_tenant");
-        cloudConfiguration.setFailOverRetry(60);
+        cloudConfiguration.setFailOverRetry(1);
         cloudConfiguration.setFailOverDelay(1000);
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
