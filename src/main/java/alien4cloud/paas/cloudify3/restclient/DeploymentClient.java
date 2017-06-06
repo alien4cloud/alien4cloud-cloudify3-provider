@@ -2,25 +2,29 @@ package alien4cloud.paas.cloudify3.restclient;
 
 import java.util.Map;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import javax.inject.Inject;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import alien4cloud.paas.cloudify3.model.Deployment;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
 public class DeploymentClient extends AbstractClient {
-
     public static final String DEPLOYMENTS_PATH = "/deployments";
+
+    @Inject
+    private CloudConfigurationHolder configurationHolder;
 
     @Override
     protected String getPath() {
@@ -31,7 +35,7 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("List deployment");
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(), Deployment[].class));
+        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl()), Deployment[].class));
     }
 
     @SneakyThrows
@@ -48,7 +52,8 @@ public class DeploymentClient extends AbstractClient {
         request.put("inputs", inputs);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return FutureUtil.unwrapRestResponse(exchange(getSuffixedUrl("/{id}"), HttpMethod.PUT, createHttpEntity(request, headers), Deployment.class, id));
+        return FutureUtil.unwrapRestResponse(
+                exchange(getSuffixedUrl(getManagerUrl(), "/{id}"), HttpMethod.PUT, createHttpEntity(request, headers), Deployment.class, id));
     }
 
     @SneakyThrows
@@ -60,7 +65,7 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Read deployment {}", id);
         }
-        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl("/{id}"), Deployment.class, id));
+        return FutureUtil.unwrapRestResponse(getForEntity(getSuffixedUrl(getManagerUrl(), "/{id}"), Deployment.class, id));
     }
 
     @SneakyThrows
@@ -72,11 +77,15 @@ public class DeploymentClient extends AbstractClient {
         if (log.isDebugEnabled()) {
             log.debug("Delete deployment {}", id);
         }
-        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl("/{id}"), id));
+        return FutureUtil.toGuavaFuture(delete(getSuffixedUrl(getManagerUrl(), "/{id}"), id));
     }
 
     @SneakyThrows
     public void delete(String id) {
         asyncDelete(id).get();
+    }
+
+    private String getManagerUrl() {
+        return configurationHolder.getConfiguration().getUrl();
     }
 }

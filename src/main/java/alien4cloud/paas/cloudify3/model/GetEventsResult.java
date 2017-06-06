@@ -35,6 +35,7 @@ public class GetEventsResult extends AbstractCloudifyModel {
     @SuppressWarnings("PMD.UnusedPrivateField")
     private static class GetEventsHit extends AbstractCloudifyModel {
         private Event __source;
+        private String __id;
     }
 
     @JsonIgnore
@@ -49,6 +50,8 @@ public class GetEventsResult extends AbstractCloudifyModel {
         List<Event> events = Lists.newArrayList();
         for (GetEventsHit internalHit : internalHits) {
             if (internalHit != null && internalHit.get__source() != null) {
+                Event event = internalHit.get__source();
+                event.setId(internalHit.__id);
                 events.add(internalHit.get__source());
             }
         }

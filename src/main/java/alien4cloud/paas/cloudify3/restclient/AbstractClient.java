@@ -1,9 +1,9 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import javax.annotation.Resource;
+import java.util.Map;
+import java.util.Map.Entry;
 
-import lombok.Getter;
-import lombok.Setter;
+import javax.annotation.Resource;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,9 +12,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
-import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import com.google.common.collect.Maps;
 
+import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public abstract class AbstractClient {
 
     @Resource(name = "cloudify-async-rest-template")
@@ -22,12 +26,19 @@ public abstract class AbstractClient {
     private AsyncRestTemplate restTemplate;
 
     @Resource
-    @Getter
-    @Setter
-    private CloudConfigurationHolder configurationHolder;
-
-    @Resource
     private AuthenticationInterceptor authenticationInterceptor;
+
+    private Map<String, AuthenticationInterceptor> authenticationInterceptorByManager = Maps.newHashMap();
+
+    /** Allows registration of authentication interceptors by manager for the multiplexer. */
+    public void registerAuthenticationManager(String managerUrl, AuthenticationInterceptor authenticationInterceptor) {
+        if (authenticationInterceptorByManager.containsKey(managerUrl)) {
+            log.info("Overriding authentication interceptor for manager {}", managerUrl);
+        } else {
+            log.info("Register an authentication interceptor for manager {}", managerUrl);
+        }
+        authenticationInterceptorByManager.put(managerUrl, authenticationInterceptor);
+    }
 
     /**
      * Get the url appended with the given suffix
@@ -36,8 +47,8 @@ public abstract class AbstractClient {
      * @param parameterNames all parameters' name
      * @return the url suffixed
      */
-    public String getSuffixedUrl(String suffix, String... parameterNames) {
-        String urlPrefix = configurationHolder.getConfiguration().getUrl() + getPath() + (suffix != null ? suffix : "");
+    public String getSuffixedUrl(String managerUrl, String suffix, String... parameterNames) {
+        String urlPrefix = managerUrl + getPath() + (suffix != null ? suffix : "");
         if (parameterNames != null && parameterNames.length > 0) {
             StringBuilder urlBuilder = new StringBuilder(urlPrefix);
             urlBuilder.append("?");
@@ -51,29 +62,46 @@ public abstract class AbstractClient {
         }
     }
 
-    protected HttpEntity<?> createHttpEntity() {
-        return createHttpEntity(new HttpHeaders());
+    protected HttpEntity<?> createHttpEntity(String managerUrl) {
+        return createHttpEntity(managerUrl, new HttpHeaders());
     }
 
-    protected HttpEntity<?> createHttpEntity(HttpHeaders httpHeaders) {
-        return authenticationInterceptor.addAuthenticationHeader(new HttpEntity(httpHeaders));
+    protected HttpEntity<?> createHttpEntity(String managerUrl, HttpHeaders httpHeaders) {
+        AuthenticationInterceptor interceptor = getInterceptorForUrl(managerUrl);
+        if (interceptor == null) {
+            interceptor = authenticationInterceptor;
+        }
+        return interceptor.addAuthenticationHeader(new HttpEntity(httpHeaders));
     }
 
     protected <T> HttpEntity<T> createHttpEntity(T body, HttpHeaders httpHeaders) {
         return authenticationInterceptor.addAuthenticationHeader(new HttpEntity<>(body, httpHeaders));
     }
 
-    protected <T> ListenableFuture<ResponseEntity<T>> getForEntity(String url, Class<T> responseType, Object... uriVariables) {
-        return restTemplate.exchange(url, HttpMethod.GET, createHttpEntity(), responseType, uriVariables);
+    protected <T> ListenableFuture<ResponseEntity<T>> getForEntity(String managerUrl, Class<T> responseType, Object... uriVariables) {
+        return restTemplate.exchange(managerUrl, HttpMethod.GET, createHttpEntity(managerUrl), responseType, uriVariables);
     }
 
-    protected ListenableFuture<?> delete(String url, Object... urlVariables) {
-        return restTemplate.exchange(url, HttpMethod.DELETE, createHttpEntity(), (Class<?>) null, urlVariables);
+    protected ListenableFuture<?> delete(String managerUrl, Object... urlVariables) {
+        return restTemplate.exchange(managerUrl, HttpMethod.DELETE, createHttpEntity(managerUrl), (Class<?>) null, urlVariables);
     }
 
-    protected <T> ListenableFuture<ResponseEntity<T>> exchange(String url, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType,
+    protected <T> ListenableFuture<ResponseEntity<T>> exchange(String managerUrl, HttpMethod method, HttpEntity<?> requestEntity, Class<T> responseType,
             Object... uriVariables) {
-        return restTemplate.exchange(url, method, authenticationInterceptor.addAuthenticationHeader(requestEntity), responseType, uriVariables);
+        AuthenticationInterceptor interceptor = getInterceptorForUrl(managerUrl);
+        if (interceptor == null) {
+            interceptor = authenticationInterceptor;
+        }
+        return restTemplate.exchange(managerUrl, method, interceptor.addAuthenticationHeader(requestEntity), responseType, uriVariables);
+    }
+
+    private AuthenticationInterceptor getInterceptorForUrl(String queryUrl) {
+        for (Entry<String, AuthenticationInterceptor> interceptorEntry : authenticationInterceptorByManager.entrySet()) {
+            if (queryUrl.startsWith(interceptorEntry.getKey())) {
+                return interceptorEntry.getValue();
+            }
+        }
+        return null;
     }
 
     /**
@@ -82,8 +110,8 @@ public abstract class AbstractClient {
      * @param parameterNames all parameters' name
      * @return the url
      */
-    public String getBaseUrl(String... parameterNames) {
-        return getSuffixedUrl(null, parameterNames);
+    public String getBaseUrl(String managerUrl, String... parameterNames) {
+        return getSuffixedUrl(managerUrl, null, parameterNames);
     }
 
     protected abstract String getPath();
