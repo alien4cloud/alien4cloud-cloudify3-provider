@@ -109,7 +109,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
             Assert.assertNotNull(executionClient.read(installExecution.getId()));
             waitForAllExecutionToFinish(blueprintId);
 
-            Event[] installEvents = eventClient.asyncGetBatch(installExecution.getCreatedAt(), 0, Integer.MAX_VALUE).get();
+            Event[] installEvents = eventClient.asyncGetBatch(installExecution.getCreatedAt(), null, 0, Integer.MAX_VALUE).get();
             Assert.assertTrue(installEvents.length > 0);
             assertLifecycleEvents(installEvents, CloudifyLifeCycle.CREATE, CloudifyLifeCycle.START);
 
@@ -136,7 +136,7 @@ public class TestExecutionClient extends AbstractRestClientTest {
         sleep();
         Assert.assertNotNull(executionClient.read(uninstallExecution.getId()));
         waitForAllExecutionToFinish(blueprintId);
-        Event[] events = eventClient.asyncGetBatch(uninstallExecution.getCreatedAt(), 0, Integer.MAX_VALUE).get();
+        Event[] events = eventClient.asyncGetBatch(uninstallExecution.getCreatedAt(), null, 0, Integer.MAX_VALUE).get();
         deploymentClient.delete(blueprintId);
         blueprintClient.delete(blueprintId);
         Assert.assertTrue(events.length > 0);
