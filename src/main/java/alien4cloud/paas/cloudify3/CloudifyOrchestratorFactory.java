@@ -35,7 +35,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
 
     public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
     public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
-    public static final String CFY_BYON_PLUGIN_VERSION = "1.4";
+    public static final String CFY_BYON_PLUGIN_VERSION = "1.5";
 
     public static final String CFY_DIAMOND_VERSION = "1.3.5";
     public static final String CFY_FABRIC_VERSION = "1.4.2";
