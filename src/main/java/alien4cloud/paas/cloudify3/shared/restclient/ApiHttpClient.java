@@ -2,10 +2,8 @@ package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.net.ConnectException;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
-import alien4cloud.paas.cloudify3.error.NotClusterMasterException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -15,6 +13,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import alien4cloud.paas.cloudify3.error.NotClusterMasterException;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -142,34 +141,39 @@ public final class ApiHttpClient {
     private <T> ListenableFuture<T> retryHttpClient(final RetryCounter retryCounter, Supplier<ListenableFuture<T>> function) {
         final SettableListenableFuture<T> retryFuture = new SettableListenableFuture<T>();
 
-        function.get().addCallback(t -> {
-            retryFuture.set(t);
-        }, throwable -> {
-            if (throwable instanceof NotClusterMasterException || throwable instanceof ConnectException) {
-                retryCounter.increment();
-                if (retryCounter.loopedRetry <= maxRetry) {
-                    // Select next url to try out.
-                    this.currentManagerUrl = this.managerUrls.get(retryCounter.modulo());
-                    log.warn("Unable to communicate with manager, unit retry {} / all managers retry {} on {}, with url {}", retryCounter.unitRetry,
-                            retryCounter.loopedRetry, maxRetry, currentManagerUrl);
-                    if (retryCounter.unitRetry % this.managerUrls.size() == 0) {
-                        log.info("Sleeping {} milliseconds before next retry.", retrySleep);
-                        try {
-                            Thread.sleep(retrySleep);
-                        } catch (InterruptedException e) {
-                            retryFuture.setException(throwable);
+        try {
+            function.get().addCallback(t -> {
+                retryFuture.set(t);
+            }, throwable -> {
+                if (throwable instanceof NotClusterMasterException || throwable instanceof ConnectException) {
+                    retryCounter.increment();
+                    if (retryCounter.loopedRetry <= maxRetry) {
+                        // Select next url to try out.
+                        this.currentManagerUrl = this.managerUrls.get(retryCounter.modulo());
+                        log.warn("Unable to communicate with manager, unit retry {} / all managers retry {} on {}, with url {}", retryCounter.unitRetry,
+                                retryCounter.loopedRetry, maxRetry, currentManagerUrl);
+                        if (retryCounter.modulo() == 0) {
+                            log.info("Sleeping {} milliseconds before next retry.", retrySleep);
+                            try {
+                                Thread.sleep(retrySleep);
+                            } catch (InterruptedException e) {
+                                retryFuture.setException(throwable);
+                            }
                         }
+                        // Execute on the next url in recursive way.
+                        ListenableFuture<T> retriedFuture = retryHttpClient(retryCounter, function);
+                        retriedFuture.addCallback(t -> retryFuture.set(t), retryThrowable -> retryFuture.setException(retryThrowable));
+                    } else {
+                        retryFuture.setException(throwable);
                     }
-                    // Execute on the next url in recursive way.
-                    ListenableFuture<T> retriedFuture = retryHttpClient(retryCounter, function);
-                    retriedFuture.addCallback(t -> retryFuture.set(t), retryThrowable -> retryFuture.setException(retryThrowable));
                 } else {
                     retryFuture.setException(throwable);
                 }
-            } else {
-                retryFuture.setException(throwable);
-            }
-        });
+            });
+        } catch (Exception e) {
+            log.error("Error while trying to communicate with a manager, url: " + this.currentManagerUrl, e);
+            retryFuture.setException(e);
+        }
 
         return retryFuture;
     }
@@ -182,7 +186,6 @@ public final class ApiHttpClient {
 
         public void increment() {
             unitRetry++;
-            log.info("Sleeping {} milliseconds before next retry.", retrySleep);
             if (modulo() == 0) {
                 loopedRetry++;
             }
