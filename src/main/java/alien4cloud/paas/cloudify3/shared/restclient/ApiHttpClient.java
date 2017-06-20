@@ -149,9 +149,10 @@ public final class ApiHttpClient {
                     retryCounter.increment();
                     if (retryCounter.loopedRetry <= maxRetry) {
                         // Select next url to try out.
+                        String previousUrl = this.currentManagerUrl;
                         this.currentManagerUrl = this.managerUrls.get(retryCounter.modulo());
-                        log.warn("Unable to communicate with manager, unit retry {} / all managers retry {} on {}, with url {}", retryCounter.unitRetry,
-                                retryCounter.loopedRetry, maxRetry, currentManagerUrl);
+                        log.warn("Unable to communicate with manager {}. Unit retry {} / all managers retry {} on {}, with url {}", previousUrl,
+                                retryCounter.unitRetry, retryCounter.loopedRetry, maxRetry, currentManagerUrl);
                         if (retryCounter.modulo() == 0) {
                             log.info("Sleeping {} milliseconds before next retry.", retrySleep);
                             try {

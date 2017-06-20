@@ -74,7 +74,7 @@ public class ApiClientFactoryService {
 
     private List<String> getAndValidateManagerUrls(String managerUrlsString) throws PluginConfigurationException {
         List<String> split = Lists.newArrayList(managerUrlsString.split(","));
-        Set<String> urls = Sets.newHashSet();
+        Set<String> urls = Sets.newLinkedHashSet(); // to keep the order
         split.forEach(url -> urls.add(url.trim()));
 
         // make sure there is at least one url
