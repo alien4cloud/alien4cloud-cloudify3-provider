@@ -33,12 +33,20 @@ public class EventClient {
     }
 
     @SneakyThrows
-    public ListenableFuture<Event[]> asyncGetBatch(Date fromDate, int from, int batchSize) {
+    public ListenableFuture<Event[]> asyncGetBatch(Date fromDate, Date toDate, int from, int batchSize) {
         Map<String, Object> request = Maps.newLinkedHashMap();
         if (fromDate != null) {
-            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            calendar.setTime(fromDate);
-            request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(calendar) + ",");
+            Calendar fromCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            fromCalendar.setTime(fromDate);
+            if (toDate == null) {
+                request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(fromCalendar) + ",");
+            } else {
+                Calendar toCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+                toCalendar.setTime(toDate);
+                // we need toDate to be exclusive so decrement a little
+                toCalendar.add(Calendar.MILLISECOND, -1);
+                request.put("_range", "@timestamp," + DatatypeConverter.printDateTime(fromCalendar) + "," + DatatypeConverter.printDateTime(toCalendar));
+            }
         }
         request.put("_offset", from);
         request.put("_size", batchSize);

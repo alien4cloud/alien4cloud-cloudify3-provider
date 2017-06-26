@@ -27,7 +27,6 @@ import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.model.Token;
 import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
@@ -77,9 +76,6 @@ public class CustomWorkflowService extends RuntimeService {
         // operation_kwargs --> process --> env
         Map<String, Object> inputs = Maps.newHashMap();
         workflowParameters.put("operation_kwargs", inputs);
-
-        // operation_kwargs --> cloudify_token
-        inputs.put(CLOUDIFY_TOKEN_KEY, configurationHolder.getApiClient().getTokenClient().get().getValue());
 
         if (MapUtils.isNotEmpty(inputParameters) || MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
             Map<String, Object> process = Maps.newHashMap();
@@ -200,19 +196,15 @@ public class CustomWorkflowService extends RuntimeService {
     }
 
     public ListenableFuture scale(String deploymentPaaSId, String nodeId, int delta) {
-        Token token = configurationHolder.getApiClient().getTokenClient().get();
         Map<String, Object> scaleParameters = Maps.newHashMap();
         scaleParameters.put("node_id", nodeId);
         scaleParameters.put("delta", delta);
         scaleParameters.put("scale_compute", true);
-        scaleParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(
                 configurationHolder.getApiClient().getExecutionClient().asyncStart(deploymentPaaSId, Workflow.SCALE, scaleParameters, true, false));
     }
 
     public ListenableFuture launchWorkflow(String deploymentPaaSId, String workflowName, Map<String, Object> workflowParameters) {
-        Token token = configurationHolder.getApiClient().getTokenClient().get();
-        workflowParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
         return waitForExecutionFinish(configurationHolder.getApiClient().getExecutionClient().asyncStart(deploymentPaaSId, Workflow.A4C_PREFIX + workflowName,
                 workflowParameters, true, false));
     }

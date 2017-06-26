@@ -25,7 +25,6 @@ import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.model.Token;
 import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
@@ -156,8 +155,6 @@ public class DeploymentService extends RuntimeService {
             // now that the create_deployment_environment has been terminated we switch to DEPLOYMENT_IN_PROGRESS state
             // so from now, undeployment is possible
             Map<String, Object> installParameters = Maps.newHashMap();
-            Token token = configurationHolder.getApiClient().getTokenClient().get();
-            installParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
             statusService.registerDeploymentStatus(paasDeploymentId, DeploymentStatus.DEPLOYMENT_IN_PROGRESS);
             return configurationHolder.getApiClient().getExecutionClient().asyncStart(deployment.getId(), Workflow.INSTALL, installParameters, false, false);
         };
@@ -217,8 +214,6 @@ public class DeploymentService extends RuntimeService {
             if (livingNodes != null && livingNodes.length > 0) {
                 // trigger the uninstall workflow only if there is some node instances.
                 Map<String, Object> uninstallParameters = Maps.newHashMap();
-                Token token = configurationHolder.getApiClient().getTokenClient().get();
-                uninstallParameters.put(CLOUDIFY_TOKEN_KEY, token.getValue());
                 ListenableFuture<Execution> triggeredUninstallWorkflow = configurationHolder.getApiClient().getExecutionClient()
                         .asyncStart(deploymentContext.getDeploymentPaaSId(), Workflow.UNINSTALL, uninstallParameters, false, false);
                 // ensure that the workflow execution is finished.

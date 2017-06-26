@@ -1,12 +1,12 @@
 package alien4cloud.paas.cloudify3.service;
 
+import static alien4cloud.utils.AlienUtils.safe;
+
 import java.util.Map.Entry;
 
-import alien4cloud.paas.wf.DelegateWorkflowActivity;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
@@ -21,8 +21,6 @@ import alien4cloud.paas.wf.OperationCallActivity;
 import alien4cloud.paas.wf.SetStateActivity;
 import alien4cloud.paas.wf.Workflow;
 import lombok.extern.slf4j.Slf4j;
-
-import static alien4cloud.utils.AlienUtils.safe;
 
 /**
  * Inject a node init operation to the node and workflow to actually perform some attribute values initializations.

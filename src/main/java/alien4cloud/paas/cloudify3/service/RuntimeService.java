@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
-import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AsyncFunction;
@@ -14,6 +13,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
@@ -25,8 +25,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public abstract class RuntimeService {
-    public static final String CLOUDIFY_TOKEN_KEY = "cloudify_token";
-
     @Resource
     protected ListeningScheduledExecutorService scheduledExecutorService;
     @Inject

@@ -256,6 +256,14 @@ public class CloudifyDeploymentBuilderService {
     private void replaceServiceDelegate(List<PaaSNodeTemplate> nonNatives, Map<String, Workflow> workflowsMap) {
         for (PaaSNodeTemplate template : nonNatives) {
             if (template.getTemplate() instanceof ServiceNodeTemplate) {
+                // Service node must not have any operations at the node level
+                // The node is just a technical trick to implement service in Alien
+                if (template.getTemplate().getInterfaces() != null) {
+                    template.getTemplate().getInterfaces().clear();
+                }
+                if (template.getInterfaces() != null) {
+                    template.getInterfaces().clear();
+                }
                 serviceDelegateWorkflowService.replaceInstallServiceDelegate(template, workflowsMap.get(INSTALL));
                 serviceDelegateWorkflowService.replaceUnInstallServiceDelegate(template, workflowsMap.get(UNINSTALL));
             }

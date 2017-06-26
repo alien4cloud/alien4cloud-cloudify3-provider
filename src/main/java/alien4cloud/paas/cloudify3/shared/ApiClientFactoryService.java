@@ -12,6 +12,7 @@ import org.springframework.web.client.AsyncRestTemplate;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.exception.NotFoundException;
@@ -20,6 +21,7 @@ import alien4cloud.paas.cloudify3.shared.restclient.ApiClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.exception.PluginConfigurationException;
+import alien4cloud.utils.UrlUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,10 +50,7 @@ public class ApiClientFactoryService {
      */
     public synchronized ApiClient createOrGet(final CloudConfiguration cloudConfiguration) throws PluginConfigurationException {
         // First configure the manager urls
-        List<String> managerUrls = Lists.newArrayList(cloudConfiguration.getUrl().split(","));
-        if (managerUrls.size() == 0) {
-            throw new PluginConfigurationException("Manager url is not valid");
-        }
+        List<String> managerUrls = getAndValidateManagerUrls(cloudConfiguration.getUrl());
 
         // Find if there is an existing client for this exact configuration (equals and hashcode are managed on the connection information).
         Registration registration = clientRegistrations.get(cloudConfiguration);
@@ -71,6 +70,26 @@ public class ApiClientFactoryService {
 
         clientRegistrations.put(cloudConfiguration, registration);
         return registration.apiClient;
+    }
+
+    private List<String> getAndValidateManagerUrls(String managerUrlsString) throws PluginConfigurationException {
+        List<String> split = Lists.newArrayList(managerUrlsString.split(","));
+        Set<String> urls = Sets.newLinkedHashSet(); // to keep the order
+        split.forEach(url -> urls.add(url.trim()));
+
+        // make sure there is at least one url
+        if (urls.size() == 0) {
+            throw new PluginConfigurationException("No manager url(s) provided");
+        }
+
+        // validate the format
+        for (String url : urls) {
+            if (!UrlUtil.isValid(url)) {
+                throw new PluginConfigurationException("Invalid manager URL format: " + url);
+            }
+        }
+
+        return Lists.newArrayList(urls);
     }
 
     public synchronized void register(final CloudConfiguration cloudConfiguration, final String consumerId, final IEventConsumer eventConsumer) {
