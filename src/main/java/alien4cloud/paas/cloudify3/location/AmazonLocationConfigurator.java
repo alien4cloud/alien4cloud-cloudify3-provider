@@ -23,6 +23,7 @@ public class AmazonLocationConfigurator extends AbstractLocationConfigurator {
     private ResourceGenerator resourceGenerator;
 
     public static final String COMPUTE_TYPE = "alien.cloudify.aws.nodes.Compute";
+    public static final String WINDOWS_COMPUTE_TYPE = "alien.cloudify.aws.nodes.WindowsCompute";
     public static final String IMAGE_TYPE = "alien.cloudify.aws.nodes.Image";
     public static final String FLAVOR_TYPE = "alien.cloudify.aws.nodes.InstanceType";
     private static final String IMAGE_ID_PROP = "image_id";
@@ -40,7 +41,7 @@ public class AmazonLocationConfigurator extends AbstractLocationConfigurator {
 
     @Override
     public List<LocationResourceTemplate> instances(ILocationResourceAccessor resourceAccessor) {
-        return resourceGenerator.generateComputes(COMPUTE_TYPE, IMAGE_TYPE, FLAVOR_TYPE, IMAGE_ID_PROP, FLAVOR_ID_PROP, resourceAccessor);
+        return resourceGenerator.generateComputes(COMPUTE_TYPE, WINDOWS_COMPUTE_TYPE, IMAGE_TYPE, FLAVOR_TYPE, IMAGE_ID_PROP, FLAVOR_ID_PROP, resourceAccessor);
     }
 
     @Override
