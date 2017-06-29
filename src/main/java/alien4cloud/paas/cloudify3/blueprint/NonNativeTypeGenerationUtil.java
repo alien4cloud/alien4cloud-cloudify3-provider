@@ -12,16 +12,21 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import alien4cloud.rest.utils.JsonUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.ListPropertyValue;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.OperationOutput;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.definitions.PropertyValue;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
@@ -173,18 +178,21 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return input instanceof ConcatPropertyValue;
     }
 
-    public String formatValue(IPaaSTemplate<?> owner, IValue input) {
+    public String formatValue(IPaaSTemplate<?> owner, IValue input) throws JsonProcessingException {
         if (input instanceof FunctionPropertyValue) {
             return formatFunctionPropertyValue(owner, (FunctionPropertyValue) input);
         } else if (input instanceof ConcatPropertyValue) {
             return formatConcatPropertyValue(owner, (ConcatPropertyValue) input);
         } else if (input instanceof ScalarPropertyValue) {
             return formatTextValueToPython(((ScalarPropertyValue) input).getValue());
+        } else if (input instanceof ComplexPropertyValue || input instanceof ListPropertyValue) {
+            return formatTextValueToPython(JsonUtil.toString(((PropertyValue) input).getValue()));
         } else if (input instanceof PropertyDefinition) {
             // Custom command do nothing
             return "''";
         } else {
-            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input for " + owner.getId());
+            String ownerId = owner == null ? "" : "for " + owner.getId();
+            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input ");
         }
     }
 
