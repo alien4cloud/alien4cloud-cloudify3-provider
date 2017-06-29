@@ -26,6 +26,11 @@ public class ResourceGenerator {
 
     public List<LocationResourceTemplate> generateComputes(String computeType, String imageType, String flavorType, String imageIdProperty,
             String flavorIdProperty, ILocationResourceAccessor resourceAccessor) {
+        return generateComputes(computeType, null, imageType, flavorType, imageIdProperty, flavorIdProperty, resourceAccessor);
+    }
+
+    public List<LocationResourceTemplate> generateComputes(String linuxComputeType, String windowsComputeType, String imageType, String flavorType,
+            String imageIdProperty, String flavorIdProperty, ILocationResourceAccessor resourceAccessor) {
         ImageFlavorContext imageContext = resourceGeneratorService.buildContext(imageType, "id", resourceAccessor);
         ImageFlavorContext flavorContext = resourceGeneratorService.buildContext(flavorType, "id", resourceAccessor);
         boolean canProceed = true;
@@ -41,8 +46,23 @@ public class ResourceGenerator {
             log.warn("Skipping auto configuration");
             return Lists.newArrayList();
         }
-        ComputeContext computeContext = resourceGeneratorService.buildComputeContext(computeType, null, imageIdProperty, flavorIdProperty, resourceAccessor);
 
-        return resourceGeneratorService.generateComputeFromImageAndFlavor(imageContext, flavorContext, computeContext, resourceAccessor);
+        ComputeContext linuxComputeContext = resourceGeneratorService.buildComputeContext(linuxComputeType, null, imageIdProperty, flavorIdProperty,
+                resourceAccessor);
+        ComputeContext windowsComputeContext = windowsComputeType == null ? null
+                : getWinComputeContext(windowsComputeType, imageIdProperty, flavorIdProperty, resourceAccessor);
+
+        return resourceGeneratorService.generateComputeFromImageAndFlavor(imageContext, flavorContext, linuxComputeContext, windowsComputeContext,
+                resourceAccessor);
+    }
+
+    private ComputeContext getWinComputeContext(String windowsComputeType, String imageIdProperty, String flavorIdProperty,
+            ILocationResourceAccessor resourceAccessor) {
+        ComputeContext computeContext = resourceGeneratorService.buildComputeContext(windowsComputeType, null, imageIdProperty, flavorIdProperty,
+                resourceAccessor);
+        if (computeContext.getNodeTypes().size() == 0) {
+            return null;
+        }
+        return computeContext;
     }
 }

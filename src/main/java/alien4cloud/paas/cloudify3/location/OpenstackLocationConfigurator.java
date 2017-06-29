@@ -44,8 +44,8 @@ public class OpenstackLocationConfigurator extends AbstractLocationConfigurator 
     public List<LocationResourceTemplate> instances(ILocationResourceAccessor resourceAccessor) {
         List<LocationResourceTemplate> instances = resourceGenerator.generateComputes(COMPUTE_TYPE, IMAGE_TYPE, FLAVOR_TYPE, IMAGE_ID_PROP, FLAVOR_ID_PROP,
                 resourceAccessor);
-        instances.addAll(resourceGenerator.generateComputes(WINDOWS_COMPUTE_TYPE, WINDOWS_IMAGE_TYPE, FLAVOR_TYPE, IMAGE_ID_PROP, FLAVOR_ID_PROP,
-                resourceAccessor));
+        instances.addAll(
+                resourceGenerator.generateComputes(WINDOWS_COMPUTE_TYPE, WINDOWS_IMAGE_TYPE, FLAVOR_TYPE, IMAGE_ID_PROP, FLAVOR_ID_PROP, resourceAccessor));
         return instances;
     }
 
