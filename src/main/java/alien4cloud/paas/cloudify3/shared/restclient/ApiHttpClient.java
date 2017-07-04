@@ -4,6 +4,7 @@ import java.net.ConnectException;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import alien4cloud.paas.cloudify3.error.NotClusterMasterException;
@@ -46,8 +48,17 @@ public final class ApiHttpClient {
         this.currentManagerUrl = managerUrls.get(0);
         this.authenticationInterceptor = authenticationInterceptor;
 
-        this.maxRetry = failOverRetry == null ? 1 : failOverRetry;
         this.retrySleep = failOverDelay == null ? 1000 : failOverDelay;
+
+        if (!isHighAvailabilityConfig()) {
+            this.maxRetry = 0;
+        } else {
+            this.maxRetry = failOverRetry == null ? 1 : failOverRetry;
+        }
+    }
+
+    private boolean isHighAvailabilityConfig() {
+        return this.managerUrls.size() > 1;
     }
 
     public <T> ListenableFuture<ResponseEntity<T>> getForEntity(final RequestUrlBuilder requestUrlBuilder, final Class<T> responseType,
@@ -138,14 +149,15 @@ public final class ApiHttpClient {
      * @param <T> The type the function returns in it's future.
      * @return The listener that takes retry in account.
      */
-    private <T> ListenableFuture<T> retryHttpClient(final RetryCounter retryCounter, Supplier<ListenableFuture<T>> function) {
+    @VisibleForTesting
+    protected <T> ListenableFuture<T> retryHttpClient(final RetryCounter retryCounter, Supplier<ListenableFuture<T>> function) {
         final SettableListenableFuture<T> retryFuture = new SettableListenableFuture<T>();
 
         try {
             function.get().addCallback(t -> {
                 retryFuture.set(t);
             }, throwable -> {
-                if (throwable instanceof NotClusterMasterException || throwable instanceof ConnectException) {
+                if (isRetriableException(throwable)) {
                     retryCounter.increment();
                     if (retryCounter.loopedRetry <= maxRetry) {
                         // Select next url to try out.
@@ -179,7 +191,16 @@ public final class ApiHttpClient {
         return retryFuture;
     }
 
-    private class RetryCounter {
+    private boolean isRetriableException(Throwable throwable) {
+        if (throwable instanceof RestClientException) {
+            return throwable.getCause() instanceof NotClusterMasterException || throwable.getCause() instanceof ConnectException;
+        }
+
+        return throwable instanceof NotClusterMasterException || throwable instanceof ConnectException;
+    }
+
+    @VisibleForTesting
+    protected class RetryCounter {
         // This counter increment at each attempt.
         private int unitRetry = 0;
         // This counter increment when all url have been retried
