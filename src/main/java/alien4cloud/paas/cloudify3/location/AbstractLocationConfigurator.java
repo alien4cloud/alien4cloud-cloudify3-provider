@@ -6,16 +6,15 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
-import alien4cloud.deployment.matching.services.nodes.MatchingConfigurations;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import alien4cloud.deployment.matching.services.nodes.MatchingConfigurationsParser;
 import alien4cloud.model.deployment.matching.MatchingConfiguration;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
 import alien4cloud.paas.cloudify3.service.PluginArchiveService;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.tosca.parser.ParsingException;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 public abstract class AbstractLocationConfigurator implements ITypeAwareLocationConfigurator {
     @Inject
@@ -26,6 +25,7 @@ public abstract class AbstractLocationConfigurator implements ITypeAwareLocation
     private MatchingConfigurationsParser matchingConfigurationsParser;
 
     protected List<PluginArchive> archives;
+    protected Map<String, MatchingConfiguration> matchingConfigurations;
 
     private void parseLocationArchives(String[] paths) {
         this.archives = Lists.newArrayList();
@@ -45,14 +45,15 @@ public abstract class AbstractLocationConfigurator implements ITypeAwareLocation
     }
 
     public Map<String, MatchingConfiguration> getMatchingConfigurations(String matchingConfigRelativePath) {
-        Path matchingConfigPath = selfContext.getPluginPath().resolve(matchingConfigRelativePath);
-        MatchingConfigurations matchingConfigurations = null;
-        try {
-            matchingConfigurations = matchingConfigurationsParser.parseFile(matchingConfigPath).getResult();
-        } catch (ParsingException e) {
-            return Maps.newHashMap();
+        if (matchingConfigurations == null) {
+            Path matchingConfigPath = selfContext.getPluginPath().resolve(matchingConfigRelativePath);
+            try {
+                this.matchingConfigurations = matchingConfigurationsParser.parseFile(matchingConfigPath).getResult().getMatchingConfigurations();
+            } catch (ParsingException e) {
+                return Maps.newHashMap();
+            }
         }
-        return matchingConfigurations.getMatchingConfigurations();
+        return matchingConfigurations;
     }
 
     @Override
