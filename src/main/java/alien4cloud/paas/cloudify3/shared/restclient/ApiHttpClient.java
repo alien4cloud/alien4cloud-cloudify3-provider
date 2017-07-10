@@ -1,10 +1,10 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,6 +14,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import alien4cloud.paas.cloudify3.error.NotClusterMasterException;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
@@ -55,6 +57,7 @@ public final class ApiHttpClient {
         } else {
             this.maxRetry = failOverRetry == null ? 1 : failOverRetry;
         }
+
     }
 
     private boolean isHighAvailabilityConfig() {
@@ -171,6 +174,7 @@ public final class ApiHttpClient {
                                 Thread.sleep(retrySleep);
                             } catch (InterruptedException e) {
                                 retryFuture.setException(throwable);
+                                Thread.currentThread().interrupt();
                             }
                         }
                         // Execute on the next url in recursive way.
@@ -193,10 +197,10 @@ public final class ApiHttpClient {
 
     private boolean isRetriableException(Throwable throwable) {
         if (throwable instanceof RestClientException) {
-            return throwable.getCause() instanceof NotClusterMasterException || throwable.getCause() instanceof ConnectException;
+            return throwable.getCause() instanceof NotClusterMasterException || throwable.getCause() instanceof ConnectException || throwable.getCause() instanceof SocketTimeoutException;
         }
 
-        return throwable instanceof NotClusterMasterException || throwable instanceof ConnectException;
+        return throwable instanceof NotClusterMasterException || throwable instanceof ConnectException || throwable instanceof SocketTimeoutException;
     }
 
     @VisibleForTesting

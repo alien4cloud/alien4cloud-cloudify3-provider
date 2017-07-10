@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -47,6 +48,28 @@ public class ApiHttpClientTest {
         Assertions.assertThat(numberOfCall).isEqualTo(1);
     }
 
+    @Ignore
+    @Test(timeout = 500)
+    // Sadly, this is not true, if the connection failed then the sleep will be done in the calling thread
+    public void async_should_not_block() throws Exception {
+        ApiHttpClient apiHttpClient = ApiHttpClientBuilder.builder().highAvailabilityConfig(true).failOverRetry(10).failOverDelay(100).build().client();
+        apiHttpClient.retryHttpClient(apiHttpClient.new RetryCounter(), this::alwaysFails);
+    }
+
+    @Test
+    public void when_failure_in_ha_mode_with_retry_to_0_then_no_sleep_and_all_urls_should_be_called_once() throws Exception {
+        ApiHttpClient apiHttpClient = ApiHttpClientBuilder.builder().highAvailabilityConfig(true).failOverRetry(0).failOverDelay(1000).build().client();
+        ListenableFuture<Object> future = apiHttpClient.retryHttpClient(apiHttpClient.new RetryCounter(), this::alwaysFails);
+
+        try {
+            future.get();
+        } catch (Exception e) {
+            // catch all
+        }
+
+        Assertions.assertThat(numberOfCall).isEqualTo(2);
+    }
+
     @Test
     public void when_ha_is_enable_then_follow_retry_config() throws Exception {
         ApiHttpClient apiHttpClient = ApiHttpClientBuilder.builder().highAvailabilityConfig(true).failOverRetry(10).failOverDelay(0).build().client();
@@ -64,7 +87,7 @@ public class ApiHttpClientTest {
     private ListenableFuture<Object> alwaysFails() throws RestClientException {
         numberOfCall++;
         SettableListenableFuture<Object> listenableFuture = new SettableListenableFuture<Object>();
-        listenableFuture.setException(new RestClientException("", new NotClusterMasterException("", null)));
+        listenableFuture.setException(new NotClusterMasterException("", null));
         return listenableFuture;
     }
 
