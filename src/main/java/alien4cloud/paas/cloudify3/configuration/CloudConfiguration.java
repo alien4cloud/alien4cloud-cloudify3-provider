@@ -14,7 +14,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @FormProperties({ "url", "locations", "userName", "password", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
-        "delayBetweenInProgressDeploymentStatusPolling", "disableDiamondMonitorAgent", "kubernetes" })
+        "delayBetweenInProgressDeploymentStatusPolling", "connectionTimeout","disableDiamondMonitorAgent", "kubernetes" })
 public class CloudConfiguration {
 
     @FormPropertyConstraint(pattern = "http\\:.+(?:\\d+)")
@@ -40,6 +40,8 @@ public class CloudConfiguration {
 
     @NotNull
     private Boolean disableDiamondMonitorAgent = false;
+
+    private Integer connectionTimeout;
 
     private KubernetesConfiguration kubernetes;
 

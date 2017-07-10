@@ -12,6 +12,7 @@ import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.RestTemplate;
 
@@ -63,16 +64,32 @@ public class PluginFactoryConfiguration {
         RestTemplate syncRestTemplate = new RestTemplate();
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
+        syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactory());
         return syncRestTemplate;
     }
 
+    @Bean(name= "cloudify-async-thread-pool")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool");
+        threadPoolTaskExecutor.setCorePoolSize(5);
+        threadPoolTaskExecutor.setMaxPoolSize(Integer.MAX_VALUE);
+        threadPoolTaskExecutor.setKeepAliveSeconds(10);
+        threadPoolTaskExecutor.initialize();
+        return threadPoolTaskExecutor;
+    }
+
+    @Bean(name = "cloudify-async-http-request-factory")
+    public SimpleClientHttpRequestFactory simpleClientHttpRequestFactory() {
+        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
+        simpleClientHttpRequestFactory.setTaskExecutor(threadPoolTaskExecutor());
+        return simpleClientHttpRequestFactory;
+    }
+
+
     @Bean(name = "cloudify-async-rest-template")
     public AsyncRestTemplate asyncRestTemplate() {
-        // Async rest template
-        SimpleAsyncTaskExecutor simpleAsyncTaskExecutor = new SimpleAsyncTaskExecutor();
-        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
-        simpleClientHttpRequestFactory.setTaskExecutor(simpleAsyncTaskExecutor);
-        return new AsyncRestTemplate(simpleClientHttpRequestFactory, restTemplate());
+        return new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
     }
 
     @Bean(name = "cloudify-scheduler")

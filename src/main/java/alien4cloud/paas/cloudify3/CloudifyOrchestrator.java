@@ -11,6 +11,7 @@ import javax.inject.Inject;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -74,6 +75,9 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Resource
     private StatusService statusService;
+
+    @Resource(name= "cloudify-async-http-request-factory")
+    private SimpleClientHttpRequestFactory simpleClientHttpRequestFactory;
 
     @Inject
     private OpenStackAvailabilityZonePlacementPolicyService osAzPPolicyService;
@@ -202,6 +206,11 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         if (newConfiguration.getUrl() == null) {
             throw new PluginConfigurationException("Url must be defined.");
         }
+
+        // -1 == system timeout
+        Integer timeout = newConfiguration.getConnectionTimeout() == null ? -1 : newConfiguration.getConnectionTimeout();
+        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
+
         cloudConfigurationHolder.setConfigurationAndNotifyListeners(newConfiguration);
     }
 
