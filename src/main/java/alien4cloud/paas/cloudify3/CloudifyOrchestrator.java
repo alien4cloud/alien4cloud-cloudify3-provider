@@ -10,6 +10,7 @@ import javax.inject.Inject;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -21,17 +22,11 @@ import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
 import alien4cloud.paas.IPaaSCallback;
-import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
-import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
-import alien4cloud.paas.cloudify3.service.DeploymentService;
-import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
-import alien4cloud.paas.cloudify3.service.PluginArchiveService;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.StatusService;
+import alien4cloud.paas.cloudify3.service.*;
 import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
@@ -39,12 +34,7 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.InstanceInformation;
-import alien4cloud.paas.model.NodeOperationExecRequest;
-import alien4cloud.paas.model.PaaSDeploymentContext;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.model.*;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -70,6 +60,9 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Resource(name = "cloudify-deployment-builder-service")
     private CloudifyDeploymentBuilderService cloudifyDeploymentBuilderService;
+
+    @Resource(name= "cloudify-async-http-request-factory")
+    private SimpleClientHttpRequestFactory simpleClientHttpRequestFactory;
 
     @Resource
     private ApplicationContext applicationContext;
@@ -204,6 +197,11 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         if (newConfiguration.getUrl() == null) {
             throw new PluginConfigurationException("Url must be defined.");
         }
+
+        // -1 == system timeout
+        Integer timeout = newConfiguration.getConnectionTimeout() == null ? -1 : newConfiguration.getConnectionTimeout();
+        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
+
         cloudConfigurationHolder.setConfiguration(orchestratorId, newConfiguration);
     }
 
