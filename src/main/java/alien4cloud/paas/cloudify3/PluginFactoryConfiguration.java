@@ -5,12 +5,12 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.RestTemplate;
 
@@ -35,6 +35,24 @@ public class PluginFactoryConfiguration {
         return new OrchestratorDeploymentPropertiesService();
     }
 
+    @Bean(name= "cloudify-async-thread-pool")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool");
+        threadPoolTaskExecutor.setCorePoolSize(5);
+        threadPoolTaskExecutor.setMaxPoolSize(Integer.MAX_VALUE);
+        threadPoolTaskExecutor.setKeepAliveSeconds(10);
+        threadPoolTaskExecutor.initialize();
+        return threadPoolTaskExecutor;
+    }
+
+    @Bean(name = "cloudify-async-http-request-factory")
+    public SimpleClientHttpRequestFactory simpleClientHttpRequestFactory() {
+        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
+        simpleClientHttpRequestFactory.setTaskExecutor(threadPoolTaskExecutor());
+        return simpleClientHttpRequestFactory;
+    }
+
     @Bean(name = "cloudify-rest-template")
     public RestTemplate restTemplate() {
         // Object mapper configuration
@@ -51,7 +69,7 @@ public class PluginFactoryConfiguration {
         messageConverters.add(jackson2HttpMessageConverter);
 
         // Sync rest template
-        RestTemplate syncRestTemplate = new RestTemplate();
+        RestTemplate syncRestTemplate = new RestTemplate(simpleClientHttpRequestFactory());
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
         return syncRestTemplate;
@@ -59,11 +77,7 @@ public class PluginFactoryConfiguration {
 
     @Bean(name = "cloudify-async-rest-template")
     public AsyncRestTemplate asyncRestTemplate() {
-        // Async rest template
-        SimpleAsyncTaskExecutor simpleAsyncTaskExecutor = new SimpleAsyncTaskExecutor();
-        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
-        simpleClientHttpRequestFactory.setTaskExecutor(simpleAsyncTaskExecutor);
-        return new AsyncRestTemplate(simpleClientHttpRequestFactory, restTemplate());
+        return new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
     }
 
     @Bean(name = "cloudify-scheduler")
