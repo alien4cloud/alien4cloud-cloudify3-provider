@@ -1,18 +1,13 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
+import static alien4cloud.utils.AlienUtils.safe;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import org.alien4cloud.tosca.model.types.AbstractInheritableToscaType;
-
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
-
-import org.apache.commons.lang3.StringUtils;
+import java.util.Map.Entry;
 
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
@@ -26,6 +21,8 @@ import org.alien4cloud.tosca.normative.types.ScalarType;
 import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.common.collect.Maps;
+
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
@@ -34,8 +31,6 @@ import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.utils.MapUtil;
 import alien4cloud.utils.services.PropertyValueService;
-
-import static alien4cloud.utils.AlienUtils.safe;
 
 public class CommonGenerationUtil extends AbstractGenerationUtil {
 
@@ -46,6 +41,31 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
         super(mappingConfiguration, alienDeployment, recipePath, propertyEvaluatorService);
 
         this.deploymentPropertiesService = deploymentPropertiesService;
+    }
+
+    public boolean hasDeploymentAzureConf() {
+        return StringUtils.isNotEmpty(getDeploymentAzureResourceGroup());
+    }
+
+    public Map<String, String> getAzureDeploymentConfiguration() {
+        Map<String, String> azureConf = Maps.newHashMap();
+        azureConf.put("resourceGroup", getDeploymentAzureResourceGroup());
+        azureConf.put("virtualNetwork", getDeploymentAzureVirtualNetwork());
+        azureConf.put("subnet", getDeploymentAzureSubnet());
+        return azureConf;
+    }
+
+    private String getDeploymentAzureResourceGroup() {
+        return deploymentPropertiesService.getValueOrDefault(alienDeployment.getProviderDeploymentProperties(), DeploymentPropertiesNames.AZURE_RESOURCE_GROUP);
+    }
+
+    private String getDeploymentAzureVirtualNetwork() {
+        return deploymentPropertiesService.getValueOrDefault(alienDeployment.getProviderDeploymentProperties(),
+                DeploymentPropertiesNames.AZURE_VIRTUAL_NETWORK);
+    }
+
+    private String getDeploymentAzureSubnet() {
+        return deploymentPropertiesService.getValueOrDefault(alienDeployment.getProviderDeploymentProperties(), DeploymentPropertiesNames.AZURE_SUBNET);
     }
 
     public String getMonitoringInterval() {

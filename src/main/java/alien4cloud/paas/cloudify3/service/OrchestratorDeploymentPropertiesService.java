@@ -43,6 +43,30 @@ public class OrchestratorDeploymentPropertiesService {
         autoHeal.setDescription("Whether to enable or not the auto-heal process on this deployment. Default is disabled.");
         autoHeal.setDefault(new ScalarPropertyValue("false"));
         deploymentProperties.put(DeploymentPropertiesNames.AUTO_HEAL, autoHeal);
+
+        // Field 3 : Azure Resource Group
+        PropertyDefinition azureResourceGroupId = new PropertyDefinition();
+        azureResourceGroupId.setType(ToscaTypes.STRING.toString());
+        azureResourceGroupId.setRequired(false);
+        azureResourceGroupId.setDescription("For Azure location. The id of the resource group where the application will be deployed.");
+        azureResourceGroupId.setDefault(new ScalarPropertyValue(""));
+        deploymentProperties.put(DeploymentPropertiesNames.AZURE_RESOURCE_GROUP, azureResourceGroupId);
+
+        // Field 4 : Azure Virtual Network id
+        PropertyDefinition azureVirtualNetworkId = new PropertyDefinition();
+        azureVirtualNetworkId.setType(ToscaTypes.STRING.toString());
+        azureVirtualNetworkId.setRequired(false);
+        azureVirtualNetworkId.setDescription("For Azure location. The id of the virtual network where the application will be deployed.");
+        azureVirtualNetworkId.setDefault(new ScalarPropertyValue(""));
+        deploymentProperties.put(DeploymentPropertiesNames.AZURE_VIRTUAL_NETWORK, azureVirtualNetworkId);
+
+        // Field 5 :
+        PropertyDefinition azureSubnet = new PropertyDefinition();
+        azureSubnet.setType(ToscaTypes.STRING.toString());
+        azureSubnet.setRequired(false);
+        azureSubnet.setDescription("For Azure location. The id of the subnet where the application will be deployed.");
+        azureSubnet.setDefault(new ScalarPropertyValue(""));
+        deploymentProperties.put(DeploymentPropertiesNames.AZURE_SUBNET, azureSubnet);
     }
 
     public Map<String, PropertyDefinition> getDeploymentProperties() {
