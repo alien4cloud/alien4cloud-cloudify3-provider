@@ -44,7 +44,10 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean hasDeploymentAzureConf() {
-        return StringUtils.isNotEmpty(getDeploymentAzureResourceGroup());
+        return StringUtils.isNotEmpty(getDeploymentAzureResourceGroup())
+                && StringUtils.isNotEmpty(getDeploymentAzureVnetResourceGroup())
+                && StringUtils.isNotEmpty(getDeploymentAzureVirtualNetwork())
+                && StringUtils.isNotEmpty(getDeploymentAzureSubnet());
     }
 
     public Map<String, String> getAzureDeploymentConfiguration() {
@@ -55,8 +58,21 @@ public class CommonGenerationUtil extends AbstractGenerationUtil {
         return azureConf;
     }
 
+    public Map<String, String> getAzureDeploymentVnetConfiguration() {
+        Map<String, String> azureConf = Maps.newHashMap();
+        azureConf.put("resourceGroup", getDeploymentAzureVnetResourceGroup());
+        azureConf.put("virtualNetwork", getDeploymentAzureVirtualNetwork());
+        azureConf.put("subnet", getDeploymentAzureSubnet());
+        return azureConf;
+    }
+
     private String getDeploymentAzureResourceGroup() {
         return deploymentPropertiesService.getValueOrDefault(alienDeployment.getProviderDeploymentProperties(), DeploymentPropertiesNames.AZURE_RESOURCE_GROUP);
+    }
+
+    private String getDeploymentAzureVnetResourceGroup() {
+        return deploymentPropertiesService.getValueOrDefault(alienDeployment.getProviderDeploymentProperties(),
+                DeploymentPropertiesNames.AZURE_VNET_RESOURCE_GROUP);
     }
 
     private String getDeploymentAzureVirtualNetwork() {

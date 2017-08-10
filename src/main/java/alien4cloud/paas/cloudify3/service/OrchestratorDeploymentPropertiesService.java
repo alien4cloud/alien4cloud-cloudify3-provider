@@ -52,7 +52,15 @@ public class OrchestratorDeploymentPropertiesService {
         azureResourceGroupId.setDefault(new ScalarPropertyValue(""));
         deploymentProperties.put(DeploymentPropertiesNames.AZURE_RESOURCE_GROUP, azureResourceGroupId);
 
-        // Field 4 : Azure Virtual Network id
+        // Field 4 : Azure Resource Group id where the virtual Network belongs
+        PropertyDefinition azureVnetResourceGroup = new PropertyDefinition();
+        azureVnetResourceGroup.setType(ToscaTypes.STRING.toString());
+        azureVnetResourceGroup.setRequired(false);
+        azureVnetResourceGroup.setDescription("For Azure location. The id of the resource group where the virtual network belongs.");
+        azureVnetResourceGroup.setDefault(new ScalarPropertyValue(""));
+        deploymentProperties.put(DeploymentPropertiesNames.AZURE_VNET_RESOURCE_GROUP, azureVnetResourceGroup);
+
+        // Field 5 : Azure Virtual Network id
         PropertyDefinition azureVirtualNetworkId = new PropertyDefinition();
         azureVirtualNetworkId.setType(ToscaTypes.STRING.toString());
         azureVirtualNetworkId.setRequired(false);
@@ -60,7 +68,7 @@ public class OrchestratorDeploymentPropertiesService {
         azureVirtualNetworkId.setDefault(new ScalarPropertyValue(""));
         deploymentProperties.put(DeploymentPropertiesNames.AZURE_VIRTUAL_NETWORK, azureVirtualNetworkId);
 
-        // Field 5 :
+        // Field 6 :
         PropertyDefinition azureSubnet = new PropertyDefinition();
         azureSubnet.setType(ToscaTypes.STRING.toString());
         azureSubnet.setRequired(false);
