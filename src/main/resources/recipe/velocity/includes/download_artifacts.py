@@ -11,7 +11,8 @@ def download(child_rel_path, child_abs_path, download_dir):
 
 def download_artifacts(artifacts, download_dir):
     downloaded_artifacts = {}
-    os.makedirs(download_dir)
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
     for artifact_name, artifact_ref in artifacts.items():
         ctx.logger.debug('Download artifact ' + artifact_name)
         if isinstance(artifact_ref, basestring):
