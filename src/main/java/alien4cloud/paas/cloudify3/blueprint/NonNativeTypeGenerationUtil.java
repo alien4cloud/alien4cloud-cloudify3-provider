@@ -434,6 +434,26 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         }
     }
 
+    public boolean shouldRaiseExceptionOnFailure(OperationWrapper operationWrapper) {
+        if (ToscaNodeLifecycleConstants.STANDARD.equals(operationWrapper.getInterfaceName())) {
+            switch (operationWrapper.getOperationName()) {
+                case ToscaNodeLifecycleConstants.STOP:
+                case ToscaNodeLifecycleConstants.DELETE:
+                    return false;
+            }
+        }
+
+        if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(operationWrapper.getInterfaceName())) {
+            switch (operationWrapper.getOperationName()) {
+                case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+                case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
     public boolean isOperationOwnedByRelationship(OperationWrapper operationWrapper) {
         return (operationWrapper.getOwner() instanceof PaaSRelationshipTemplate);
     }

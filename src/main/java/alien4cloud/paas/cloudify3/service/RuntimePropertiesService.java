@@ -148,7 +148,12 @@ public class RuntimePropertiesService {
     private Object getAttributeValue(String attributeName, Map<String, Map<String, Object>> mappingConfigurations, Node node, NodeInstance instance,
             Map<String, Node> nodeMap, Map<String, NodeInstance> nodeInstanceMap) {
         if (mappingConfigurations.containsKey(attributeName)) {
-            return getMappedAttributeValue(attributeName, mappingConfigurations, node, instance, nodeMap, nodeInstanceMap);
+            try {
+                return getMappedAttributeValue(attributeName, mappingConfigurations, node, instance, nodeMap, nodeInstanceMap);
+            } catch (NotSupportedException e) {
+                log.error("Failed to process a deployment attribute", e);
+                return e.getMessage();
+            }
         } else {
             return doGetAttributeValue(attributeName, mappingConfigurations, node, instance, nodeMap, nodeInstanceMap);
         }
@@ -183,7 +188,7 @@ public class RuntimePropertiesService {
                 } else {
                     return doGetAttributeValue(fromAttribute, mappingConfigurations, node, instance, nodeMap, nodeInstanceMap);
                 }
-            } else if (ToscaFunctionConstants.TARGET.equals(entity)) {
+            } else if (ToscaFunctionConstants.R_TARGET.equals(entity) || ToscaFunctionConstants.TARGET.equals(entity)) {
                 if (parameters.size() != 3) {
                     throw new NotSupportedException("Mapping configuration invalid " + mappingConfiguration
                             + ", parameters must be TARGET + relationship type + name of the attribute");

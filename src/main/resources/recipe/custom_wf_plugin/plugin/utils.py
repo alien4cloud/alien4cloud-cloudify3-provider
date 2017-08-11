@@ -333,7 +333,6 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
         if _is_host_node_instance(instance):
             sequence.add(*host_pre_stop(instance))
         task = instance.execute_operation(operation_fqname)
-        _set_send_node_event_on_error_handler(task, instance, "Error occurred while stopping node - ignoring...")
         sequence.add(task)
         as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
         # now call unlink onto relations' target
@@ -342,27 +341,22 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink')
-                    _set_send_node_event_on_error_handler(unlink_task_source, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                     sequence.add(unlink_task_source)
                     # call unlink on the target of the relationship
                     unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink')
-                    _set_send_node_event_on_error_handler(unlink_task_target, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                     sequence.add(unlink_task_target)
             for relationship in as_target_relationships:
                 # add a condition in order to test if it's a 1-1 rel
                 if should_call_relationship_op(ctx, relationship):
                     if relationship.node_instance.id not in custom_context.modified_instance_ids:
                         unlink_task_source = relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.unlink')
-                        _set_send_node_event_on_error_handler(unlink_task_source, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                         sequence.add(unlink_task_source)
                         unlink_task_target = relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.unlink')
-                        _set_send_node_event_on_error_handler(unlink_task_target, instance, "Error occurred while unlinking node from target {0} - ignoring...".format(relationship.target_id))
                         sequence.add(unlink_task_target)
 
 
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
         task = instance.execute_operation(operation_fqname)
-        _set_send_node_event_on_error_handler(task, instance, "Error occurred while deleting node - ignoring...")
         sequence.add(task)
     else:
         # the default behavior : just do the job
