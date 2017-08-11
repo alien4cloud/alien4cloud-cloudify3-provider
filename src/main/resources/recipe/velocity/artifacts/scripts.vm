@@ -9,10 +9,17 @@ operationOutputNames = None
 operationOutputNames = '${util.nonNative.getOperationOutputNames(${operation})}'
 #end
 convert_env_value_to_string(new_script_process['env'])
-#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
-parsed_output = execute(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+
+#if($util.nonNative.shouldRaiseExceptionOnFailure(${operation}))
+raiseExceptionOnFailure = True
 #else
-parsed_output = execute(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames)
+raiseExceptionOnFailure = False
+#end
+
+#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
+parsed_output = execute(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames, raiseException=raiseExceptionOnFailure)
+#else
+parsed_output = execute(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), new_script_process, operationOutputNames, raiseException=raiseExceptionOnFailure)
 #end
 
 ## executor wrapper must define the outputs variable

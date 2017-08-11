@@ -19,7 +19,7 @@ def parse_output(output):
     return {'last_output': last_output, 'outputs': outputs}
 
 
-def execute(script_path, process, outputNames, command_prefix=None, cwd=None):
+def execute(script_path, process, outputNames, command_prefix=None, cwd=None, raiseException=True):
     os.chmod(script_path, 0755)
     on_posix = 'posix' in sys.builtin_module_names
 
@@ -78,7 +78,10 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None):
                                                                                                                              stderr_consumer.buffer.getvalue())
         error_message = str(unicode(error_message, errors='ignore'))
         ctx.logger.error(error_message)
-        raise NonRecoverableError(error_message)
+
+        if raiseException:
+            ctx.logger.debug("Script {0} will raise an exception".format(command))
+            raise NonRecoverableError(error_message)
     else:
         ok_message = "Script {0} executed normally with standard output {1} and error output {2}".format(command, stdout_consumer.buffer.getvalue(),
                                                                                                          stderr_consumer.buffer.getvalue())

@@ -24,7 +24,7 @@ def do_mapping(current_os, iaas, device_name):
     env_map = {'DEVICE_NAME' : device_name}
     new_script_process = {'env': env_map}
     convert_env_value_to_string(new_script_process['env'])
-    outputs = execute(map_script_path, new_script_process, outputNames=None, command_prefix=command_prefix)
+    outputs = execute(map_script_path, new_script_process, outputNames=None, command_prefix=command_prefix, raiseException=True)
     return outputs['last_output']
 
 
