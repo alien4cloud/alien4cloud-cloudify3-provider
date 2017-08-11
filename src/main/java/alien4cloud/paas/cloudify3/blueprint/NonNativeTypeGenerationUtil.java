@@ -1,26 +1,21 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
-import alien4cloud.tosca.PaaSUtils;
-import org.alien4cloud.tosca.model.templates.Capability;
+import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
+import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
-import org.alien4cloud.tosca.model.definitions.*;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -44,7 +39,7 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.topology.TopologyUtils;
-import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import alien4cloud.tosca.PaaSUtils;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -415,6 +410,26 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         } else {
             return null;
         }
+    }
+
+    public boolean shouldRaiseExceptionOnFailure(OperationWrapper operationWrapper) {
+        if (ToscaNodeLifecycleConstants.STANDARD.equals(operationWrapper.getInterfaceName())) {
+            switch (operationWrapper.getOperationName()) {
+            case ToscaNodeLifecycleConstants.STOP:
+            case ToscaNodeLifecycleConstants.DELETE:
+                return false;
+            }
+        }
+
+        if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(operationWrapper.getInterfaceName())) {
+            switch (operationWrapper.getOperationName()) {
+            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public boolean isOperationOwnedByRelationship(OperationWrapper operationWrapper) {
