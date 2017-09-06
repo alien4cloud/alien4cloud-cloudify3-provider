@@ -19,8 +19,8 @@ def convert_env_value_to_string(envDict):
         envDict[str(key)] = str(envDict.pop(key))
 
 def get_attribute_user(ctx):
-    if get_attribute(ctx, 'user'):
-        return get_attribute(ctx, 'user')
+    if get_attribute_from_top_host(ctx, 'user'):
+        return get_attribute_from_top_host(ctx, 'user')
     if get_attribute(ctx, 'cloudify_agent'):
         return get_attribute(ctx, 'cloudify_agent').get('user', None)
     if get_attribute(ctx, 'agent_config'):
@@ -28,8 +28,8 @@ def get_attribute_user(ctx):
     return None
 
 def get_attribute_key(ctx):
-    if get_attribute(ctx, 'key'):
-        return get_attribute(ctx, 'key')
+    if get_attribute_from_top_host(ctx, 'key'):
+        return get_attribute_from_top_host(ctx, 'key')
     if get_attribute(ctx, 'cloudify_agent'):
         return get_attribute(ctx, 'cloudify_agent').get('key', None)
     if get_attribute(ctx, 'agent_config'):
@@ -127,7 +127,7 @@ def _all_instances_get_attribute(entity, attribute_name):
         prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
         if prop_value is not None:
             # ctx.logger.debug('Found the property/attribute {0} with value {1} on the node {2} instance {3}'.format(attribute_name, json.dumps(prop_value), entity.node.id,
-                                                                                                                #   node_instance.id))
+            #   node_instance.id))
             result_map[node_instance.id + '_'] = prop_value
     return result_map
 
@@ -144,7 +144,7 @@ def _all_instances_get_target_capa_or_node_attribute(entity, capability_attribut
             prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
         if prop_value is not None:
             # ctx.logger.debug('Found the property/attribute {0} with value {1} on the node {2} instance {3}'.format(attribute_name, json.dumps(prop_value), entity.node.id,
-                                                                                                                #    node_instance.id))
+            #    node_instance.id))
             result_map[node_instance.id + '_'] = prop_value
     return result_map
 
@@ -234,3 +234,10 @@ def get_public_or_private_ip(entity):
     if not public_ip:
         return get_attribute(entity, 'ip_address')
     return public_ip
+
+def get_attribute_from_top_host(entity, attribute_name):
+    host = get_host(entity)
+    while host is not None:
+        entity = host
+        host = get_host(entity)
+    return get_attribute(entity, attribute_name)
