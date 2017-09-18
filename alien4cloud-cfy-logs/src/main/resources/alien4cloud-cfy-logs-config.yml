@@ -1,0 +1,26 @@
+server:
+  port: 8089
+#  ssl:
+#    key-store: ${user.home}/.alienpostdeployment/ssl/server-keystore.jks
+#    key-store-password: changeit
+#    key-password: changeit
+#    trust-store: ${user.home}/.alienpostdeployment/ssl/server-truststore.jks
+#    trust-store-password: changeit
+#    client-auth: need
+
+# Directory in which data is stored
+home_directory: ${user.home}/.a4ccfylogs
+
+# Parameters to control the buffer size and flush timeout
+buffer:
+  size: 1000
+  timeout_sec: 10
+
+alien_registration:
+  # In case multiple alien4cloud connect to a manager, you can allow the alien's to be expired
+  # (in such situation if they don't contact the log server during some time the logs will be removed from disk)
+  is_leased: false
+  # Duration before the manager consider the alien4cloud instance as expired since the last contact (get request etc).
+  lease_duration_sec: 1800
+  # Duration between validation of leases for expirations
+  lease_expiration_frequency_sec: 300
