@@ -14,32 +14,6 @@
     <name>Alien4Cloud cloudify log queue server</name>
     <description>A more robust and reliable logs connexion from cloudify to alien4cloud.</description>
 
-    <repositories>
-        <repository>
-            <id>repo.opensource.fastconnect.org</id>
-            <url>https://fastconnect.org/maven/content/repositories/opensource</url>
-        </repository>
-        <repository>
-            <id>repo.internal.fastconnect.org</id>
-            <url>https://fastconnect.org/maven/content/repositories/fastconnect</url>
-        </repository>
-    </repositories>
-
-    <scm>
-        <connection>scm:git:https://fastconnect.org/gitlab/alien4cloud/alien4cloud-cfy-logs.git</connection>
-    </scm>
-
-    <distributionManagement>
-        <repository>
-            <id>repo.internal.fastconnect.org</id>
-            <url>https://fastconnect.org/maven/content/repositories/fastconnect</url>
-        </repository>
-        <snapshotRepository>
-            <id>repo.internal.snapshot.fastconnect.org</id>
-            <url>https://fastconnect.org/maven/content/repositories/fastconnect-snapshot</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <dependencies>
         <!-- LOMBOK -->
         <dependency>
