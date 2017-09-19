@@ -1,5 +1,10 @@
 package alien4cloud.paas.cloudify3.shared;
 
+import static alien4cloud.utils.AlienUtils.safe;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -7,6 +12,7 @@ import java.util.Set;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
@@ -15,8 +21,10 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
+import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.exception.NotFoundException;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.shared.model.LogClientRegistration;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
@@ -36,6 +44,8 @@ public class ApiClientFactoryService {
     private AsyncRestTemplate restTemplate;
     @Resource
     private PluginConfigurationHolder pluginConfigurationHolder;
+    @Resource(name = "cfy-es-dao")
+    private IGenericSearchDAO cfyEsDao;
 
     /** Map of event services by manager url. */
     private Map<CloudConfiguration, Registration> clientRegistrations = Maps.newHashMap();
@@ -65,6 +75,7 @@ public class ApiClientFactoryService {
         interceptor.setTenant(cloudConfiguration.getTenant());
         registration = new Registration();
         registration.cloudConfiguration = cloudConfiguration;
+        registration.managerUrls = managerUrls;
         registration.apiClient = new ApiClient(
                 new ApiHttpClient(restTemplate, managerUrls, interceptor, cloudConfiguration.getFailOverRetry(), cloudConfiguration.getFailOverDelay()));
 
@@ -92,20 +103,23 @@ public class ApiClientFactoryService {
         return Lists.newArrayList(urls);
     }
 
-    public synchronized void register(final CloudConfiguration cloudConfiguration, final String consumerId, final IEventConsumer eventConsumer) {
+    public synchronized void register(final CloudConfiguration cloudConfiguration, final String consumerId, final IEventConsumer eventConsumer)
+            throws URISyntaxException {
         Registration registration = clientRegistrations.get(cloudConfiguration);
         if (registration == null) {
             throw new NotFoundException("An api client must have been created for the cloud configuration first");
         }
-        if (registration.eventServiceInstance == null) {
+        if (registration.eventServiceInstances == null) {
             // Create the event service instance that manage polling and dispatching of events.
             log.info("Creating a new event listener for cloudify manager with url {}", cloudConfiguration.getUrl());
-            registration.eventServiceInstance = newEventServiceInstance(registration.apiClient);
+            registration.eventServiceInstances = newEventServiceInstance(registration.managerUrls);
         } else {
             log.info("Register consumer {} for event listener on existing connection {}", consumerId, cloudConfiguration.getUrl());
         }
 
-        registration.eventServiceInstance.register(consumerId, eventConsumer);
+        for (EventServiceInstance eventServiceInstance : safe(registration.eventServiceInstances)) {
+            eventServiceInstance.register(consumerId, eventConsumer);
+        }
         clientRegistrationByConsumer.put(consumerId, registration);
     }
 
@@ -116,23 +130,36 @@ public class ApiClientFactoryService {
             return;
         }
 
-        EventServiceInstance eventServiceInstance = registration.eventServiceInstance;
-        if (eventServiceInstance == null) {
+        List<EventServiceInstance> eventServiceInstances = registration.eventServiceInstances;
+        if (eventServiceInstances == null) {
             log.info("Un-register consumer {} for manager {}: Manager was not registered.", consumerId, registration.cloudConfiguration.getUrl());
             return;
         }
 
         log.info("Un-register consumer {} for manager {}.", consumerId, registration.cloudConfiguration.getUrl());
-        Set<String> remaining = eventServiceInstance.unRegister(consumerId);
-        if (hasRemaningConsumers(remaining)) {
-            log.info("No more consumers for manager {}.", consumerId, registration.cloudConfiguration.getUrl());
-            eventServiceInstance.preDestroy();
-            clientRegistrations.remove(registration.cloudConfiguration);
+        for (EventServiceInstance eventServiceInstance : eventServiceInstances) {
+            Set<String> remaining = eventServiceInstance.unRegister(consumerId);
+            if (hasRemaningConsumers(remaining)) {
+                log.info("No more consumers for manager {}.", consumerId, registration.cloudConfiguration.getUrl());
+                eventServiceInstance.preDestroy();
+                clientRegistrations.remove(registration.cloudConfiguration);
+            }
         }
     }
 
-    protected EventServiceInstance newEventServiceInstance(final ApiClient apiClient) {
-        return new EventServiceInstance(apiClient.getEventClient(), scheduler, pluginConfigurationHolder);
+    protected List<EventServiceInstance> newEventServiceInstance(List<String> managerUrls) throws URISyntaxException {
+        List<EventServiceInstance> eventServiceInstances = new ArrayList<>(managerUrls.size());
+        for (String managerUrl : managerUrls) {
+            // Rebuild the url to find the one of the logs
+            URI uri = new URI(managerUrl);
+            // uri.getScheme()
+            URI logServiceUri = new URI("http", uri.getUserInfo(), uri.getHost(), 8089, null, null, null);
+            log.info("Register event client for url ", logServiceUri.toString());
+            A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
+            new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder);
+        }
+
+        return eventServiceInstances;
     }
 
     protected boolean hasRemaningConsumers(Set<String> remainingConsumerIds) {
@@ -142,13 +169,17 @@ public class ApiClientFactoryService {
     @PreDestroy
     public synchronized void stopAllPollings() {
         for (Registration registration : clientRegistrations.values()) {
-            registration.eventServiceInstance.preDestroy();
+            log.info("Stopping all polling for manager {}", registration.managerUrls);
+            for (EventServiceInstance eventServiceInstance : safe(registration.eventServiceInstances)) {
+                eventServiceInstance.preDestroy();
+            }
         }
     }
 
     private class Registration {
         private ApiClient apiClient;
-        private EventServiceInstance eventServiceInstance;
+        private List<String> managerUrls;
+        private List<EventServiceInstance> eventServiceInstances;
         private CloudConfiguration cloudConfiguration;
     }
 }

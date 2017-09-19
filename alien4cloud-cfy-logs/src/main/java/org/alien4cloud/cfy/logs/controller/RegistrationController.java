@@ -2,8 +2,9 @@ package org.alien4cloud.cfy.logs.controller;
 
 import java.io.IOException;
 
+import javax.annotation.Resource;
+
 import org.alien4cloud.cfy.logs.services.RegistrationService;
-import org.elasticsearch.common.inject.Inject;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,9 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/registration")
+@RequestMapping("/api/v1/registration")
 public class RegistrationController {
-    @Inject
+    @Resource
     private RegistrationService registrationService;
 
     @ResponseBody

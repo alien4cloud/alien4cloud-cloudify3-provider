@@ -15,16 +15,14 @@ import lombok.Setter;
 @EqualsAndHashCode
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Event extends AbstractCloudifyModel {
-
+    /** Can be cloudify_log or cloudify_event */
+    private String type;
+    /** workflow_started etc.. */
     private String eventType;
-
     @JsonProperty("@timestamp")
     private String timestamp;
-
     private String level;
-
     private EventContext context;
-
     private EventMessage message;
 
     @JsonIgnore

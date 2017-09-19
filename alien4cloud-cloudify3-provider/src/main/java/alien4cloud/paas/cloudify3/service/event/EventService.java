@@ -4,24 +4,20 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
-import org.elasticsearch.mapping.QueryHelper;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.dao.IGenericSearchDAO;
-import alien4cloud.dao.model.GetMultipleDataResult;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.model.CloudifyLifeCycle;
 import alien4cloud.paas.cloudify3.model.Event;
@@ -42,8 +38,6 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.model.PaaSWorkflowMonitorEvent;
 import alien4cloud.paas.model.PaaSWorkflowStepMonitorEvent;
 import alien4cloud.utils.MapUtil;
-import alien4cloud.utils.TypeScanner;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -57,7 +51,6 @@ public class EventService implements IEventConsumer {
 
     @Resource(name = "alien-monitor-es-dao")
     private IGenericSearchDAO alienMonitorDao;
-    private Date lastPollingDate;
 
     private Map<String, String> paaSDeploymentIdToAlienDeploymentIdMapping = Maps.newConcurrentMap();
     private Map<String, String> alienDeploymentIdToPaaSDeploymentIdMapping = Maps.newConcurrentMap();
@@ -81,48 +74,6 @@ public class EventService implements IEventConsumer {
         return paaSDeploymentIdToAlienDeploymentIdMapping.get(event.getContext().getDeploymentId());
     }
 
-    @SneakyThrows
-    private void initLastAcknowledgedDate() {
-        // We need to get the last event received by this orchestrator. Alien right now don't provide the orchestrator id to an orchestrator plugin.
-        String orchestratorId = connectionManager.getOrchestratorId();
-        // We override the get event since from alien4cloud here as we leverage an internal mechanisms for event queries that does not rely on the get event
-        // since.
-        Set<Class<?>> eventClasses = Sets.newHashSet();
-        try {
-            eventClasses = TypeScanner.scanTypes("alien4cloud.paas.model", AbstractMonitorEvent.class);
-            // The PaaSDeploymentStatusMonitorEvent is an internal generated event and we should not take it into account.
-            eventClasses.remove(PaaSDeploymentStatusMonitorEvent.class);
-        } catch (ClassNotFoundException e) {
-            log.info("No event class derived from {} found", AbstractMonitorEvent.class.getName());
-        }
-        Map<String, String[]> filter = Maps.newHashMap();
-        filter.put("orchestratorId", new String[] { orchestratorId });
-
-        // sort by filed date DESC
-        QueryHelper.ISearchQueryBuilderHelper searchQueryHelperBuilder = alienMonitorDao.getQueryHelper().buildQuery()
-                .types(eventClasses.toArray(new Class<?>[eventClasses.size()])).filters(filter).prepareSearch("deploymentmonitorevents")
-                .fieldSort("date", true);
-
-        // the first one is the one with the latest date
-        GetMultipleDataResult lastestEventResult = alienMonitorDao.search(searchQueryHelperBuilder, 0, 10);
-        if (lastestEventResult.getData().length > 0) {
-            AbstractMonitorEvent lastEvent = (AbstractMonitorEvent) lastestEventResult.getData()[0];
-            Date lastEventDate = new Date(lastEvent.getDate());
-            log.info("Cfy Manager recovering events from the last in elasticsearch {} of type {}", lastEventDate, lastEvent.getClass().getName());
-            this.lastPollingDate = lastEventDate;
-        } else {
-            log.debug("No monitor events found");
-        }
-    }
-
-    @Override
-    public Date lastAcknowledgedDate() {
-        if (lastPollingDate == null) {
-            initLastAcknowledgedDate();
-        }
-        return lastPollingDate;
-    }
-
     @Override
     public synchronized void accept(CloudifyEvent[] cloudifyEvents) {
         List<CloudifyEvent> filteredEvents = Lists.newArrayList();
@@ -140,9 +91,6 @@ public class EventService implements IEventConsumer {
         List<AbstractMonitorEvent> alienEvents = toAlienEvents(filteredEvents);
         for (AbstractMonitorEvent event : alienEvents) {
             internalProviderEventsQueue.add(event);
-            if (lastPollingDate == null || lastPollingDate.getTime() < event.getDate()) {
-                lastPollingDate = new Date(event.getDate());
-            }
         }
     }
 

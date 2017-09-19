@@ -34,4 +34,7 @@ public class EventContext extends AbstractCloudifyModel {
     private String deploymentId;
 
     private String executionId;
+
+    private String taskQueue;
+    private String taskErrorCauses;
 }

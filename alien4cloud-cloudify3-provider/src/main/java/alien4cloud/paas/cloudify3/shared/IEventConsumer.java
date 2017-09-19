@@ -11,13 +11,6 @@ import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
  */
 public interface IEventConsumer extends Consumer<CloudifyEvent[]> {
     /**
-     * Get the date of the last acknowledged event for this consumer.
-     *
-     * @return The date of the last acknowledged event for the consumer.
-     */
-    Date lastAcknowledgedDate();
-
-    /**
      * Get the alien deployment id of an event (if the consumer knows it).
      *
      * @return The alien id based on a cloudify event.

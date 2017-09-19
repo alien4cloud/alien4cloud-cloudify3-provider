@@ -35,8 +35,8 @@ public class PluginFactoryConfiguration {
         return new OrchestratorDeploymentPropertiesService();
     }
 
-    @Bean(name= "cloudify-async-thread-pool")
-    public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
+    @Bean(name = "cloudify-async-thread-pool")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool");
         threadPoolTaskExecutor.setCorePoolSize(5);

@@ -53,7 +53,7 @@ public class RegistrationService {
     private Map<String, LogRegistration> logRegistrations = Maps.newHashMap();
 
     public RegistrationService(@Value("${home_directory}") String path, @Value("${alien_registration.is_leased}") boolean isLeased,
-            @Value("${alien_registration.lease_duration_min}") long registrationLeaseSeconds,
+            @Value("${alien_registration.lease_duration_sec}") long registrationLeaseSeconds,
             @Value("${alien_registration.lease_expiration_frequency_sec}") long leaseManagerFrequencySeconds,
             @Value("${buffer.timeout_sec}") long flushTimeoutSeconds, @Value("${buffer.size}") int flushBatchSize
 

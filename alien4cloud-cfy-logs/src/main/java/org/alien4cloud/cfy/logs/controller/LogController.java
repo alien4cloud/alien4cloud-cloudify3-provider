@@ -2,9 +2,10 @@ package org.alien4cloud.cfy.logs.controller;
 
 import java.io.IOException;
 
+import javax.annotation.Resource;
+
 import org.alien4cloud.cfy.logs.services.LogRegistration;
 import org.alien4cloud.cfy.logs.services.RegistrationService;
-import org.elasticsearch.common.inject.Inject;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,9 +21,9 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/logs")
+@RequestMapping("/api/v1/logs")
 public class LogController {
-    @Inject
+    @Resource
     private RegistrationService registrationService;
 
     @ResponseBody
@@ -41,7 +42,7 @@ public class LogController {
     }
 
     @ResponseBody
-    @RequestMapping(path = "/{registrationId}/ack/{batchId}", method = { RequestMethod.GET }, produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(path = "/{registrationId}/ack/{batchId}", method = { RequestMethod.DELETE }, produces = MediaType.APPLICATION_JSON_VALUE)
     public void ackLogs(@PathVariable String registrationId, @PathVariable Long batchId) {
         registrationService.getRegistrationOrFail(registrationId).getLogQueue().ackLogs(batchId);
     }

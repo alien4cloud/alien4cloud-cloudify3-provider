@@ -137,6 +137,7 @@ public class LogQueue {
             if (currentBatchSize == 0) {
                 return "{}";
             }
+            // We flush logs on disk before sending them.
             flush();
         }
 

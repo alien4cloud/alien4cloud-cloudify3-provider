@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3.shared;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -13,7 +12,6 @@ import com.google.common.collect.Maps;
 
 import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -23,17 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 public class EventDispatcher {
     /** Map of registered event services to this orchestrator. */
     private final Map<String, IEventConsumer> eventConsumers = Maps.newHashMap();
-    @Getter
-    private final EventReceivedManager eventReceivedManager;
-
-    /**
-     * Create a new Event dispatcher.
-     *
-     * @param eventReceivedManager The event received manager associated with the dispatcher.
-     */
-    public EventDispatcher(EventReceivedManager eventReceivedManager) {
-        this.eventReceivedManager = eventReceivedManager;
-    }
 
     public synchronized void register(String consumerId, IEventConsumer logEventConsumer) {
         this.eventConsumers.put(consumerId, logEventConsumer);
@@ -50,23 +37,12 @@ public class EventDispatcher {
      * @param events The events as received from the cloudify API.
      * @return The last fetched date.
      */
-    public synchronized Date dispatch(final Date fromDate, Event[] events, String logPrefix) {
+    public synchronized void dispatch(Event[] events, String logPrefix) {
         Map<String, List<CloudifyEvent>> eventsPerConsumers = Maps.newHashMap();
-        Date lastDate = fromDate;
 
         // Prepare batch of events per consumers
         for (Event event : events) {
             java.util.Calendar eventTimeStamp = DatatypeConverter.parseDateTime(event.getTimestamp());
-
-            if (lastDate.compareTo(eventTimeStamp.getTime()) > 0) {
-                log.debug("{}: EVENT ORDER MISSMATCH", logPrefix);
-            }
-            lastDate = eventTimeStamp.getTime();
-
-            // if event has already be consumed just ignore it
-            if (eventReceivedManager.contains(event.getId())) {
-                continue;
-            }
 
             CloudifyEvent cloudifyEvent = new CloudifyEvent();
             cloudifyEvent.setEvent(event);
@@ -77,7 +53,6 @@ public class EventDispatcher {
                 String alienDeploymentId = consumerEntry.getValue().getAlienDeploymentId(event);
                 addToDispatched(eventsPerConsumers, consumerEntry.getKey(), consumerEntry.getValue(), cloudifyEvent, alienDeploymentId);
             }
-            eventReceivedManager.addEvent(event.getId(), cloudifyEvent.getTimestamp().getTime());
         }
         // Dispatch events to the targeted consumers
         for (Entry<String, List<CloudifyEvent>> eventsPerConsumer : eventsPerConsumers.entrySet()) {
@@ -85,7 +60,6 @@ public class EventDispatcher {
             log.debug("{}: Dispatching {} events to {}", logPrefix, consumerEvents.size(), eventsPerConsumer.getKey());
             this.eventConsumers.get(eventsPerConsumer.getKey()).accept(consumerEvents.toArray(new CloudifyEvent[consumerEvents.size()]));
         }
-        return lastDate;
     }
 
     private void addToDispatched(Map<String, List<CloudifyEvent>> eventsPerConsumers, String consumerKey, IEventConsumer consumer, CloudifyEvent cloudifyEvent,
