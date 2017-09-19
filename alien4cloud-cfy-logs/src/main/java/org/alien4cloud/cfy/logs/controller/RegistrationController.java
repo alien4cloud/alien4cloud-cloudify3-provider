@@ -24,7 +24,7 @@ public class RegistrationController {
     @ResponseBody
     @RequestMapping(method = { RequestMethod.POST }, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public String post() throws IOException {
-        return registrationService.register();
+        return "{\"id\": \"" + registrationService.register() + "\"}";
     }
 
     @ResponseBody

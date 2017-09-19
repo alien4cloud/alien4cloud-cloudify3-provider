@@ -1,12 +1,13 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
-import com.google.common.collect.Maps;
+import alien4cloud.paas.cloudify3.shared.model.LogRegistrationResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.AsyncRestTemplate;
 
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.dao.IGenericSearchDAO;
@@ -39,19 +40,19 @@ public class A4cLogClient {
         this.ackLogUrl = logServerUrl + ACK_LOG_PATH;
 
         LogClientRegistration registration = cfyEsDao.findById(LogClientRegistration.class, logServerUrl);
-        if (registrationId == null) {
+        if (registration == null) {
             registration = register();
             cfyEsDao.save(registration);
-        } else {
-            this.registrationId = registrationId;
         }
+        this.registrationId = registration.getRegistrationId();
     }
 
     // perform sync registration
     @SneakyThrows
     private LogClientRegistration register() {
-        this.registrationId = restTemplate.exchange(logServerUrl + REGISTRATION_PATH, HttpMethod.POST, createPostHttpEntity(Maps.newHashMap()), String.class)
-                .get().getBody();
+        this.registrationId = restTemplate
+                .exchange(logServerUrl + REGISTRATION_PATH, HttpMethod.POST, createPostHttpEntity(Maps.newHashMap()), LogRegistrationResponse.class).get()
+                .getBody().getId();
         return new LogClientRegistration(logServerUrl, this.registrationId);
     }
 
