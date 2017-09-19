@@ -142,7 +142,11 @@ public class LogQueue {
         }
 
         // Read the file content as a string
-        return new String(Files.readAllBytes(registrationPath.resolve(batchToDeliver + ".json")));
+        Path nextBatchFilePath = registrationPath.resolve(batchToDeliver + ".json");
+        if (nextBatchFilePath.toFile().exists()) {
+            return new String(Files.readAllBytes(registrationPath.resolve(batchToDeliver + ".json")));
+        }
+        return "{}";
     }
 
     public synchronized void ackLogs(long batchId) {

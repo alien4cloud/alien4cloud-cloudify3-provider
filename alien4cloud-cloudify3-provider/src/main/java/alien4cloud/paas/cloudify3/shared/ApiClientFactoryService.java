@@ -156,7 +156,7 @@ public class ApiClientFactoryService {
             URI logServiceUri = new URI("http", uri.getUserInfo(), uri.getHost(), 8089, null, null, null);
             log.info("Register event client for url ", logServiceUri.toString());
             A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
-            new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder);
+            eventServiceInstances.add(new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder));
         }
 
         return eventServiceInstances;
