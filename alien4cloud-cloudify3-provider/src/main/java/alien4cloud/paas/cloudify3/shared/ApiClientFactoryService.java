@@ -12,7 +12,6 @@ import java.util.Set;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
-import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
@@ -24,12 +23,13 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.exception.NotFoundException;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
-import alien4cloud.paas.cloudify3.shared.model.LogClientRegistration;
+import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.utils.UrlUtil;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -112,7 +112,8 @@ public class ApiClientFactoryService {
         if (registration.eventServiceInstances == null) {
             // Create the event service instance that manage polling and dispatching of events.
             log.info("Creating a new event listener for cloudify manager with url {}", cloudConfiguration.getUrl());
-            registration.eventServiceInstances = newEventServiceInstance(registration.managerUrls);
+            registration.eventServiceInstances = newEventServiceInstance(
+                    new EventServiceConfig(registration.managerUrls, cloudConfiguration.getLogQueuePort()));
         } else {
             log.info("Register consumer {} for event listener on existing connection {}", consumerId, cloudConfiguration.getUrl());
         }
@@ -147,13 +148,12 @@ public class ApiClientFactoryService {
         }
     }
 
-    protected List<EventServiceInstance> newEventServiceInstance(List<String> managerUrls) throws URISyntaxException {
-        List<EventServiceInstance> eventServiceInstances = new ArrayList<>(managerUrls.size());
-        for (String managerUrl : managerUrls) {
+    protected List<EventServiceInstance> newEventServiceInstance(EventServiceConfig config) throws URISyntaxException {
+        List<EventServiceInstance> eventServiceInstances = new ArrayList<>(config.managerUrls.size());
+        for (String managerUrl : config.managerUrls) {
             // Rebuild the url to find the one of the logs
             URI uri = new URI(managerUrl);
-            // uri.getScheme()
-            URI logServiceUri = new URI("http", uri.getUserInfo(), uri.getHost(), 8089, null, null, null);
+            URI logServiceUri = new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), config.logQueuePort, null, null, null);
             log.info("Register event client for url ", logServiceUri.toString());
             A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
             eventServiceInstances.add(new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder));
@@ -181,5 +181,11 @@ public class ApiClientFactoryService {
         private List<String> managerUrls;
         private List<EventServiceInstance> eventServiceInstances;
         private CloudConfiguration cloudConfiguration;
+    }
+
+    @AllArgsConstructor
+    protected class EventServiceConfig {
+        protected List<String> managerUrls;
+        protected Integer logQueuePort;
     }
 }

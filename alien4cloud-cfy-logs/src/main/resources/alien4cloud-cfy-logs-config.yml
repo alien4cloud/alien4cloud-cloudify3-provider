@@ -1,5 +1,5 @@
 server:
-  port: 8090
+  port: 8200
 #  ssl:
 #    enabled: true
 #    key-store: ${user.home}/.a4ccfylogs/ssl/server-keystore.jks
@@ -12,7 +12,7 @@ server:
 # if ssl enabled, some endpoints are not secured. Thus this server should serve both HTTP and HTTPS protocol
 # Configure here the port on which HTTP protocol runs
 #  http:
-#    port: 8090
+#    port: 8200
 
 # Directory in which data is stored
 home_directory: ${user.home}/.a4ccfylogs
