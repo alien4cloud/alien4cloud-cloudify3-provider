@@ -1,12 +1,18 @@
 server:
-  port: 8089
+  port: 8090
 #  ssl:
-#    key-store: ${user.home}/.alienpostdeployment/ssl/server-keystore.jks
+#    enabled: true
+#    key-store: ${user.home}/.a4ccfylogs/ssl/server-keystore.jks
 #    key-store-password: changeit
 #    key-password: changeit
-#    trust-store: ${user.home}/.alienpostdeployment/ssl/server-truststore.jks
+#    trust-store: ${user.home}/.a4ccfylogs//ssl/server-truststore.jks
 #    trust-store-password: changeit
 #    client-auth: need
+
+# if ssl enabled, some endpoints are not secured. Thus this server should serve both HTTP and HTTPS protocol
+# Configure here the port on which HTTP protocol runs
+#  http:
+#    port: 8090
 
 # Directory in which data is stored
 home_directory: ${user.home}/.a4ccfylogs
