@@ -104,6 +104,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             case ToscaRelationshipLifecycleConstants.ADD_SOURCE:
             case ToscaRelationshipLifecycleConstants.ADD_TARGET:
                 return "establish";
+            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+                return "unlink";
             default:
                 return operationName;
             }
