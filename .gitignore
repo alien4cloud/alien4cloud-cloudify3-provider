@@ -7,4 +7,5 @@
 src/test/resources/outputs/**/monitor
 src/test/resources/outputs/**/plugins/cloudify-openstack-plugin
 src/test/resources/outputs/**/plugins/*.zip
+src/main/resources/recipe/velocity/provider
 *.DS_Store

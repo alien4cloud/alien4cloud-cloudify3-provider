@@ -1,30 +1,33 @@
 package alien4cloud.paas.cloudify3;
 
-import alien4cloud.model.common.Tag;
-import org.alien4cloud.tosca.model.types.NodeType;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.apache.commons.collections4.MapUtils;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import alien4cloud.model.common.Tag;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.model.HostWorkflow;
 import alien4cloud.paas.cloudify3.service.model.StandardWorkflow;
 import alien4cloud.paas.cloudify3.service.model.Workflows;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
 import alien4cloud.paas.cloudify3.util.mapping.PropertiesMappingUtil;
-import alien4cloud.paas.wf.NodeActivityStep;
-import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.util.WorkflowUtils;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.collections4.MapUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
 
 public class WorkflowsTest {
 
@@ -79,17 +82,17 @@ public class WorkflowsTest {
         String host1 = "host1";
         String host2 = "host2";
         installWf.setHosts(Sets.newHashSet(host1, host2));
-        NodeActivityStep a = addStep(installWf, host1, "a");
-        NodeActivityStep a1 = addStep(installWf, host1, "a1");
-        NodeActivityStep a2 = addStep(installWf, host1, "a2");
-        NodeActivityStep a3 = addStep(installWf, host1, "a3");
+        WorkflowStep a = addStep(installWf, host1, "a");
+        WorkflowStep a1 = addStep(installWf, host1, "a1");
+        WorkflowStep a2 = addStep(installWf, host1, "a2");
+        WorkflowStep a3 = addStep(installWf, host1, "a3");
 
-        NodeActivityStep b = addStep(installWf, host2, "b");
-        NodeActivityStep b1 = addStep(installWf, host2, "b1");
-        NodeActivityStep b2 = addStep(installWf, host2, "b2");
+        WorkflowStep b = addStep(installWf, host2, "b");
+        WorkflowStep b1 = addStep(installWf, host2, "b1");
+        WorkflowStep b2 = addStep(installWf, host2, "b2");
 
-        NodeActivityStep orphan1 = addStep(installWf, null, "orphan1");
-        NodeActivityStep orphan2 = addStep(installWf, null, "orphan2");
+        WorkflowStep orphan1 = addStep(installWf, null, "orphan1");
+        WorkflowStep orphan2 = addStep(installWf, null, "orphan2");
 
         WorkflowUtils.linkSteps(a, a1);
         WorkflowUtils.linkSteps(a1, a2);
@@ -137,8 +140,8 @@ public class WorkflowsTest {
 
     }
 
-    private NodeActivityStep addStep(Workflow installWf, String host1, String name) {
-        NodeActivityStep step = new NodeActivityStep();
+    private WorkflowStep addStep(Workflow installWf, String host1, String name) {
+        WorkflowStep step = new WorkflowStep();
         step.setName(name);
         step.setHostId(host1);
         installWf.addStep(step);
