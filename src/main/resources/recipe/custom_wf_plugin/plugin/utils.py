@@ -140,29 +140,27 @@ def _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_conte
     return sequence
 
 
-def relationship_operation_task(graph, source, target, operation_fqname, operation_host, step_id,
-                                custom_context):
-    sequence = _relationship_operation_task(graph, source, target, operation_fqname, operation_host,
-                                            step_id, custom_context)
+def relationship_operation_task(ctx, graph, source, target, operation_fqname, operation_host, step_id, custom_context):
+    sequence = _relationship_operation_task(ctx, graph, source, target, operation_fqname, operation_host,
+                                            custom_context)
     if sequence is not None:
         sequence.name = step_id
         custom_context.tasks[step_id] = sequence
 
 
-def _relationship_operation_task(graph, source, target, operation_fqname, operation_host, step_id,
-                                 custom_context):
+def _relationship_operation_task(ctx, graph, source, target, operation_fqname, operation_host, custom_context):
     sequence = None
     target_rels = custom_context.relationships_per_source_target.get(source, {})
     instances = target_rels.get(target, [])
     instance_count = len(instances)
     if instance_count == 1:
-        sequence = relationship_operation_task_for_instance(graph, instances[0], operation_fqname, operation_host,
-                                                            step_id)
+        sequence = relationship_operation_task_for_instance(ctx, custom_context, graph, instances[0], operation_fqname,
+                                                            operation_host)
     elif instance_count > 1:
         fork = ForkjoinWrapper(graph)
         for instance in instances:
-            instance_task = relationship_operation_task_for_instance(graph, instance, operation_fqname, operation_host,
-                                                                     step_id)
+            instance_task = relationship_operation_task_for_instance(ctx, custom_context, graph, instance,
+                                                                     operation_fqname, operation_host)
             fork.add(instance_task)
         msg = "operation {0} on all {1} relationship instances".format(operation_fqname, source)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -240,7 +238,7 @@ def __recursively_get_host(instance):
 
 # check if the pre/post configure source/target operation should be called.
 # return true if the operation has not been called yet and then, register it as called.
-def __check_and_register_call_config_arround(ctx, custom_context, relationship_instance, source_or_target, pre_or_post):
+def __check_and_register_call_config_around(ctx, custom_context, relationship_instance, source_or_target, pre_or_post):
     source_node_id = relationship_instance.node_instance.node_id
     target_node_id = relationship_instance.target_node_instance.node_id
     operation_target_instance_id = relationship_instance.node_instance.id
@@ -269,20 +267,32 @@ def __check_and_register_call_config_arround(ctx, custom_context, relationship_i
             cause = 'operation has not been called yet'
     ctx.internal.send_workflow_event(
         event_type='other',
-        message="Filtering arround conf operation {0}, result is {1} ({2})".format(
+        message="Filtering around conf operation {0}, result is {1} ({2})".format(
             operation_id,
             result, cause
         ))
     return result
 
 
-def relationship_operation_task_for_instance(graph, rel_instance, operation_fqname, operation_host, step_id):
-    sequence = TaskSequenceWrapper(graph)
-    # sequence.add(build_wf_event_task(rel_instance, step_id, "in"))
+def run_relationship_step(sequence, rel_instance, operation_fqname, operation_host):
     if operation_host == 'SOURCE':
         sequence.add(rel_instance.execute_source_operation(operation_fqname))
     else:
         sequence.add(rel_instance.execute_target_operation(operation_fqname))
+
+
+def relationship_operation_task_for_instance(ctx, custom_context, graph, rel_instance, operation_fqname,
+                                             operation_host):
+    sequence = TaskSequenceWrapper(graph)
+    # sequence.add(build_wf_event_task(rel_instance, step_id, "in"))
+    if operation_fqname == 'cloudify.interfaces.relationship_lifecycle.preconfigure':
+        if __check_and_register_call_config_around(ctx, custom_context, rel_instance, operation_host.lower(), 'pre'):
+            run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
+    elif operation_fqname == 'cloudify.interfaces.relationship_lifecycle.postconfigure':
+        if __check_and_register_call_config_around(ctx, custom_context, rel_instance, operation_host.lower(), 'post'):
+            run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
+    else:
+        run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
     # sequence.add(build_wf_event_task(rel_instance, step_id, "ok"))
     return sequence
 
@@ -339,9 +349,9 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
 
 def forkjoin_sequence(graph, forkjoin_wrapper, instance, label):
     sequence = TaskSequenceWrapper(graph)
-    sequence.add(instance.send_event("forking: {0} instance '{1}'".format(label, instance.id)))
+    # sequence.add(instance.send_event("forking: {0} instance '{1}'".format(label, instance.id)))
     sequence.add(forkjoin_wrapper)
-    sequence.add(instance.send_event("joining: {0} instance '{1}'".format(label, instance.id)))
+    # sequence.add(instance.send_event("joining: {0} instance '{1}'".format(label, instance.id)))
     return sequence
 
 

@@ -21,12 +21,14 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import alien4cloud.model.common.Tag;
+import alien4cloud.model.deployment.DeploymentTopology;
 import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
 import alien4cloud.paas.cloudify3.service.model.HostWorkflow;
 import alien4cloud.paas.cloudify3.service.model.StandardWorkflow;
 import alien4cloud.paas.cloudify3.service.model.Workflows;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
 import alien4cloud.paas.cloudify3.util.mapping.PropertiesMappingUtil;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.wf.util.WorkflowUtils;
 
 public class WorkflowsTest {
@@ -106,8 +108,10 @@ public class WorkflowsTest {
         WorkflowUtils.linkSteps(orphan1, orphan2);
 
         CloudifyDeploymentBuilderService builder = new CloudifyDeploymentBuilderService();
-
-        Workflows builtWorkflow = builder.buildWorkflowsForDeployment(wfs);
+        PaaSTopologyDeploymentContext paaSTopologyDeploymentContext = new PaaSTopologyDeploymentContext();
+        paaSTopologyDeploymentContext.setDeploymentTopology(new DeploymentTopology());
+        paaSTopologyDeploymentContext.getDeploymentTopology().setWorkflows(wfs);
+        Workflows builtWorkflow = builder.buildWorkflowsForDeployment(paaSTopologyDeploymentContext);
         Map<String, HostWorkflow> installHostWFs = builtWorkflow.getInstallHostWorkflows();
         assertNotEmpty(installHostWFs);
         Assert.assertEquals(installWf.getHosts().size(), installHostWFs.size());

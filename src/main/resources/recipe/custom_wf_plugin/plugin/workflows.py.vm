@@ -30,7 +30,7 @@ from workflow import build_pre_event
     operation_task(ctx, graph, '${wfStepEntry.value.activity.target}', '$util.nonNative.tryToMapToCloudifyInterface(${wfStepEntry.value.activity.interfaceName}).${wfStepEntry.value.activity.operationName}', '${wfStepEntry.value.name}', custom_context)
 #end
 #if($util.workflow.isRelationshipOperationExecutionTask(${wfStepEntry.value}))
-    relationship_operation_task(graph, '${wfStepEntry.value.activity.target}', '$util.workflow.getTargetIdOfRelationship($deployment, ${wfStepEntry.value.target}, ${wfStepEntry.value.targetRelationship})', '${util.nonNative.tryToMapToCloudifyRelationshipInterface(${wfStepEntry.value.activity.interfaceName})}.${util.nonNative.tryToMapToCloudifyRelationshipOperation(${wfStepEntry.value.activity.interfaceName}, ${wfStepEntry.value.activity.operationName})}', '${wfStepEntry.value.operationHost}', '${wfStepEntry.value.name}', custom_context)
+    relationship_operation_task(ctx, graph, '${wfStepEntry.value.activity.target}', '$util.workflow.getTargetIdOfRelationship($deployment, ${wfStepEntry.value.target}, ${wfStepEntry.value.targetRelationship})', '${util.nonNative.tryToMapToCloudifyRelationshipInterface(${wfStepEntry.value.activity.interfaceName})}.${util.nonNative.tryToMapToCloudifyRelationshipOperation(${wfStepEntry.value.activity.interfaceName}, ${wfStepEntry.value.activity.operationName})}', '${wfStepEntry.value.operationHost}', '${wfStepEntry.value.name}', custom_context)
 #end
 #if($util.workflow.isDelegateActivityStep(${wfStepEntry.value}))
     custom_context.register_native_delegate_wf_step('${wfStepEntry.value.activity.target}', '${wfStepEntry.value.name}')
@@ -39,7 +39,7 @@ from workflow import build_pre_event
 #end## macro iterateOverSteps
 #macro(buildHostFunctions $stage $steps)
 #foreach($wfEntry in ${steps.entrySet()})## foreach 1
-#[[#]]# subworkflow '${stage}' for host '${wfEntry.key}'
+# Subworkflow for host
 def ${stage}_host_$util.workflow.getPythonNormalizedString(${wfEntry.key})(ctx, graph, custom_context):
 #iterateOverSteps(${wfEntry.value.steps})
     generate_native_node_workflows(ctx, graph, custom_context, '${stage}')
@@ -94,7 +94,7 @@ def _a4c_${wfEntry.key}(ctx, graph, custom_context):
     operation_task(ctx, graph, '${wfStepEntry.value.activity.target}', '$util.nonNative.tryToMapToCloudifyInterface(${wfStepEntry.value.activity.interfaceName}).${wfStepEntry.value.activity.operationName}', '${wfStepEntry.value.name}', custom_context)
 #end## if($util.workflow.isOperationExecutionTask(${wfStepEntry.value}))
 #if($util.workflow.isRelationshipOperationExecutionTask(${wfStepEntry.value}))
-    relationship_operation_task(graph, '${wfStepEntry.value.activity.target}', '$util.workflow.getTargetIdOfRelationship($deployment, ${wfStepEntry.value.target}, ${wfStepEntry.value.targetRelationship})', '${util.nonNative.tryToMapToCloudifyRelationshipInterface(${wfStepEntry.value.activity.interfaceName})}.${util.nonNative.tryToMapToCloudifyRelationshipOperation(${wfStepEntry.value.activity.interfaceName}, ${wfStepEntry.value.activity.operationName})}', '${wfStepEntry.value.operationHost}', '${wfStepEntry.value.name}', custom_context)
+    relationship_operation_task(ctx, graph, '${wfStepEntry.value.activity.target}', '$util.workflow.getTargetIdOfRelationship($deployment, ${wfStepEntry.value.target}, ${wfStepEntry.value.targetRelationship})', '${util.nonNative.tryToMapToCloudifyRelationshipInterface(${wfStepEntry.value.activity.interfaceName})}.${util.nonNative.tryToMapToCloudifyRelationshipOperation(${wfStepEntry.value.activity.interfaceName}, ${wfStepEntry.value.activity.operationName})}', '${wfStepEntry.value.operationHost}', '${wfStepEntry.value.name}', custom_context)
 #end
 #if($util.workflow.isDelegateActivityStep(${wfStepEntry.value}))
     custom_context.register_native_delegate_wf_step('${wfStepEntry.value.activity.target}', '${wfStepEntry.value.name}')

@@ -11,6 +11,7 @@ from utils import _get_all_nodes_instances
 from utils import _get_all_modified_node_instances
 from utils import is_host_node
 from utils import is_kubernetes_node
+from utils import relationship_operation_task
 from workflow import WfStartEvent
 from workflow import build_pre_event
 
@@ -508,14 +509,14 @@ def _a4c_uninstall(ctx, graph, custom_context):
     custom_context.add_customized_wf_node('wordpress')
     set_state_task(ctx, graph, 'wordpress', 'stopping', 'wordpress_stopping', custom_context)
     set_state_task(ctx, graph, 'apache', 'deleted', 'apache_deleted', custom_context)
-    relationship_operation_task(graph, 'mysql', 'DataBase', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'mysql_hostedOnDataBase_remove_target', custom_context)
+    relationship_operation_task(graph, 'mysql', 'DataBase', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'mysql_hostedOnDataBase_remove_target', custom_context)
     custom_context.register_native_delegate_wf_step('NetPub', 'NetPub_uninstall')
     set_state_task(ctx, graph, 'apache', 'stopping', 'apache_stopping', custom_context)
     set_state_task(ctx, graph, 'php', 'deleting', 'php_deleting', custom_context)
     operation_task(ctx, graph, 'apache', 'cloudify.interfaces.lifecycle.stop', 'apache_stop', custom_context)
     custom_context.register_native_delegate_wf_step('InternalNetwork', 'InternalNetwork_uninstall')
-    relationship_operation_task(graph, 'wordpress', 'apache', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'wordpress_wordpressHostedOnApacheApache_remove_target', custom_context)
-    relationship_operation_task(graph, 'php', 'Server', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'php_hostedOnServer_remove_target', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'apache', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'wordpress_wordpressHostedOnApacheApache_remove_target', custom_context)
+    relationship_operation_task(graph, 'php', 'Server', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'php_hostedOnServer_remove_target', custom_context)
     set_state_task(ctx, graph, 'php', 'stopped', 'php_stopped', custom_context)
     operation_task(ctx, graph, 'wordpress', 'cloudify.interfaces.lifecycle.delete', 'wordpress_delete', custom_context)
     operation_task(ctx, graph, 'apache', 'cloudify.interfaces.lifecycle.delete', 'apache_delete', custom_context)
@@ -523,13 +524,13 @@ def _a4c_uninstall(ctx, graph, custom_context):
     set_state_task(ctx, graph, 'php', 'deleted', 'php_deleted', custom_context)
     set_state_task(ctx, graph, 'apache', 'deleting', 'apache_deleting', custom_context)
     operation_task(ctx, graph, 'mysql', 'cloudify.interfaces.lifecycle.stop', 'mysql_stop', custom_context)
-    relationship_operation_task(graph, 'wordpress', 'php', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'wordpress_wordpressConnectToPHPPhp_remove_target', custom_context)
-    relationship_operation_task(graph, 'wordpress', 'apache', 'cloudify.interfaces.relationship_lifecycle.remove_source', 'TARGET', 'wordpress_wordpressHostedOnApacheApache_remove_source', custom_context)
-    relationship_operation_task(graph, 'wordpress', 'php', 'cloudify.interfaces.relationship_lifecycle.remove_source', 'TARGET', 'wordpress_wordpressConnectToPHPPhp_remove_source', custom_context)
-    relationship_operation_task(graph, 'apache', 'Server', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'apache_hostedOnServer_remove_target', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'php', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'wordpress_wordpressConnectToPHPPhp_remove_target', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'apache', 'cloudify.interfaces.relationship_lifecycle.unlink', 'TARGET', 'wordpress_wordpressHostedOnApacheApache_remove_source', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'php', 'cloudify.interfaces.relationship_lifecycle.unlink', 'TARGET', 'wordpress_wordpressConnectToPHPPhp_remove_source', custom_context)
+    relationship_operation_task(graph, 'apache', 'Server', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'apache_hostedOnServer_remove_target', custom_context)
     operation_task(ctx, graph, 'mysql', 'cloudify.interfaces.lifecycle.delete', 'mysql_delete', custom_context)
-    relationship_operation_task(graph, 'wordpress', 'mysql', 'cloudify.interfaces.relationship_lifecycle.remove_source', 'TARGET', 'wordpress_wordpressConnectToMysqlMysql_remove_source', custom_context)
-    relationship_operation_task(graph, 'wordpress', 'mysql', 'cloudify.interfaces.relationship_lifecycle.remove_target', 'SOURCE', 'wordpress_wordpressConnectToMysqlMysql_remove_target', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'mysql', 'cloudify.interfaces.relationship_lifecycle.unlink', 'TARGET', 'wordpress_wordpressConnectToMysqlMysql_remove_source', custom_context)
+    relationship_operation_task(graph, 'wordpress', 'mysql', 'cloudify.interfaces.relationship_lifecycle.unlink', 'SOURCE', 'wordpress_wordpressConnectToMysqlMysql_remove_target', custom_context)
     set_state_task(ctx, graph, 'apache', 'stopped', 'apache_stopped', custom_context)
     operation_task(ctx, graph, 'wordpress', 'cloudify.interfaces.lifecycle.stop', 'wordpress_stop', custom_context)
     custom_context.register_native_delegate_wf_step('Server', 'Server_uninstall')

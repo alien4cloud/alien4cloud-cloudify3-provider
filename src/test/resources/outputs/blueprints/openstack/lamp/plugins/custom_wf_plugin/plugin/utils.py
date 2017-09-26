@@ -140,9 +140,9 @@ def _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_conte
     return sequence
 
 
-def relationship_operation_task(graph, node_id, target_relationship, operation_fqname, operation_host, step_id,
+def relationship_operation_task(graph, source, target, operation_fqname, operation_host, step_id,
                                 custom_context):
-    sequence = _relationship_operation_task(graph, node_id, target_relationship, operation_fqname, operation_host,
+    sequence = _relationship_operation_task(graph, source, target, operation_fqname, operation_host,
                                             step_id, custom_context)
     if sequence is not None:
         sequence.name = step_id
@@ -161,7 +161,8 @@ def _relationship_operation_task(graph, source, target, operation_fqname, operat
     elif instance_count > 1:
         fork = ForkjoinWrapper(graph)
         for instance in instances:
-            instance_task = relationship_operation_task_for_instance(graph, instance, operation_fqname, step_id)
+            instance_task = relationship_operation_task_for_instance(graph, instance, operation_fqname, operation_host,
+                                                                     step_id)
             fork.add(instance_task)
         msg = "operation {0} on all {1} relationship instances".format(operation_fqname, source)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -180,17 +181,28 @@ def should_call_relationship_op(ctx, relation_ship_instance):
     # source and target are on the same node but different instance (cross relationship are forbidden)
     else:
         result = False
-    ctx.internal.send_workflow_event(
-        event_type='other',
-        message="Filtering cross relationship src: instance id {0}, host ins id: {1}, host node id: {2} tgt instance id {3}, host ins id: {4}, host node id: {5}, result is {6}".format(
-            relation_ship_instance.node_instance.id,
-            source_host_instance.id,
-            source_host_instance.node_id,
-            relation_ship_instance.target_node_instance.id,
-            target_host_instance.id,
-            target_host_instance.node_id,
-            result
-        ))
+    if result:
+        ctx.internal.send_workflow_event(
+            event_type='other',
+            message="Relationship instance from source {0} hosted on {1}/{2} to target {3} hosted on {4}/{5}, will be created".format(
+                relation_ship_instance.node_instance.id,
+                source_host_instance.id,
+                source_host_instance.node_id,
+                relation_ship_instance.target_node_instance.id,
+                target_host_instance.id,
+                target_host_instance.node_id
+            ))
+    else:
+        ctx.internal.send_workflow_event(
+            event_type='other',
+            message="Relationship cross host instance from source {0} hosted on {1}/{2} to target {3} hosted on {4}/{5}, will be filtered".format(
+                relation_ship_instance.node_instance.id,
+                source_host_instance.id,
+                source_host_instance.node_id,
+                relation_ship_instance.target_node_instance.id,
+                target_host_instance.id,
+                target_host_instance.node_id
+            ))
     return result
 
 
@@ -266,12 +278,12 @@ def __check_and_register_call_config_arround(ctx, custom_context, relationship_i
 
 def relationship_operation_task_for_instance(graph, rel_instance, operation_fqname, operation_host, step_id):
     sequence = TaskSequenceWrapper(graph)
-    sequence.add(build_wf_event_task(rel_instance, step_id, "in"))
+    # sequence.add(build_wf_event_task(rel_instance, step_id, "in"))
     if operation_host == 'SOURCE':
         sequence.add(rel_instance.execute_source_operation(operation_fqname))
     else:
         sequence.add(rel_instance.execute_target_operation(operation_fqname))
-    sequence.add(build_wf_event_task(rel_instance, step_id, "ok"))
+    # sequence.add(build_wf_event_task(rel_instance, step_id, "ok"))
     return sequence
 
 
@@ -607,17 +619,18 @@ class CustomContext(object):
                 source_relationships = {}
                 self.relationships_per_source_target[node_instance.node_id] = source_relationships
             for relationship in node_instance.relationships:
-                target_relationships = source_relationships.get(relationship.target_id, None)
+                target_relationships = source_relationships.get(relationship.target_node_instance.node_id, None)
                 if target_relationships is None:
-                    target_relationships = set()
-                    source_relationships[relationship.target_id] = target_relationships
+                    target_relationships = []
+                    source_relationships[relationship.target_node_instance.node_id] = target_relationships
                 ctx.internal.send_workflow_event(
                     event_type='other',
-                    message="found a relationship that targets {0} from {1}".format(relationship.target_id,
-                                                                                    relationship.node_instance.id))
+                    message="found a relationship that targets {0}/{1} from {2}/{3}".format(
+                        relationship.target_node_instance.node_id, relationship.target_id,
+                        relationship.node_instance.node_id, relationship.node_instance.id))
                 if should_call_relationship_op(ctx, relationship):
                     # Only call relationship if it's not cross instance relationships
-                    target_relationships.add(relationship)
+                    target_relationships.append(relationship)
 
     def add_customized_wf_node(self, nodeId):
         self.customized_wf_nodes.add(nodeId)
