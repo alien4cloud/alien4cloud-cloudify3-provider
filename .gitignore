@@ -8,3 +8,5 @@ alien4cloud-cloudify3-provider/src/test/resources/outputs/**/monitor
 alien4cloud-cloudify3-provider/src/test/resources/outputs/**/plugins/cloudify-openstack-plugin
 alien4cloud-cloudify3-provider/src/test/resources/outputs/**/plugins/*.zip
 *.DS_Store
+**/target/*
+
