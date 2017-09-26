@@ -3,10 +3,10 @@
   <parent>
     <groupId>alien4cloud</groupId>
     <artifactId>alien4cloud-parent</artifactId>
-    <version>1.4.2</version>
+    <version>1.4.3-SNAPSHOT</version>
   </parent>
   <artifactId>alien4cloud-cloudify4-provider</artifactId>
-  <version>1.4.2</version>
+  <version>1.4.3-SNAPSHOT</version>
   <name>Cloudify 4.x PaaS Provider for Alien 4 Cloud</name>
 
   <repositories>
