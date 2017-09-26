@@ -43,8 +43,12 @@ node_types:
         type: $property.value.type
 #end## if($property.value.type == "version")
 #if($property.value.default)
+#if($property.value.type != "integer" && $property.value.type != "float" && $property.value.type != "boolean" )
+        default: "$property.value.default.value"
+#else
         default: $property.value.default.value
-#end## if($property.value.defaultValue)
+#end
+#end## if($property.value.default)
         required: false
 #end## foreach($property in $nodeProperties.entrySet())
 #end## if($util.nonNative.mapHasEntries($nodeProperties))

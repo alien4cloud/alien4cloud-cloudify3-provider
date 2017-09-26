@@ -106,4 +106,3 @@ class OutputConsumer(object):
 
     def join(self):
         self.consumer.join()
-
