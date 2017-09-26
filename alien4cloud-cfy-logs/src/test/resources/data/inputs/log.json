@@ -1,0 +1,30 @@
+{
+  "level": "debug",
+  "timestamp": "2017-09-14T14:06:50.296Z",
+  "message_code": null,
+  "context": {
+    "blueprint_id": "simple_compute-Environment",
+    "task_target": "cloudify.management",
+    "workflow_id": "a4c_uninstall",
+    "node_id": "Compute_onj8qq",
+    "operation": "cloudify.interfaces.cloudify_agent.stop",
+    "execution_id": "2444dd60-59c4-40dc-90fc-0a9fe62eed52",
+    "task_id": "7e3ae2b3-b782-40d9-8af0-27c1a5d3f7c0",
+    "plugin": "agent",
+    "node_name": "Compute",
+    "task_name": "cloudify_agent.installer.operations.stop",
+    "task_queue": "cloudify.management",
+    "deployment_id": "simple_compute-Environment",
+    "task_error_causes": ""
+  },
+  "logger": "7e3ae2b3-b782-40d9-8af0-27c1a5d3f7c0",
+  "type": "cloudify_log",
+  "message": {
+    "text": "Applying function:setter on Attribute <service_name>"
+  },
+  "@version": "1",
+  "@timestamp": "2017-09-14T14:06:50.296Z",
+  "tags": [
+    "log"
+  ]
+}
