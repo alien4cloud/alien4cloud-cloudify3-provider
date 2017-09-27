@@ -19,20 +19,18 @@ import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameCon
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.alien4cloud.tosca.model.workflow.activities.AbstractWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.DelegateWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.SetStateWorkflowActivity;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
 
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.paas.wf.AbstractActivity;
-import alien4cloud.paas.wf.AbstractStep;
-import alien4cloud.paas.wf.DelegateWorkflowActivity;
-import alien4cloud.paas.wf.NodeActivityStep;
-import alien4cloud.paas.wf.OperationCallActivity;
-import alien4cloud.paas.wf.SetStateActivity;
-import alien4cloud.paas.wf.Workflow;
 import alien4cloud.paas.wf.util.WorkflowUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,54 +59,54 @@ public class ServiceDelegateWorkflowService {
             }
         }
         // Replace the delegate activity by create and start operations.
-        for (Entry<String, AbstractStep> stepEntry : installWorkflow.getSteps().entrySet()) {
-            if (stepEntry.getValue() instanceof NodeActivityStep && serviceNode.getId().equals(((NodeActivityStep) stepEntry.getValue()).getNodeId())) {
-                NodeActivityStep nodeStep = (NodeActivityStep) stepEntry.getValue();
-                AbstractActivity activity = nodeStep.getActivity();
-                if (activity instanceof DelegateWorkflowActivity && INSTALL.equals(((DelegateWorkflowActivity) activity).getWorkflowName())) {
+        for (Entry<String, WorkflowStep> stepEntry : installWorkflow.getSteps().entrySet()) {
+            if (WorkflowUtils.isNodeStep(stepEntry.getValue(), serviceNode.getId())) {
+                WorkflowStep nodeStep = stepEntry.getValue();
+                AbstractWorkflowActivity activity = nodeStep.getActivity();
+                if (activity instanceof DelegateWorkflowActivity && INSTALL.equals(((DelegateWorkflowActivity) activity).getDelegate())) {
                     // Inject Creating set state step
-                    NodeActivityStep creatingStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), CREATING);
-                    NodeActivityStep createStep = WorkflowUtils.addOperationStep(installWorkflow, serviceNode.getId(), STANDARD, CREATE);
-                    NodeActivityStep createdStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), CREATED);
+                    WorkflowStep creatingStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), CREATING);
+                    WorkflowStep createStep = WorkflowUtils.addOperationStep(installWorkflow, serviceNode.getId(), STANDARD, CREATE);
+                    WorkflowStep createdStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), CREATED);
 
-                    NodeActivityStep startingStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), STARTING);
-                    NodeActivityStep startStep = WorkflowUtils.addOperationStep(installWorkflow, serviceNode.getId(), STANDARD, START);
-                    NodeActivityStep startedStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), STARTED);
+                    WorkflowStep startingStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), STARTING);
+                    WorkflowStep startStep = WorkflowUtils.addOperationStep(installWorkflow, serviceNode.getId(), STANDARD, START);
+                    WorkflowStep startedStep = WorkflowUtils.addStateStep(installWorkflow, serviceNode.getId(), STARTED);
 
                     // Re-wire the workflow
                     creatingStep.setPrecedingSteps(stepEntry.getValue().getPrecedingSteps());
                     for (String precederId : safe(creatingStep.getPrecedingSteps())) {
-                        AbstractStep preceder = installWorkflow.getSteps().get(precederId);
-                        preceder.getFollowingSteps().remove(stepEntry.getKey());
-                        preceder.getFollowingSteps().add(creatingStep.getName());
+                        WorkflowStep preceder = installWorkflow.getSteps().get(precederId);
+                        preceder.getOnSuccess().remove(stepEntry.getKey());
+                        preceder.getOnSuccess().add(creatingStep.getName());
                     }
-                    creatingStep.setFollowingSteps(Sets.newHashSet(createStep.getName()));
+                    creatingStep.setOnSuccess(Sets.newHashSet(createStep.getName()));
 
                     createStep.setPrecedingSteps(Sets.newHashSet(creatingStep.getName()));
-                    createStep.setFollowingSteps(Sets.newHashSet(createdStep.getName()));
+                    createStep.setOnSuccess(Sets.newHashSet(createdStep.getName()));
 
                     createdStep.setPrecedingSteps(Sets.newHashSet(createStep.getName()));
-                    createdStep.setFollowingSteps(Sets.newHashSet(startingStep.getName()));
+                    createdStep.setOnSuccess(Sets.newHashSet(startingStep.getName()));
 
                     startingStep.setPrecedingSteps(stepDependencies);
                     // Inject dependency follower (when node is source)
                     for (String precederId : startingStep.getPrecedingSteps()) {
-                        AbstractStep preceder = installWorkflow.getSteps().get(precederId);
-                        if (preceder.getFollowingSteps() == null) {
-                            preceder.setFollowingSteps(Sets.newHashSet());
+                        WorkflowStep preceder = installWorkflow.getSteps().get(precederId);
+                        if (preceder.getOnSuccess() == null) {
+                            preceder.setOnSuccess(Sets.newHashSet());
                         }
-                        preceder.getFollowingSteps().add(startingStep.getName());
+                        preceder.getOnSuccess().add(startingStep.getName());
                     }
                     startingStep.getPrecedingSteps().add(createdStep.getName());
-                    startingStep.setFollowingSteps(Sets.newHashSet(startStep.getName()));
+                    startingStep.setOnSuccess(Sets.newHashSet(startStep.getName()));
 
                     startStep.setPrecedingSteps(Sets.newHashSet(startingStep.getName()));
-                    startStep.setFollowingSteps(Sets.newHashSet(startedStep.getName()));
+                    startStep.setOnSuccess(Sets.newHashSet(startedStep.getName()));
 
                     startedStep.setPrecedingSteps(Sets.newHashSet(startStep.getName()));
-                    startedStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
-                    for (String followerId : safe(startedStep.getFollowingSteps())) {
-                        AbstractStep follower = installWorkflow.getSteps().get(followerId);
+                    startedStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
+                    for (String followerId : safe(startedStep.getOnSuccess())) {
+                        WorkflowStep follower = installWorkflow.getSteps().get(followerId);
                         follower.getPrecedingSteps().remove(stepEntry.getKey());
                         follower.getPrecedingSteps().add(startedStep.getName());
                     }
@@ -122,11 +120,11 @@ public class ServiceDelegateWorkflowService {
     }
 
     private String getStartedStepId(String nodeId, Workflow installWorkflow) {
-        for (Entry<String, AbstractStep> stepEntry : installWorkflow.getSteps().entrySet()) {
-            if (stepEntry.getValue() instanceof NodeActivityStep) {
-                NodeActivityStep nodeActivityStep = ((NodeActivityStep) stepEntry.getValue());
-                if (nodeId.equals(nodeActivityStep.getNodeId()) && nodeActivityStep.getActivity() instanceof SetStateActivity) {
-                    SetStateActivity setStateActivity = (SetStateActivity) nodeActivityStep.getActivity();
+        for (Entry<String, WorkflowStep> stepEntry : installWorkflow.getSteps().entrySet()) {
+            if (StringUtils.isEmpty(stepEntry.getValue().getTargetRelationship())) {
+                WorkflowStep WorkflowStep = stepEntry.getValue();
+                if (nodeId.equals(WorkflowStep.getTarget()) && WorkflowStep.getActivity() instanceof SetStateWorkflowActivity) {
+                    SetStateWorkflowActivity setStateActivity = (SetStateWorkflowActivity) WorkflowStep.getActivity();
                     if (CREATED.equals(setStateActivity.getStateName())) {
                         return stepEntry.getKey();
                     }
@@ -145,39 +143,39 @@ public class ServiceDelegateWorkflowService {
      */
     public void replaceUnInstallServiceDelegate(PaaSNodeTemplate serviceNode, Workflow uninstallWorkflow) {
         // Replace the delegate with the stopping, stop, deleted sequence
-        for (Entry<String, AbstractStep> stepEntry : uninstallWorkflow.getSteps().entrySet()) {
-            if (stepEntry.getValue() instanceof NodeActivityStep && serviceNode.getId().equals(((NodeActivityStep) stepEntry.getValue()).getNodeId())) {
-                NodeActivityStep nodeStep = (NodeActivityStep) stepEntry.getValue();
-                AbstractActivity activity = nodeStep.getActivity();
-                if (activity instanceof DelegateWorkflowActivity && UNINSTALL.equals(((DelegateWorkflowActivity) activity).getWorkflowName())) {
-                    NodeActivityStep stoppingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPING);
-                    NodeActivityStep stopStep = WorkflowUtils.addOperationStep(uninstallWorkflow, serviceNode.getId(), STANDARD, STOP);
-                    NodeActivityStep stoppedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPED);
-                    NodeActivityStep deletingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETING);
-                    NodeActivityStep deletedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETED);
+        for (Entry<String, WorkflowStep> stepEntry : uninstallWorkflow.getSteps().entrySet()) {
+            if (WorkflowUtils.isNodeStep(stepEntry.getValue(), serviceNode.getId())) {
+                WorkflowStep nodeStep = (WorkflowStep) stepEntry.getValue();
+                AbstractWorkflowActivity activity = nodeStep.getActivity();
+                if (activity instanceof DelegateWorkflowActivity && UNINSTALL.equals(((DelegateWorkflowActivity) activity).getDelegate())) {
+                    WorkflowStep stoppingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPING);
+                    WorkflowStep stopStep = WorkflowUtils.addOperationStep(uninstallWorkflow, serviceNode.getId(), STANDARD, STOP);
+                    WorkflowStep stoppedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), STOPPED);
+                    WorkflowStep deletingStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETING);
+                    WorkflowStep deletedStep = WorkflowUtils.addStateStep(uninstallWorkflow, serviceNode.getId(), DELETED);
 
                     // Re-wire the workflow
                     stoppingStep.setPrecedingSteps(stepEntry.getValue().getPrecedingSteps());
                     for (String precederId : safe(stoppingStep.getPrecedingSteps())) {
-                        AbstractStep preceder = uninstallWorkflow.getSteps().get(precederId);
-                        preceder.getFollowingSteps().remove(stepEntry.getKey());
-                        preceder.getFollowingSteps().add(stoppingStep.getName());
+                        WorkflowStep preceder = uninstallWorkflow.getSteps().get(precederId);
+                        preceder.getOnSuccess().remove(stepEntry.getKey());
+                        preceder.getOnSuccess().add(stoppingStep.getName());
                     }
-                    stoppingStep.setFollowingSteps(Sets.newHashSet(stopStep.getName()));
+                    stoppingStep.setOnSuccess(Sets.newHashSet(stopStep.getName()));
 
                     stopStep.setPrecedingSteps(Sets.newHashSet(stoppingStep.getName()));
-                    stopStep.setFollowingSteps(Sets.newHashSet(stoppedStep.getName()));
+                    stopStep.setOnSuccess(Sets.newHashSet(stoppedStep.getName()));
 
                     stoppedStep.setPrecedingSteps(Sets.newHashSet(stopStep.getName()));
-                    stoppedStep.setFollowingSteps(Sets.newHashSet(deletingStep.getName()));
+                    stoppedStep.setOnSuccess(Sets.newHashSet(deletingStep.getName()));
 
                     deletingStep.setPrecedingSteps(Sets.newHashSet(stoppedStep.getName()));
-                    deletingStep.setFollowingSteps(Sets.newHashSet(deletedStep.getName()));
+                    deletingStep.setOnSuccess(Sets.newHashSet(deletedStep.getName()));
 
                     deletedStep.setPrecedingSteps(Sets.newHashSet(deletingStep.getName()));
-                    deletedStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
-                    for (String followerId : safe(deletedStep.getFollowingSteps())) {
-                        AbstractStep follower = uninstallWorkflow.getSteps().get(followerId);
+                    deletedStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
+                    for (String followerId : safe(deletedStep.getOnSuccess())) {
+                        WorkflowStep follower = uninstallWorkflow.getSteps().get(followerId);
                         follower.getPrecedingSteps().remove(stepEntry.getKey());
                         follower.getPrecedingSteps().add(deletedStep.getName());
                     }

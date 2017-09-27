@@ -2,11 +2,12 @@ package alien4cloud.paas.cloudify3.service.model;
 
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.Setter;
-import alien4cloud.paas.wf.Workflow;
+import org.alien4cloud.tosca.model.workflow.Workflow;
 
 import com.google.common.collect.Maps;
+
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter

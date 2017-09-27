@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import alien4cloud.rest.utils.JsonUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
@@ -38,6 +36,7 @@ import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -46,17 +45,18 @@ import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
 import alien4cloud.paas.cloudify3.service.model.Relationship;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.paas.exception.NotSupportedException;
 import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
+import alien4cloud.rest.utils.JsonUtil;
 import alien4cloud.topology.TopologyUtils;
 import alien4cloud.tosca.PaaSUtils;
 import alien4cloud.utils.FileUtil;
@@ -89,6 +89,29 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             return "cloudify.interfaces.relationship_lifecycle";
         } else {
             return interfaceName;
+        }
+    }
+
+    public String tryToMapToCloudifyRelationshipOperation(String interfaceName, String operationName) {
+        if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(interfaceName) || ToscaRelationshipLifecycleConstants.CONFIGURE_SHORT.equals(interfaceName)) {
+            switch (operationName) {
+            case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_SOURCE:
+            case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_TARGET:
+                return "preconfigure";
+            case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_SOURCE:
+            case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_TARGET:
+                return "postconfigure";
+            case ToscaRelationshipLifecycleConstants.ADD_SOURCE:
+            case ToscaRelationshipLifecycleConstants.ADD_TARGET:
+                return "establish";
+            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+                return "unlink";
+            default:
+                return operationName;
+            }
+        } else {
+            return operationName;
         }
     }
 
@@ -437,17 +460,17 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     public boolean shouldRaiseExceptionOnFailure(OperationWrapper operationWrapper) {
         if (ToscaNodeLifecycleConstants.STANDARD.equals(operationWrapper.getInterfaceName())) {
             switch (operationWrapper.getOperationName()) {
-                case ToscaNodeLifecycleConstants.STOP:
-                case ToscaNodeLifecycleConstants.DELETE:
-                    return false;
+            case ToscaNodeLifecycleConstants.STOP:
+            case ToscaNodeLifecycleConstants.DELETE:
+                return false;
             }
         }
 
         if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(operationWrapper.getInterfaceName())) {
             switch (operationWrapper.getOperationName()) {
-                case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
-                case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
-                    return false;
+            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+                return false;
             }
         }
 
