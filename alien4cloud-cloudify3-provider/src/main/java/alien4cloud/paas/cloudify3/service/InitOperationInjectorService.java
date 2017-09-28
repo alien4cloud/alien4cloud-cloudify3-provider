@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 import org.alien4cloud.tosca.model.workflow.activities.AbstractWorkflowActivity;
@@ -59,7 +60,8 @@ public class InitOperationInjectorService {
                     // Inject the NodeInit operation in the workflow steps
                     CallOperationWorkflowActivity callActivity = new CallOperationWorkflowActivity(INIT_INTERFACE_TYPE, INIT_OPERATION_NAME);
                     callActivity.setTarget(stepEntry.getValue().getTarget());
-                    WorkflowStep initStep = new WorkflowStep(stepEntry.getValue().getTarget(), stepEntry.getValue().getHostId(), callActivity);
+                    NodeWorkflowStep initStep = new NodeWorkflowStep(stepEntry.getValue().getTarget(), ((NodeWorkflowStep) stepEntry.getValue()).getHostId(),
+                            callActivity);
                     initStep.setName(stepName);
                     initStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
                     for (String followerId : safe(initStep.getOnSuccess())) {

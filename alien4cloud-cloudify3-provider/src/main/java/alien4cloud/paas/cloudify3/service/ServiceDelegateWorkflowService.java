@@ -19,12 +19,12 @@ import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameCon
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 import org.alien4cloud.tosca.model.workflow.activities.AbstractWorkflowActivity;
 import org.alien4cloud.tosca.model.workflow.activities.DelegateWorkflowActivity;
 import org.alien4cloud.tosca.model.workflow.activities.SetStateWorkflowActivity;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
@@ -121,7 +121,7 @@ public class ServiceDelegateWorkflowService {
 
     private String getStartedStepId(String nodeId, Workflow installWorkflow) {
         for (Entry<String, WorkflowStep> stepEntry : installWorkflow.getSteps().entrySet()) {
-            if (StringUtils.isEmpty(stepEntry.getValue().getTargetRelationship())) {
+            if (stepEntry.getValue() instanceof NodeWorkflowStep) {
                 WorkflowStep WorkflowStep = stepEntry.getValue();
                 if (nodeId.equals(WorkflowStep.getTarget()) && WorkflowStep.getActivity() instanceof SetStateWorkflowActivity) {
                     SetStateWorkflowActivity setStateActivity = (SetStateWorkflowActivity) WorkflowStep.getActivity();

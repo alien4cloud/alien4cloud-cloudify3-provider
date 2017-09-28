@@ -519,8 +519,10 @@ class ForkjoinWrapper(object):
                 self.first_tasks.extend(element.first_tasks)
                 self.last_tasks.extend(element.last_tasks)
             elif isinstance(element, TaskSequenceWrapper):
-                self.first_tasks.extend(element.first_tasks)
-                self.last_tasks.extend(element.last_tasks)
+                if element.first_tasks is not None:
+                    self.first_tasks.extend(element.first_tasks)
+                if element.last_tasks is not None:
+                    self.last_tasks.extend(element.last_tasks)
             else:
                 self.first_tasks.append(element)
                 self.last_tasks.append(element)

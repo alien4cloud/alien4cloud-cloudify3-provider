@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 import org.apache.commons.collections4.MapUtils;
@@ -145,7 +146,7 @@ public class WorkflowsTest {
     }
 
     private WorkflowStep addStep(Workflow installWf, String host1, String name) {
-        WorkflowStep step = new WorkflowStep();
+        NodeWorkflowStep step = new NodeWorkflowStep();
         step.setName(name);
         step.setHostId(host1);
         installWf.addStep(step);

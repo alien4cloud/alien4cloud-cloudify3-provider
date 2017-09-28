@@ -15,13 +15,14 @@ import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +47,6 @@ import alien4cloud.paas.cloudify3.service.model.Workflows;
 import alien4cloud.paas.cloudify3.util.mapping.PropertiesMappingUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.model.PaaSTopology;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
@@ -222,10 +222,10 @@ public class CloudifyDeploymentBuilderService {
         Map<String, Workflow> workflowsMap = deploymentContext.getDeploymentTopology().getWorkflows();
         Workflows workflows = new Workflows();
         workflows.setWorkflows(workflowsMap);
-        fillWorkflowSteps(INSTALL, deploymentContext.getPaaSTopology(), workflowsMap, workflows.getInstallHostWorkflows());
-        fillWorkflowSteps(UNINSTALL, deploymentContext.getPaaSTopology(), workflowsMap, workflows.getUninstallHostWorkflows());
-        fillOrphans(deploymentContext.getPaaSTopology(), INSTALL, workflowsMap, workflows.getStandardWorkflows());
-        fillOrphans(deploymentContext.getPaaSTopology(), UNINSTALL, workflowsMap, workflows.getStandardWorkflows());
+        fillWorkflowSteps(INSTALL, workflowsMap, workflows.getInstallHostWorkflows());
+        fillWorkflowSteps(UNINSTALL, workflowsMap, workflows.getUninstallHostWorkflows());
+        fillOrphans(INSTALL, workflowsMap, workflows.getStandardWorkflows());
+        fillOrphans(UNINSTALL, workflowsMap, workflows.getStandardWorkflows());
         return workflows;
     }
 
@@ -269,16 +269,16 @@ public class CloudifyDeploymentBuilderService {
         }
     }
 
-    private void fillOrphans(PaaSTopology topology, String workflowName, Map<String, Workflow> workflows, Map<String, StandardWorkflow> standardWorkflows) {
+    private void fillOrphans(String workflowName, Map<String, Workflow> workflows, Map<String, StandardWorkflow> standardWorkflows) {
         Workflow workflow = workflows.get(workflowName);
-        StandardWorkflow standardWorkflow = buildOrphansWorkflow(topology, workflow);
+        StandardWorkflow standardWorkflow = buildOrphansWorkflow(workflow);
         standardWorkflows.put(workflowName, standardWorkflow);
     }
 
-    private StandardWorkflow buildOrphansWorkflow(PaaSTopology topology, Workflow workflow) {
+    private StandardWorkflow buildOrphansWorkflow(Workflow workflow) {
         StandardWorkflow standardWorkflow = new StandardWorkflow();
         standardWorkflow.setHosts(workflow.getHosts());
-        standardWorkflow.setOrphanSteps(getOrphanSteps(topology, workflow));
+        standardWorkflow.setOrphanSteps(getOrphanSteps(workflow));
         standardWorkflow.setLinks(buildFollowingLinksFromSteps(standardWorkflow.getOrphanSteps()));
         return standardWorkflow;
     }
@@ -289,26 +289,26 @@ public class CloudifyDeploymentBuilderService {
      * @param workflow
      * @return
      */
-    private Map<String, WorkflowStep> getOrphanSteps(PaaSTopology topology, Workflow workflow) {
-        return getHostRelatedSteps(topology, null, workflow);
+    private Map<String, WorkflowStep> getOrphanSteps(Workflow workflow) {
+        return getHostRelatedSteps(null, workflow);
     }
 
-    private void fillWorkflowSteps(String workflowName, PaaSTopology topology, Map<String, Workflow> workflows, Map<String, HostWorkflow> workflowSteps) {
+    private void fillWorkflowSteps(String workflowName, Map<String, Workflow> workflows, Map<String, HostWorkflow> workflowSteps) {
         Workflow workflow = workflows.get(workflowName);
         Set<String> hostIds = workflow.getHosts();
         if (CollectionUtils.isEmpty(hostIds)) {
             return;
         }
         for (String hostId : hostIds) {
-            HostWorkflow hostWorkflow = buildHostWorkflow(topology, hostId, workflow);
+            HostWorkflow hostWorkflow = buildHostWorkflow(hostId, workflow);
             workflowSteps.put(hostId, hostWorkflow);
         }
     }
 
-    private HostWorkflow buildHostWorkflow(PaaSTopology topology, String hostId, Workflow workflow) {
+    private HostWorkflow buildHostWorkflow(String hostId, Workflow workflow) {
         HostWorkflow hostWorkflow = new HostWorkflow();
-        hostWorkflow.setSteps(getHostRelatedSteps(topology, hostId, workflow));
-        hostWorkflow.getSteps().putAll(getOrphanRelatedSteps(hostWorkflow.getSteps(), getOrphanSteps(topology, workflow)));
+        hostWorkflow.setSteps(getHostRelatedSteps(hostId, workflow));
+        hostWorkflow.getSteps().putAll(getOrphanRelatedSteps(hostWorkflow.getSteps(), getOrphanSteps(workflow)));
         processLinks(hostWorkflow.getSteps(), hostWorkflow.getInternalLinks(), hostWorkflow.getExternalLinks());
         // hostWorkflow.setInternalLinks(getLinksBetweenSteps(hostWorkflow.getSteps()));
         return hostWorkflow;
@@ -324,12 +324,10 @@ public class CloudifyDeploymentBuilderService {
     private Map<String, WorkflowStep> getOrphanRelatedSteps(Map<String, WorkflowStep> workflow, Map<String, WorkflowStep> orphanSteps) {
         Map<String, WorkflowStep> relatedSteps = Maps.newLinkedHashMap();
         for (WorkflowStep step : orphanSteps.values()) {
-            if (StringUtils.isEmpty(step.getTargetRelationship())) {
-                for (WorkflowStep sh : workflow.values()) {
-                    if ((sh.getPrecedingSteps() != null && sh.getPrecedingSteps().contains(step.getName()))
-                            || (sh.getOnSuccess() != null && sh.getOnSuccess().contains(step.getName()))) {
-                        relatedSteps.put(step.getName(), step);
-                    }
+            for (WorkflowStep sh : workflow.values()) {
+                if ((sh.getPrecedingSteps() != null && sh.getPrecedingSteps().contains(step.getName()))
+                        || (sh.getOnSuccess() != null && sh.getOnSuccess().contains(step.getName()))) {
+                    relatedSteps.put(step.getName(), step);
                 }
             }
         }
@@ -396,40 +394,30 @@ public class CloudifyDeploymentBuilderService {
      * @param workflow
      * @return
      */
-    private Map<String, WorkflowStep> getHostRelatedSteps(PaaSTopology topology, String hostId, Workflow workflow) {
+    private Map<String, WorkflowStep> getHostRelatedSteps(String hostId, Workflow workflow) {
         Map<String, WorkflowStep> steps = Maps.newLinkedHashMap();
         for (WorkflowStep step : workflow.getSteps().values()) {
-            if (StringUtils.isEmpty(step.getTargetRelationship())) {
-                if (isStepRelatedToHost(step, hostId)) {
+            if (step instanceof NodeWorkflowStep) {
+                if (isNodeStepRelatedToHost((NodeWorkflowStep) step, hostId)) {
                     // Only step related to the host is added
                     steps.put(step.getName(), step);
                 }
             } else {
-                if (isStepRelatedToHost(step, hostId)) {
+                if (isRelationshipStepRelatedToHost((RelationshipWorkflowStep) step, hostId)) {
                     // The source of relationship is on the host
                     steps.put(step.getName(), step);
-                } else {
-                    // Relationship step
-                    String target = topology.getAllNodes().get(step.getTarget()).getRelationshipTemplate(step.getTargetRelationship(), step.getTarget())
-                            .getTemplate().getTarget();
-                    PaaSNodeTemplate targetParent = topology.getAllNodes().get(target).getParent();
-                    String targetHost = target;
-                    while (targetParent != null) {
-                        targetHost = targetParent.getId();
-                        targetParent = targetParent.getParent();
-                    }
-                    if (Objects.equals(hostId, targetHost)) {
-                        // The target of relationship is on the host
-                        steps.put(step.getName(), step);
-                    }
                 }
             }
         }
         return steps;
     }
 
-    private boolean isStepRelatedToHost(WorkflowStep step, String hostId) {
+    private boolean isNodeStepRelatedToHost(NodeWorkflowStep step, String hostId) {
         return Objects.equals(step.getHostId(), hostId);
+    }
+
+    private boolean isRelationshipStepRelatedToHost(RelationshipWorkflowStep step, String hostId) {
+        return Objects.equals(step.getSourceHostId(), hostId) || Objects.equals(step.getTargetHostId(), hostId);
     }
 
     private List<NodeType> getTypesOrderedByDerivedFromHierarchy(List<PaaSNodeTemplate> nodes) {

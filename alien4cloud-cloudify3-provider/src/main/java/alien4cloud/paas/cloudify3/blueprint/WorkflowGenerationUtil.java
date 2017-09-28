@@ -2,12 +2,13 @@ package alien4cloud.paas.cloudify3.blueprint;
 
 import java.nio.file.Path;
 
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 import org.alien4cloud.tosca.model.workflow.activities.CallOperationWorkflowActivity;
 import org.alien4cloud.tosca.model.workflow.activities.DelegateWorkflowActivity;
 import org.alien4cloud.tosca.model.workflow.activities.SetStateWorkflowActivity;
-import org.apache.commons.lang3.StringUtils;
 
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
@@ -23,15 +24,15 @@ public class WorkflowGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isSetStateTask(WorkflowStep step) {
-        return StringUtils.isEmpty(step.getTargetRelationship()) && step.getActivity() instanceof SetStateWorkflowActivity;
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof SetStateWorkflowActivity;
     }
 
     public boolean isOperationExecutionTask(WorkflowStep step) {
-        return StringUtils.isEmpty(step.getTargetRelationship()) && step.getActivity() instanceof CallOperationWorkflowActivity;
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof CallOperationWorkflowActivity;
     }
 
     public boolean isRelationshipOperationExecutionTask(WorkflowStep step) {
-        return StringUtils.isNotEmpty(step.getTargetRelationship()) && step.getActivity() instanceof CallOperationWorkflowActivity;
+        return step instanceof RelationshipWorkflowStep && step.getActivity() instanceof CallOperationWorkflowActivity;
     }
 
     public String getTargetIdOfRelationship(CloudifyDeployment deployment, String target, String targetRelationship) {
@@ -43,7 +44,7 @@ public class WorkflowGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isDelegateActivityStep(WorkflowStep step) {
-        return StringUtils.isEmpty(step.getTargetRelationship()) && step.getActivity() instanceof DelegateWorkflowActivity;
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof DelegateWorkflowActivity;
     }
 
     /**
