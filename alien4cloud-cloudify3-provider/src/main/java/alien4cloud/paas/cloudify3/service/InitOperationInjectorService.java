@@ -59,7 +59,6 @@ public class InitOperationInjectorService {
                     String stepName = "_a4c_init_" + node.getId();
                     // Inject the NodeInit operation in the workflow steps
                     CallOperationWorkflowActivity callActivity = new CallOperationWorkflowActivity(INIT_INTERFACE_TYPE, INIT_OPERATION_NAME);
-                    callActivity.setTarget(stepEntry.getValue().getTarget());
                     NodeWorkflowStep initStep = new NodeWorkflowStep(stepEntry.getValue().getTarget(), ((NodeWorkflowStep) stepEntry.getValue()).getHostId(),
                             callActivity);
                     initStep.setName(stepName);
