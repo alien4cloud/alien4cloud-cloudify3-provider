@@ -50,6 +50,7 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.WorkflowsBuilderService.TopologyContext;
+import alien4cloud.paas.wf.util.WorkflowUtils;
 import lombok.extern.slf4j.Slf4j;
 
 @Component("cloudify-deployment-builder-service")
@@ -220,6 +221,7 @@ public class CloudifyDeploymentBuilderService {
 
     public Workflows buildWorkflowsForDeployment(PaaSTopologyDeploymentContext deploymentContext) {
         Map<String, Workflow> workflowsMap = deploymentContext.getDeploymentTopology().getWorkflows();
+        WorkflowUtils.processInlineWorkflows(workflowsMap);
         Workflows workflows = new Workflows();
         workflows.setWorkflows(workflowsMap);
         fillWorkflowSteps(INSTALL, workflowsMap, workflows.getInstallHostWorkflows());
