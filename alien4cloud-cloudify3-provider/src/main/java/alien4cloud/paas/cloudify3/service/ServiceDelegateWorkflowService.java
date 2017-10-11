@@ -122,9 +122,9 @@ public class ServiceDelegateWorkflowService {
     private String getStartedStepId(String nodeId, Workflow installWorkflow) {
         for (Entry<String, WorkflowStep> stepEntry : installWorkflow.getSteps().entrySet()) {
             if (stepEntry.getValue() instanceof NodeWorkflowStep) {
-                WorkflowStep WorkflowStep = stepEntry.getValue();
-                if (nodeId.equals(WorkflowStep.getTarget()) && WorkflowStep.getActivity() instanceof SetStateWorkflowActivity) {
-                    SetStateWorkflowActivity setStateActivity = (SetStateWorkflowActivity) WorkflowStep.getActivity();
+                WorkflowStep workflowStep = stepEntry.getValue();
+                if (workflowStep.getActivity() instanceof SetStateWorkflowActivity && nodeId.equals(workflowStep.getTarget())) {
+                    SetStateWorkflowActivity setStateActivity = (SetStateWorkflowActivity) workflowStep.getActivity();
                     if (CREATED.equals(setStateActivity.getStateName())) {
                         return stepEntry.getKey();
                     }

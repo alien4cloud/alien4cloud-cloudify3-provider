@@ -26,7 +26,13 @@ import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.*;
+import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
+import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
+import alien4cloud.paas.cloudify3.service.DeploymentService;
+import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
+import alien4cloud.paas.cloudify3.service.PluginArchiveService;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.StatusService;
 import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
@@ -34,7 +40,12 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.InstanceInformation;
+import alien4cloud.paas.model.NodeOperationExecRequest;
+import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -61,7 +72,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     @Resource(name = "cloudify-deployment-builder-service")
     private CloudifyDeploymentBuilderService cloudifyDeploymentBuilderService;
 
-    @Resource(name= "cloudify-async-http-request-factory")
+    @Resource(name = "cloudify-async-http-request-factory")
     private SimpleClientHttpRequestFactory simpleClientHttpRequestFactory;
 
     @Resource
@@ -117,16 +128,15 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeployment(deploymentContext.getDeploymentPaaSId());
-
-        applicationContext.publishEvent(new AboutToDeployTopologyEvent(this, deploymentContext));
         try {
+            CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
+            applicationContext.publishEvent(new AboutToDeployTopologyEvent(this, deploymentContext));
             // TODO Better do it in Alien4Cloud or in plugin ?
             propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
 
             // pre-process the topology to add availability zones.
             osAzPPolicyService.process(deploymentContext);
 
-            CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
             FutureUtil.associateFutureToPaaSCallback(deploymentService.deploy(deployment), callback);
         } catch (Throwable e) {
             statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
