@@ -6,13 +6,12 @@ template_author: admin
 
 imports:
   - tosca-normative-types:1.0.0-SNAPSHOT
-  - alien-extended-storage-types:1.3.0-SNAPSHOT
-  - openstack-types:$projectVersion
-  - php-type:2.0.0-SNAPSHOT
-  - apache-type:2.0.0-SNAPSHOT
-  - mysql-type:2.0.0-SNAPSHOT
-  - wordpress-type:2.0.0-SNAPSHOT
-  - cloudify3-common-types:$projectVersion
+  - openstack-types:1.4.0
+  - cloudify3-common-types:1.4.0
+  - apache-type:1.4.0-SNAPSHOT
+  - mysql-type:1.4.0-SNAPSHOT
+  - php-type:1.4.0-SNAPSHOT
+  - wordpress-type:1.4.0-SNAPSHOT
 
 topology_template:
 
@@ -30,14 +29,17 @@ topology_template:
         network_name: internal-network
         cidr: 192.168.1.0/24
 
-    Apache:
-      type: alien.nodes.Apache
+    apache:
+      type: org.alien4cloud.nodes.Apache
       properties:
         port: 80
-        document_root: /var/www
-        version: 2.4
+        document_root: "/var/www"
       requirements:
         - host: Server
+    mysql:
+      type: org.alien4cloud.nodes.Mysql
+      requirements:
+        - host: DataBase
 
     DataBase:
       type: alien.nodes.openstack.Compute
@@ -51,38 +53,20 @@ topology_template:
             capability: tosca.capabilities.Connectivity
             relationship: tosca.relationships.Network
 
-    PHP:
-      type: alien.nodes.PHP
-      properties:
-        version: "5"
+    wordpress:
+      type: org.alien4cloud.nodes.Wordpress
+      requirements:
+        - host: apache
+        - database:
+            node: mysql
+            capability: org.alien4cloud.capabilities.MysqlDatabaseEndpoint
+        - php:
+            node: php
+            capability: org.alien4cloud.capabilities.PHPModule
+    php:
+      type: org.alien4cloud.nodes.PHP
       requirements:
         - host: Server
-
-    Wordpress:
-      type: alien.nodes.Wordpress
-      properties:
-        context_path: "/"
-        zip_url: "https://wordpress.org/latest.zip"
-      requirements:
-        - host: Apache
-        - database:
-            node: Mysql
-            capability: alien.capabilities.MysqlDatabaseEndpoint
-        - php:
-            node: PHP
-            capability: alien.capabilities.PHPModule
-
-    Mysql:
-      type: alien.nodes.Mysql
-      properties:
-        bind_address: true
-        storage_path: /mountedStorage
-        db_port: 3306
-        db_name: wordpress
-        db_user: pass
-        db_password: pass
-      requirements:
-        - host: DataBase
 
     Server:
       type: alien.nodes.openstack.Compute

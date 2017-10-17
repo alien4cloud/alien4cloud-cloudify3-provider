@@ -62,7 +62,7 @@ public class TestBlueprintService extends AbstractTestBlueprint {
 
     // Set true to this boolean when the blueprint has changed and you want to re-register
     @Getter
-    protected boolean record = false;
+    protected boolean record = true;
 
     // Set true to this boolean so the blueprint will be uploaded to the manager to verify
     @Getter

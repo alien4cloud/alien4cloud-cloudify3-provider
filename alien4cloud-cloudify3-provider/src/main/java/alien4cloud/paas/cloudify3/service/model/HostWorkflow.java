@@ -3,12 +3,13 @@ package alien4cloud.paas.cloudify3.service.model;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.Setter;
-import alien4cloud.paas.wf.AbstractStep;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * A sub workflow related to a given host.
@@ -20,7 +21,7 @@ public class HostWorkflow {
     /**
      * The steps related to this host.
      */
-    private Map<String, AbstractStep> steps = Maps.newLinkedHashMap();
+    private Map<String, WorkflowStep> steps = Maps.newLinkedHashMap();
 
     /**
      * The link between this host steps (internal links).

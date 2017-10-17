@@ -27,6 +27,7 @@ import alien4cloud.model.components.CSARSource;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.util.CSARUtil;
 import alien4cloud.tosca.parser.ParsingError;
 import alien4cloud.utils.FileUtil;
@@ -72,7 +73,7 @@ public abstract class AbstractTest {
 
     private static boolean isInitialized = false;
 
-    private static boolean forceReloadCSARs = false;
+    private static boolean forceReloadCSARs = true;
 
     @Inject
     private CSARUtil csarUtil;
@@ -151,7 +152,12 @@ public abstract class AbstractTest {
                 }
             }
         }
-        cloudConfigurationHolder.setConfiguration("orchestratorId", new CloudifyOrchestratorFactory().getDefaultConfiguration());
+        CloudConfiguration cloudConfiguration = new CloudifyOrchestratorFactory().getDefaultConfiguration();
+        cloudConfiguration.setUrl("https://34.249.229.238/");
+        cloudConfiguration.setUserName("admin");
+        cloudConfiguration.setPassword("admin");
+        cloudConfiguration.setDisableSSLVerification(true);
+        cloudConfigurationHolder.setConfiguration("orchestratorId", cloudConfiguration);
     }
 
     protected abstract Map<String, ILocationConfiguratorPlugin> getLocationsConfigurators();

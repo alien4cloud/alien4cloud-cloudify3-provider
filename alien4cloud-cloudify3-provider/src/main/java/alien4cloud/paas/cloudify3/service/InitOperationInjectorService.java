@@ -7,6 +7,12 @@ import java.util.Map.Entry;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.alien4cloud.tosca.model.workflow.activities.AbstractWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.CallOperationWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.SetStateWorkflowActivity;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
@@ -14,12 +20,7 @@ import com.google.common.collect.Sets;
 import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.paas.wf.AbstractActivity;
-import alien4cloud.paas.wf.AbstractStep;
-import alien4cloud.paas.wf.NodeActivityStep;
-import alien4cloud.paas.wf.OperationCallActivity;
-import alien4cloud.paas.wf.SetStateActivity;
-import alien4cloud.paas.wf.Workflow;
+import alien4cloud.paas.wf.util.WorkflowUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -51,26 +52,25 @@ public class InitOperationInjectorService {
         // Add the init interface to the node.
         node.getInterfaces().put(INIT_INTERFACE_TYPE, INIT_INTERFACE);
         // Inject the call to the init interface into the workflow just after the node created state change.
-        for (Entry<String, AbstractStep> stepEntry : installWorkflow.getSteps().entrySet()) {
-            if (stepEntry.getValue() instanceof NodeActivityStep && node.getId().equals(((NodeActivityStep) stepEntry.getValue()).getNodeId())) {
-                NodeActivityStep nodeStep = (NodeActivityStep) stepEntry.getValue();
-                AbstractActivity activity = nodeStep.getActivity();
+        for (Entry<String, WorkflowStep> stepEntry : installWorkflow.getSteps().entrySet()) {
+            if (WorkflowUtils.isNodeStep(stepEntry.getValue(), node.getId())) {
+                AbstractWorkflowActivity activity = stepEntry.getValue().getActivity();
                 if (isCreatingStep(node, activity)) {
                     String stepName = "_a4c_init_" + node.getId();
                     // Inject the NodeInit operation in the workflow steps
-                    OperationCallActivity callActivity = new OperationCallActivity(INIT_INTERFACE_TYPE, INIT_OPERATION_NAME);
-                    callActivity.setNodeId(nodeStep.getNodeId());
-                    NodeActivityStep initStep = new NodeActivityStep(nodeStep.getNodeId(), nodeStep.getHostId(), callActivity);
+                    CallOperationWorkflowActivity callActivity = new CallOperationWorkflowActivity(INIT_INTERFACE_TYPE, INIT_OPERATION_NAME);
+                    NodeWorkflowStep initStep = new NodeWorkflowStep(stepEntry.getValue().getTarget(), ((NodeWorkflowStep) stepEntry.getValue()).getHostId(),
+                            callActivity);
                     initStep.setName(stepName);
-                    initStep.setFollowingSteps(stepEntry.getValue().getFollowingSteps());
-                    for (String followerId : safe(initStep.getFollowingSteps())) {
-                        AbstractStep follower = installWorkflow.getSteps().get(followerId);
+                    initStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
+                    for (String followerId : safe(initStep.getOnSuccess())) {
+                        WorkflowStep follower = installWorkflow.getSteps().get(followerId);
                         follower.getPrecedingSteps().remove(stepEntry.getKey());
                         follower.getPrecedingSteps().add(stepName);
                     }
                     initStep.setPrecedingSteps(Sets.newHashSet(stepEntry.getKey()));
                     installWorkflow.getSteps().put(stepName, initStep);
-                    stepEntry.getValue().setFollowingSteps(Sets.newHashSet(stepName));
+                    stepEntry.getValue().setOnSuccess(Sets.newHashSet(stepName));
                     return;
                 }
             }
@@ -78,7 +78,8 @@ public class InitOperationInjectorService {
         log.error("Unable to find creating step and to inject init operation for node {}.", node.getId());
     }
 
-    private boolean isCreatingStep(PaaSNodeTemplate node, AbstractActivity activity) {
-        return activity instanceof SetStateActivity && ToscaNodeLifecycleConstants.CREATING.equals(((SetStateActivity) activity).getStateName());
+    private boolean isCreatingStep(PaaSNodeTemplate node, AbstractWorkflowActivity activity) {
+        return activity instanceof SetStateWorkflowActivity
+                && ToscaNodeLifecycleConstants.CREATING.equals(((SetStateWorkflowActivity) activity).getStateName());
     }
 }

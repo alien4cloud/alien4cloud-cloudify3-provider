@@ -1,28 +1,18 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
-
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
 
-import org.apache.commons.collections4.MapUtils;
-
-import com.google.common.collect.Lists;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.alien4cloud.tosca.model.workflow.activities.CallOperationWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.DelegateWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.SetStateWorkflowActivity;
 
 import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
 import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.cloudify3.service.model.HostWorkflow;
-import alien4cloud.paas.cloudify3.service.model.WorkflowStepLink;
-import alien4cloud.paas.cloudify3.service.model.Workflows;
-import alien4cloud.paas.wf.AbstractStep;
-import alien4cloud.paas.wf.DelegateWorkflowActivity;
-import alien4cloud.paas.wf.NodeActivityStep;
-import alien4cloud.paas.wf.OperationCallActivity;
-import alien4cloud.paas.wf.SetStateActivity;
-import alien4cloud.paas.wf.Workflow;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -33,41 +23,28 @@ public class WorkflowGenerationUtil extends AbstractGenerationUtil {
         super(mappingConfiguration, alienDeployment, recipePath, propertyEvaluatorService);
     }
 
-    public boolean isSetStateTask(AbstractStep step) {
-        return step instanceof NodeActivityStep && ((NodeActivityStep) step).getActivity() instanceof SetStateActivity;
+    public boolean isSetStateTask(WorkflowStep step) {
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof SetStateWorkflowActivity;
     }
 
-    public boolean isOperationExecutionTask(AbstractStep step) {
-        return step instanceof NodeActivityStep && ((NodeActivityStep) step).getActivity() instanceof OperationCallActivity;
+    public boolean isOperationExecutionTask(WorkflowStep step) {
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof CallOperationWorkflowActivity;
     }
 
-    public AbstractStep getWorkflowStep(Workflow wf, String stepName) {
+    public boolean isRelationshipOperationExecutionTask(WorkflowStep step) {
+        return step instanceof RelationshipWorkflowStep && step.getActivity() instanceof CallOperationWorkflowActivity;
+    }
+
+    public String getTargetIdOfRelationship(CloudifyDeployment deployment, String target, String targetRelationship) {
+        return deployment.getAllNodes().get(target).getRelationshipTemplate(targetRelationship, target).getTemplate().getTarget();
+    }
+
+    public WorkflowStep getWorkflowStep(Workflow wf, String stepName) {
         return wf.getSteps().get(stepName);
     }
 
-    public boolean isDelegateActivityStep(AbstractStep step) {
-        return step instanceof NodeActivityStep && ((NodeActivityStep) step).getActivity() instanceof DelegateWorkflowActivity;
-    }
-
-    public List<WorkflowStepLink> getExternalLinkns(Workflows workflows, String workflowName) {
-        switch (workflowName) {
-        case INSTALL:
-            return getExternalLinks(workflows.getInstallHostWorkflows());
-        case UNINSTALL:
-            return getExternalLinks(workflows.getUninstallHostWorkflows());
-        default:
-            return null;
-        }
-    }
-
-    private List<WorkflowStepLink> getExternalLinks(Map<String, HostWorkflow> installWorkflowSteps) {
-        List<WorkflowStepLink> links = Lists.newArrayList();
-        if (MapUtils.isNotEmpty(installWorkflowSteps)) {
-            for (HostWorkflow wf : installWorkflowSteps.values()) {
-                links.addAll(wf.getExternalLinks());
-            }
-        }
-        return links;
+    public boolean isDelegateActivityStep(WorkflowStep step) {
+        return step instanceof NodeWorkflowStep && step.getActivity() instanceof DelegateWorkflowActivity;
     }
 
     /**
