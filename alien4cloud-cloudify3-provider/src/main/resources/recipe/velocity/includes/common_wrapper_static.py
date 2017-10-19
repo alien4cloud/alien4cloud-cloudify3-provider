@@ -87,6 +87,8 @@ def _all_instances_get_nested_attribute(entity, attribute_names):
 
 
 def get_attribute(entity, attribute_name):
+    if entity is None:
+        return ""
     if has_attribute_mapping(entity, attribute_name):
         # First check if any mapping exist for attribute
         mapped_value = process_attribute_mapping(entity, attribute_name, get_attribute)
@@ -149,6 +151,8 @@ def _all_instances_get_target_capa_or_node_attribute(entity, capability_attribut
     return result_map
 
 def get_property(entity, property_name):
+    if entity is None:
+        return ""
     # Try to get the property value on the node
     property_value = entity.node.properties.get(property_name, None)
     if property_value is not None:

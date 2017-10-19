@@ -1,19 +1,29 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
+import alien4cloud.exception.InvalidArgumentException;
+import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
+import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
+import alien4cloud.paas.cloudify3.service.model.Relationship;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
+import alien4cloud.paas.exception.NotSupportedException;
+import alien4cloud.paas.function.FunctionEvaluator;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.rest.utils.JsonUtil;
+import alien4cloud.topology.TopologyUtils;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.utils.FileUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
@@ -38,29 +48,17 @@ import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import alien4cloud.exception.InvalidArgumentException;
-import alien4cloud.paas.IPaaSTemplate;
-import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
-import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
-import alien4cloud.paas.cloudify3.service.model.Relationship;
-import alien4cloud.paas.exception.NotSupportedException;
-import alien4cloud.paas.function.FunctionEvaluator;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
-import alien4cloud.topology.TopologyUtils;
-import alien4cloud.tosca.PaaSUtils;
-import alien4cloud.utils.FileUtil;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
@@ -275,13 +273,18 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return the formatted parameter understandable by Cloudify
      */
     public String formatNodeFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
+        String ctx = "ctx" + context;
+        boolean isTargetHost = "HOST".equals(functionPropertyValue.getTemplateName());
+        if (isTargetHost) {
+            ctx = "get_host(" + ctx + ")";
+        }
         if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
-            return "get_attribute(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_attribute(" + ctx + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_PROPERTY.equals(functionPropertyValue.getFunction())) {
-            return "get_property(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_property(" + ctx + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_OPERATION_OUTPUT.equals(functionPropertyValue.getFunction())) {
             // a fake attribute is used in order to handle Operation Outputs
-            return "get_attribute(ctx" + context + ", '_a4c_OO:" + functionPropertyValue.getInterfaceName() + ':' + functionPropertyValue.getOperationName()
+            return "get_attribute(" + ctx + ", '_a4c_OO:" + functionPropertyValue.getInterfaceName() + ':' + functionPropertyValue.getOperationName()
                     + ":" + functionPropertyValue.getElementNameToFetch() + "')";
         } else {
             throw new NotSupportedException("Function " + functionPropertyValue.getFunction() + " is not yet supported");
