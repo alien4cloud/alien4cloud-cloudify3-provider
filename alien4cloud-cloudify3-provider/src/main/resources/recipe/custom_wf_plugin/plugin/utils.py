@@ -2,6 +2,7 @@ from handlers import build_persistent_event_tasks
 from handlers import build_wf_event_task
 from handlers import host_post_start
 from handlers import host_pre_stop
+from cloudify.workflows import tasks as workflow_tasks
 
 
 def _get_nodes_instances(ctx, node_id):
@@ -336,9 +337,23 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
         if _is_host_node_instance(instance):
             sequence.add(*host_pre_stop(instance))
         task = instance.execute_operation(operation_fqname)
+
+        if _is_host_node_instance(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore stop failure')
+                return workflow_tasks.HandlerResult.ignore()
+            task.on_failure = send_node_event_error_handler
+
         sequence.add(task)
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
         task = instance.execute_operation(operation_fqname)
+
+        if _is_host_node_instance(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore delete failure')
+                return workflow_tasks.HandlerResult.ignore()
+            task.on_failure = send_node_event_error_handler
+
         sequence.add(task)
     else:
         # the default behavior : just do the job
