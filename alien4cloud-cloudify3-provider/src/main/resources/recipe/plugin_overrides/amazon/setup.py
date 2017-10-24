@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
 
     # Do not use underscores in the plugin name.
-    name='a4c-overrides',
+    name='a4c-overrides-aws',
 
     version='1.4.1',
     author='alien4cloud',
