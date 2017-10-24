@@ -5,11 +5,11 @@ from setuptools import setup
 setup(
 
     # Do not use underscores in the plugin name.
-    name='a4c-overrides',
+    name='a4c-overrides-openstack',
 
-    version='0.1',
-    author='alien',
-    author_email='alien@fastconnect.fr',
+    version='1.3.1',
+    author='alien4cloud',
+    author_email='alien4cloud@fastconnect.fr',
     description='custom overrides',
 
     # This must correspond to the actual packages in the plugin.
