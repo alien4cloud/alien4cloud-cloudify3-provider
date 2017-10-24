@@ -1,8 +1,8 @@
 package alien4cloud.paas.cloudify3.service;
 
-import static alien4cloud.utils.AlienUtils.putIfNotEmpty;
-import static alien4cloud.utils.AlienUtils.safe;
-
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,33 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.IArtifact;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import org.alien4cloud.tosca.model.templates.Capability;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.CapabilityType;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.springframework.beans.factory.annotation.Required;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import alien4cloud.component.ICSARRepositorySearchService;
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
@@ -62,7 +35,32 @@ import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
 import alien4cloud.utils.MapUtil;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.IArtifact;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.templates.Capability;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.alien4cloud.tosca.model.types.CapabilityType;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Required;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+
+import static alien4cloud.utils.AlienUtils.putIfNotEmpty;
+import static alien4cloud.utils.AlienUtils.safe;
+
 
 /**
  * Handle blueprint generation from alien model
@@ -266,6 +264,7 @@ public class BlueprintService {
                     StandardCopyOption.REPLACE_EXISTING);
             FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()), overridesPluginDir,
                     StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/plugin-included.yaml"), overridesPluginDir.resolve("plugin-included.yaml"));
             FileUtil.zip(overridesPluginDir, generatedBlueprintDirectoryPath.resolve("plugins/overrides.zip"));
             context.put("shouldAddOverridesPlugin", true);
         }

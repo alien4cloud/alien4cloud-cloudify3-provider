@@ -105,11 +105,6 @@ plugins:
   custom_wf_plugin:
     executor: central_deployment_agent
     source: custom_wf_plugin
-#if($shouldAddOverridesPlugin)
-  overrides:
-    executor: central_deployment_agent
-    source: overrides
-#end## end if
 
 workflows:
 #foreach($wfEntry in ${deployment.workflows.workflows.entrySet()})
