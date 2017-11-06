@@ -130,11 +130,11 @@ def _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_conte
     instances = custom_context.modified_instances_per_node.get(node_id, [])
     instance_count = len(instances)
     if instance_count == 1:
-        sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id)
+        sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id, custom_context)
     elif instance_count > 1:
         fork = ForkjoinWrapper(graph)
         for instance in instances:
-            instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id)
+            instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context)
             fork.add(instance_task)
         msg = "operation {0} on all {1} node instances".format(operation_fqname, node_id)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -161,7 +161,7 @@ def _relationship_operation_task(ctx, graph, source, target, operation_fqname, o
         fork = ForkjoinWrapper(graph)
         for instance in instances:
             instance_task = relationship_operation_task_for_instance(ctx, custom_context, graph, instance,
-                                                                     operation_fqname, operation_host)
+                                                                     operation_fqname, operation_host, custom_context)
             fork.add(instance_task)
         msg = "operation {0} on all {1} relationship instances".format(operation_fqname, source)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -298,7 +298,7 @@ def relationship_operation_task_for_instance(ctx, custom_context, graph, rel_ins
     return sequence
 
 
-def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id):
+def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context):
     sequence = TaskSequenceWrapper(graph)
     sequence.add(build_wf_event_task(instance, step_id, "in"))
     if operation_fqname == 'cloudify.interfaces.lifecycle.start':
