@@ -1,11 +1,12 @@
-tosca_definitions_version: alien_dsl_1_4_0
+tosca_definitions_version: alien_dsl_2_0_0
 
-template_name: cloudify3-common-types
-template_author: alien4cloud
-template_version: 1.4.0
+metadata:
+  template_name: cloudify3-common-types
+  template_author: alien4cloud
+  template_version: 2.0.0-SM3
 
 imports:
-  - tosca-normative-types:1.0.0-ALIEN14
+  - tosca-normative-types:1.0.0-ALIEN20SM3
 
 data_types:
   alien.datatypes.AgentConfig:

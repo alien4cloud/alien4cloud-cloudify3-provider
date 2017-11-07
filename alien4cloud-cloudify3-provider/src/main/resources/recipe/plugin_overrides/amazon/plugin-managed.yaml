@@ -1,0 +1,5 @@
+plugins:
+  overrides:
+    executor: central_deployment_agent
+    package_name: a4c-overrides-aws
+    package_version: '1.4.1'

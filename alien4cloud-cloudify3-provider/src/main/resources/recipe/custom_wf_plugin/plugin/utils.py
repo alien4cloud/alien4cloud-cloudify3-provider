@@ -2,6 +2,7 @@ from handlers import build_persistent_event_tasks
 from handlers import build_wf_event_task
 from handlers import host_post_start
 from handlers import host_pre_stop
+from cloudify.workflows import tasks as workflow_tasks
 
 
 def _get_nodes_instances(ctx, node_id):
@@ -129,11 +130,11 @@ def _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_conte
     instances = custom_context.modified_instances_per_node.get(node_id, [])
     instance_count = len(instances)
     if instance_count == 1:
-        sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id)
+        sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id, custom_context)
     elif instance_count > 1:
         fork = ForkjoinWrapper(graph)
         for instance in instances:
-            instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id)
+            instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context)
             fork.add(instance_task)
         msg = "operation {0} on all {1} node instances".format(operation_fqname, node_id)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -160,7 +161,7 @@ def _relationship_operation_task(ctx, graph, source, target, operation_fqname, o
         fork = ForkjoinWrapper(graph)
         for instance in instances:
             instance_task = relationship_operation_task_for_instance(ctx, custom_context, graph, instance,
-                                                                     operation_fqname, operation_host)
+                                                                     operation_fqname, operation_host, custom_context)
             fork.add(instance_task)
         msg = "operation {0} on all {1} relationship instances".format(operation_fqname, source)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -297,7 +298,7 @@ def relationship_operation_task_for_instance(ctx, custom_context, graph, rel_ins
     return sequence
 
 
-def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id):
+def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context):
     sequence = TaskSequenceWrapper(graph)
     sequence.add(build_wf_event_task(instance, step_id, "in"))
     if operation_fqname == 'cloudify.interfaces.lifecycle.start':
@@ -336,9 +337,23 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
         if _is_host_node_instance(instance):
             sequence.add(*host_pre_stop(instance))
         task = instance.execute_operation(operation_fqname)
+
+        if custom_context.is_native_node(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore stop failure')
+                return workflow_tasks.HandlerResult.ignore()
+            task.on_failure = send_node_event_error_handler
+
         sequence.add(task)
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
         task = instance.execute_operation(operation_fqname)
+
+        if custom_context.is_native_node(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore delete failure')
+                return workflow_tasks.HandlerResult.ignore()
+            task.on_failure = send_node_event_error_handler
+
         sequence.add(task)
     else:
         # the default behavior : just do the job

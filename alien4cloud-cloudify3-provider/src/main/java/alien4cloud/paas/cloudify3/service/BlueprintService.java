@@ -1,24 +1,29 @@
 package alien4cloud.paas.cloudify3.service;
 
-import static alien4cloud.utils.AlienUtils.putIfNotEmpty;
-import static alien4cloud.utils.AlienUtils.safe;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
+import alien4cloud.orchestrators.locations.services.ILocationResourceService;
+import alien4cloud.orchestrators.locations.services.LocationService;
+import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
+import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
+import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
+import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
+import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
+import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
+import alien4cloud.paas.cloudify3.error.BlueprintGenerationException;
+import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
+import alien4cloud.paas.cloudify3.service.model.Relationship;
 import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
+import alien4cloud.paas.cloudify3.util.VelocityUtil;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.plugin.model.ManagedPlugin;
+import alien4cloud.utils.FileUtil;
+import alien4cloud.utils.MapUtil;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
@@ -39,30 +44,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import alien4cloud.orchestrators.locations.services.ILocationResourceService;
-import alien4cloud.orchestrators.locations.services.LocationService;
-import alien4cloud.paas.IPaaSTemplate;
-import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
-import alien4cloud.paas.cloudify3.artifacts.NodeInitArtifact;
-import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
-import alien4cloud.paas.cloudify3.blueprint.NonNativeTypeGenerationUtil;
-import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
-import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
-import alien4cloud.paas.cloudify3.error.BlueprintGenerationException;
-import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
-import alien4cloud.paas.cloudify3.service.model.Relationship;
-import alien4cloud.paas.cloudify3.util.VelocityUtil;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.plugin.model.ManagedPlugin;
-import alien4cloud.utils.FileUtil;
-import alien4cloud.utils.MapUtil;
-import lombok.extern.slf4j.Slf4j;
+import static alien4cloud.utils.AlienUtils.putIfNotEmpty;
+import static alien4cloud.utils.AlienUtils.safe;
 
 /**
  * Handle blueprint generation from alien model
@@ -261,6 +258,7 @@ public class BlueprintService {
                     StandardCopyOption.REPLACE_EXISTING);
             FileUtil.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/" + alienDeployment.getLocationType()), overridesPluginDir,
                     StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(pluginRecipeResourcesPath.resolve("plugin_overrides/plugin-included.yaml"), overridesPluginDir.resolve("plugin-included.yaml"));
             FileUtil.zip(overridesPluginDir, generatedBlueprintDirectoryPath.resolve("plugins/overrides.zip"));
             context.put("shouldAddOverridesPlugin", true);
         }
