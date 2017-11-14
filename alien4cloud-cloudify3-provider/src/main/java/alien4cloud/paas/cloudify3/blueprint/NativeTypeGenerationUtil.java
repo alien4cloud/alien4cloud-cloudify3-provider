@@ -1,16 +1,21 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
+import static alien4cloud.utils.AlienUtils.safe;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.CapabilityDefinition;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
 
 import com.google.common.collect.Lists;
@@ -27,6 +32,7 @@ import alien4cloud.paas.cloudify3.util.mapping.PropertyValueUtil;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.tosca.serializer.ToscaPropertySerializerUtils;
 import alien4cloud.utils.TagUtil;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 
 public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
 
@@ -118,7 +124,7 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
     public List<PaaSNodeTemplate> getAllComputes() {
         List<PaaSNodeTemplate> result = Lists.newArrayList(this.alienDeployment.getComputes());
         for (PaaSNodeTemplate node : this.alienDeployment.getCustomResources().values()) {
-            boolean isCompute = ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+            boolean isCompute = ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), NormativeComputeConstants.COMPUTE_TYPE);
             if (isCompute) {
                 result.add(node);
             }
@@ -126,4 +132,28 @@ public class NativeTypeGenerationUtil extends AbstractGenerationUtil {
         return result;
     }
 
+    /**
+     * Alien4cloud currently consider as scalable every node that does not have a host and that has the scalable capability.
+     * 
+     * @return Get all nodes that does not .
+     */
+    public List<PaaSNodeTemplate> getAllScalableNodes() {
+        List<PaaSNodeTemplate> result = Lists.newArrayList(this.alienDeployment.getComputes());
+        for (PaaSNodeTemplate node : this.alienDeployment.getCustomResources().values()) {
+            if (isScalableNode(node.getIndexedToscaElement())) {
+                result.add(node);
+            }
+        }
+        return result;
+    }
+
+    private boolean isScalableNode(NodeType nodeType) {
+        for (CapabilityDefinition capabilityDefinition : safe(nodeType.getCapabilities())) {
+            CapabilityType capabilityType = this.alienDeployment.getCapabilityTypes().get(capabilityDefinition.getType());
+            if (ToscaTypeUtils.isOfType(capabilityType, NormativeCapabilityTypes.SCALABLE)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

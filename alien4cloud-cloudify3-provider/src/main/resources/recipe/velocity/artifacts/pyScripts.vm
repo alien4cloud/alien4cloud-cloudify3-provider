@@ -1,0 +1,12 @@
+## This file contains wrapper executor for tosca.artifacts.Implementation.Python artifact.
+
+#include("includes/script_wrapper_static.py")
+
+#if($util.nonNative.isOperationOwnedByRelationship(${operation}))
+parsed_output = executePy(ctx.download_resource('${util.nonNative.getRelationshipImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), env_map)
+#else
+parsed_output = executePy(ctx.download_resource('${util.nonNative.getImplementationArtifactPath(${operation.owner}, ${operation.interfaceName}, ${operation.operationName}, ${operation.implementationArtifact})}'), env_map)
+#end
+
+## executor wrapper must define the outputs variable
+outputs = parsed_output['outputs'].items()

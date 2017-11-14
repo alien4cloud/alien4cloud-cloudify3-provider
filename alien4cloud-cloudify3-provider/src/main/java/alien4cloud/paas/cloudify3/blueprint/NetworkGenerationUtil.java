@@ -14,6 +14,7 @@ import alien4cloud.paas.model.PaaSNodeTemplate;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 
 import com.google.common.collect.Lists;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 
 public class NetworkGenerationUtil extends NativeTypeGenerationUtil {
 
@@ -26,7 +27,7 @@ public class NetworkGenerationUtil extends NativeTypeGenerationUtil {
         List<PaaSNodeTemplate> computeNetworks = compute.getNetworkNodes();
         List<PaaSNodeTemplate> selectedNetworks = Lists.newArrayList();
         for (PaaSNodeTemplate computeNetwork : computeNetworks) {
-            if (ToscaNormativeUtil.isFromType(networkType, computeNetwork.getIndexedToscaElement())) {
+            if (ToscaTypeUtils.isOfType(computeNetwork.getIndexedToscaElement(), networkType)) {
                 selectedNetworks.add(computeNetwork);
             }
         }

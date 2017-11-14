@@ -11,8 +11,8 @@ import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.Capability;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -162,14 +162,14 @@ public class PropertyEvaluatorService {
             PaaSRelationshipTemplate relationshipTemplate, String propertyName) {
         // If the node is a docker type, special case for port and ip_address properties
         // as it must be handled by the Cloudify's kubernetes plugin
-        boolean dockerTypeNode = ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, node.getIndexedToscaElement());
+        boolean dockerTypeNode = ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE);
         boolean connectsToRelationship = relationshipTemplate.instanceOf("tosca.relationships.ConnectsTo");
         boolean portOrIpAddress = ("port".equalsIgnoreCase(propertyName) || "ip_address".equalsIgnoreCase(propertyName));
         if (dockerTypeNode && connectsToRelationship && portOrIpAddress) {
             // Particular treatment for port and ip_address that needs to be retrieved at runtime from the kubernetes plugin of cloudify.
             // We need to generate a kind of custom function for the plugin in the generated blueprint.
             if ("ip_address".equalsIgnoreCase(propertyName)) {
-                if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, target.getIndexedToscaElement())) {
+                if (ToscaTypeUtils.isOfType(target.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
                     propertyName = "clusterIP";
                 } else { // Workaround(cfy3): If the property is 'ip_address', change it to 'ip'
                     propertyName = "ip";

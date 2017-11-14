@@ -70,17 +70,27 @@ relationships:
 node_templates:
 
 #if($util.collectionHasElement($deployment.dockerTypes))
+#[[
+## Kube
+]]#
 #parse("provider/common/kubernetes.yaml.vm")
 #end## #if($util.collectionHasElement($deployment.dockerTypes))
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")
+#[[
+## Non nat
+]]#
 #nonNativeNodes($deployment.nonNatives)
-
+#[[
+## Monitor
+]]#
 #parse("provider/common/monitor_node.yaml.vm")
-
+#[[
+## scaling
+]]#
 #* Handle scaling groups *#
-#set( $computes = $util.natives.getAllComputes() )
+#set( $computes = $util.natives.getAllScalableNodes() )
 #if($util.common.doesVelocityFileExists("${velocityResourcesPath}/provider/${deployment.locationType}/compute_scaling_group.yaml.vm"))
 #parse("provider/${deployment.locationType}/compute_scaling_group.yaml.vm")
 #buildSpecificScalableComputeGroups($computes)

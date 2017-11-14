@@ -36,6 +36,7 @@ import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -342,7 +343,7 @@ public class BlueprintService {
             for (Map.Entry<String, Capability> entry : nonNative.getTemplate().getCapabilities().entrySet()) {
                 Capability capability = entry.getValue();
                 CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
-                if (ToscaNormativeUtil.isFromType(TOSCA_CAPABILITIES_ENDPOINT, capabilityType)) {
+                if (ToscaTypeUtils.isOfType(capabilityType, TOSCA_CAPABILITIES_ENDPOINT)) {
                     // Create a service if the capability is an endpoint
                     podContext.put("service_capability", capability);
 

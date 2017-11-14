@@ -90,6 +90,10 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
 
     return parsed_output
 
+def executePy(script_path, tosca_env_map):
+    tosca_params={'tosca': {'inputs': tosca_env_map, 'outputs': {}}}
+    execfile(script_path, globals().copy(), tosca_params)
+    return tosca_params['tosca'];
 
 class OutputConsumer(object):
     def __init__(self, out):
