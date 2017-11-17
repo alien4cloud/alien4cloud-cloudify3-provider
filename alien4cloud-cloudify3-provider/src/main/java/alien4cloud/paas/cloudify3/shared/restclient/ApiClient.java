@@ -24,6 +24,8 @@ public class ApiClient {
     private final TokenClient tokenClient;
     @Getter
     private final VersionClient versionClient;
+    @Getter
+    private final VaultClient vaultClient;
 
     public ApiClient(ApiHttpClient httpClient) {
         blueprintClient = new BlueprintClient(httpClient);
@@ -35,5 +37,6 @@ public class ApiClient {
         nodeInstanceClient = new NodeInstanceClient(httpClient);
         tokenClient = new TokenClient(httpClient);
         versionClient = new VersionClient(httpClient);
+        vaultClient = new VaultClient(httpClient);
     }
 }

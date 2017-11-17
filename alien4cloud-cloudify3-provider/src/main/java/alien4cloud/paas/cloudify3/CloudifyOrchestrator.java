@@ -13,6 +13,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -26,13 +27,7 @@ import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
-import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
-import alien4cloud.paas.cloudify3.service.DeploymentService;
-import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
-import alien4cloud.paas.cloudify3.service.PluginArchiveService;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.StatusService;
+import alien4cloud.paas.cloudify3.service.*;
 import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
@@ -40,12 +35,8 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.InstanceInformation;
-import alien4cloud.paas.model.NodeOperationExecRequest;
-import alien4cloud.paas.model.PaaSDeploymentContext;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.model.*;
+import alien4cloud.rest.utils.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -114,7 +105,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
      */
 
     @Override
-    public void deploy(PaaSTopologyDeploymentContext deploymentContext, final IPaaSCallback callback) {
+    public void deploy(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback callback) {
         // first of all, let's check this deployment's status
         DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
         if (!DeploymentStatus.UNDEPLOYED.equals(currentStatus)) {
@@ -124,13 +115,18 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
                     + " is active (must undeploy first) or is in unknown state (must wait for status available)"));
             return;
         }
+
         // Cloudify will use recipe id to identify a blueprint and a deployment instead of deployment id
         log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeployment(deploymentContext.getDeploymentPaaSId());
+
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
+
         try {
             CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
             applicationContext.publishEvent(new AboutToDeployTopologyEvent(this, deploymentContext));
+
             // TODO Better do it in Alien4Cloud or in plugin ?
             propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
 
@@ -142,6 +138,55 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
             callback.onFailure(e);
         }
+    }
+
+    private IPaaSCallback handleLocationVaultCredentialsIfNeeded(PaaSDeploymentContext deploymentContext, IPaaSCallback callback) {
+        boolean hasSecretProvider = deploymentContext.getSecretProviderConfigurationAndCredentials() != null;
+        if (hasSecretProvider) {
+            IPaaSCallback originalCallback = callback;
+
+            String secretKey = buildSecretKey(deploymentContext);
+            String secretValue = null;
+            try {
+                secretValue = JsonUtil.toString(deploymentContext.getSecretProviderConfigurationAndCredentials());
+            } catch (JsonProcessingException e) {
+                // un-recoverable exception
+                throw new RuntimeException("Failed to serialize secret provider configuration and credentials", e);
+            }
+
+            // add location vault credentials into cloudify vault
+            cloudConfigurationHolder.getApiClient().getVaultClient().deleteSecret(secretKey);
+            cloudConfigurationHolder.getApiClient().getVaultClient().putSecret(secretKey, secretValue);
+            log.error("TEMP LOG " + cloudConfigurationHolder.getApiClient().getVaultClient().getSecret(secretKey));
+
+            // soon the deployment is completed (successfully or not) the credentials should be deleted
+            IPaaSCallback callbackThenCleanVault = new IPaaSCallback() {
+                @Override
+                public void onSuccess(Object data) {
+                    try {
+                        originalCallback.onSuccess(data);
+                    } finally {
+                        cloudConfigurationHolder.getApiClient().getVaultClient().deleteSecret(secretKey);
+                    }
+                }
+
+                @Override
+                public void onFailure(Throwable throwable) {
+                    try {
+                        originalCallback.onFailure(throwable);
+                    } finally {
+                        cloudConfigurationHolder.getApiClient().getVaultClient().deleteSecret(secretKey);
+                    }
+                }
+            };
+
+            callback = callbackThenCleanVault;
+        }
+        return callback;
+    }
+
+    private String buildSecretKey(PaaSDeploymentContext deploymentContext) {
+        return "vault-credentials-" + deploymentContext.getDeploymentPaaSId();
     }
 
     @Override
@@ -161,6 +206,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UPDATE_IN_PROGRESS);
 
         applicationContext.publishEvent(new AboutToDeployTopologyEvent(this, deploymentContext));
+
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
         try {
             // TODO Better do it in Alien4Cloud or in plugin ?
             propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
@@ -180,6 +227,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void undeploy(PaaSDeploymentContext deploymentContext, IPaaSCallback callback) {
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
+
         FutureUtil.associateFutureToPaaSCallback(deploymentService.undeploy(deploymentContext), callback);
     }
 
@@ -228,7 +277,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void getInstancesInformation(PaaSTopologyDeploymentContext deploymentContext,
-            IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
+                                        IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
         statusService.getInstancesInformation(deploymentContext, callback);
     }
 
@@ -256,20 +305,24 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback callback) {
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
         ListenableFuture scale = customWorkflowService.scale(deploymentContext.getDeploymentPaaSId(), nodeTemplateId, instances);
         FutureUtil.associateFutureToPaaSCallback(scale, callback);
     }
 
     @Override
     public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> workflowParameters,
-            IPaaSCallback<?> callback) {
+                               IPaaSCallback<?> callback) {
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
         FutureUtil.associateFutureToPaaSCallback(
                 customWorkflowService.launchWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, workflowParameters), callback);
     }
 
     @Override
     public void executeOperation(PaaSTopologyDeploymentContext deploymentContext, NodeOperationExecRequest nodeOperationExecRequest,
-            IPaaSCallback<Map<String, String>> callback) throws OperationExecutionException {
+                                 IPaaSCallback<Map<String, String>> callback) throws OperationExecutionException {
+        callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
+
         CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
         ListenableFuture<Map<String, String>> executionFutureResult = customWorkflowService.executeOperation(deployment, nodeOperationExecRequest);
         FutureUtil.associateFutureToPaaSCallback(executionFutureResult, callback);
