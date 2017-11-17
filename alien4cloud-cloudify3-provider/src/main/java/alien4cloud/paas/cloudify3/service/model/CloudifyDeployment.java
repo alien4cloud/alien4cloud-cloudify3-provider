@@ -4,16 +4,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.RelationshipType;
+
+import alien4cloud.deployment.model.SecretProviderConfigurationAndCredentials;
 import alien4cloud.paas.cloudify3.util.mapping.IPropertyMapping;
 import alien4cloud.paas.model.PaaSNodeTemplate;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -83,8 +85,13 @@ public class CloudifyDeployment {
     private Map<String, CapabilityType> capabilityTypes;
 
     /**
-     * * {elementType -> {propertyNamePath -> IPropertyMapping}}
+     ** {elementType -> {propertyNamePath -> IPropertyMapping}}
      */
     private Map<String, Map<String, List<IPropertyMapping>>> propertyMappings;
+
+    /**
+     * Configuration for secret
+     */
+    private SecretProviderConfigurationAndCredentials secretConfiguration;
 
 }

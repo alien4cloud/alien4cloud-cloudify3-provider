@@ -4,13 +4,22 @@ TODO: For smaller packages we should improve that and actually make a python pac
 *#
 #include("includes/common_wrapper_static.py")
 
+#include("includes/cloudify_rest_client.py")
+
+#if(${deployment.secretConfiguration})
+#include("includes/hashicorp_vault_client_lib.py")
+
+#parse("includes/vault_client.py.vm")
+
+#end
+
 ctx.instance.runtime_properties['tosca_id'] = ctx.instance.id
 ctx.instance.runtime_properties['tosca_name'] = ctx.node.id
 
 ## Make all node property an attribute
 #foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
 #if(!$util.common.isNull($propertyEntry.value))
-ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatValue(null, $propertyEntry.value)
+ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatValue($operation.owner, $propertyEntry.value)
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
 
@@ -18,7 +27,7 @@ ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatVa
 #foreach($capabilityEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.capabilities))
 #foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
 #if(!$util.common.isNull($propertyEntry.value))
-ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatValue(null, $propertyEntry.value)
+ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatValue($operation.owner, $propertyEntry.value)
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
 ## Inject the host ip address into every tosca.capabilities.Endpoint capabilities

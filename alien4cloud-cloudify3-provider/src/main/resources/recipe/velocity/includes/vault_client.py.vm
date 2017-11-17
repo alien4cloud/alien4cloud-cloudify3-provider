@@ -1,0 +1,19 @@
+def connect_to_vault_by_token(url, token):
+    return HashiCorpVaultClient(url=url, token=token)
+
+def connect_to_vault_by_ldap(url, user, password):
+    hashi_corp_vault_client = HashiCorpVaultClient(url=url)
+    hashi_corp_vault_client.auth_ldap(user, password)
+    return hashi_corp_vault_client
+
+vault_configuration = json.loads(client.secrets.get('vault-credentials-$deployment.deploymentPaaSId').value)
+
+vault_client = None
+
+if vault_configuration['secretProviderConfiguration']['configuration']['configuration']['authenticationMethod'] == 'ldap':
+    vault_client = connect_to_vault_by_ldap(url = vault_configuration['secretProviderConfiguration']['configuration']['configuration']['url'], user = vault_configuration['credentials']['user'], password = vault_configuration['credentials']['password'])
+else:
+    vault_client = connect_to_vault_by_token(url = vault_configuration['secretProviderConfiguration']['configuration']['configuration']['url'], token = vault_configuration['credentials']['token'])
+
+def get_secret(secret_path):
+    return vault_client.read(secret_path)['data']['value']

@@ -29,10 +29,10 @@ import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.alien4cloud.tosca.utils.TopologyUtils;
 import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -58,7 +58,6 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.rest.utils.JsonUtil;
-import org.alien4cloud.tosca.utils.TopologyUtils;
 import alien4cloud.tosca.PaaSUtils;
 import alien4cloud.utils.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -216,7 +215,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             return "''";
         } else {
             String ownerId = owner == null ? "" : "for " + owner.getId();
-            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input ");
+            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input for owner " + ownerId);
         }
     }
 
@@ -299,7 +298,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return the formatted parameter understandable by Cloudify
      */
     public String formatNodeFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
-        if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+        if (ToscaFunctionConstants.GET_SECRET.equals(functionPropertyValue.getFunction())) {
+            return "get_secret('" + functionPropertyValue.getTemplateName() + "')";
+        } else if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
             return "get_attribute(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_PROPERTY.equals(functionPropertyValue.getFunction())) {
             return "get_property(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
@@ -321,7 +322,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      */
     private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
             FunctionPropertyValue functionPropertyValue) {
-        if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+        if (ToscaFunctionConstants.GET_SECRET.equals(functionPropertyValue.getFunction())) {
+            return "get_secret('" + functionPropertyValue.getTemplateName() + "')";
+        } else if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
             if (ToscaFunctionConstants.R_TARGET.equals(functionPropertyValue.getTemplateName().toUpperCase())
                     && relationshipTemplate.getTemplate().getTargetedCapabilityName() != null) {
                 // If fetching from target and we know then try to fetch attribute from the target capability first and then the from the node.

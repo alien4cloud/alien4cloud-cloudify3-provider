@@ -19,7 +19,6 @@ import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.CollectionUtils;
@@ -139,7 +138,7 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
         cloudifyDeployment.setCapabilityTypes(deploymentContext.getPaaSTopology().getCapabilityTypes());
-
+        cloudifyDeployment.setSecretConfiguration(deploymentContext.getSecretProviderConfigurationAndCredentials());
         return cloudifyDeployment;
     }
 

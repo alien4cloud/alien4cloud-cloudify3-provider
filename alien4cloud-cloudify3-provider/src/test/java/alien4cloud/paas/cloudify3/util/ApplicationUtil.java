@@ -1,26 +1,26 @@
 package alien4cloud.paas.cloudify3.util;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import javax.annotation.Resource;
 
-import org.alien4cloud.tosca.catalog.ArchiveParser;
-import org.alien4cloud.tosca.model.templates.Topology;
+import org.alien4cloud.tosca.model.Csar;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.springframework.stereotype.Component;
 
+import alien4cloud.application.ApplicationEnvironmentService;
 import alien4cloud.application.ApplicationService;
+import alien4cloud.application.ApplicationVersionService;
 import alien4cloud.dao.ElasticSearchDAO;
+import alien4cloud.deployment.DeploymentTopologyDTOBuilder;
 import alien4cloud.model.application.Application;
+import alien4cloud.model.application.ApplicationEnvironment;
+import alien4cloud.model.application.ApplicationVersion;
+import alien4cloud.model.deployment.DeploymentTopology;
 import alien4cloud.paas.cloudify3.AbstractTest;
-import alien4cloud.tosca.model.ArchiveRoot;
-import alien4cloud.tosca.parser.ParsingException;
-import alien4cloud.tosca.parser.ParsingResult;
-import alien4cloud.utils.AlienConstants;
-import alien4cloud.utils.FileUtil;
+import alien4cloud.topology.TopologyServiceCore;
 import alien4cloud.utils.MapUtil;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -36,35 +36,43 @@ public class ApplicationUtil {
     protected ElasticSearchDAO alienDAO;
 
     @Resource
-    private ArchiveParser parser;
+    protected ApplicationVersionService applicationVersionService;
+
+    @Resource
+    protected ApplicationEnvironmentService applicationEnvironmentService;
+
+    @Resource
+    private DeploymentTopologyDTOBuilder deploymentTopologyDTOBuilder;
+
+    @Resource
+    private TopologyServiceCore topologyServiceCore;
+
+    @Resource
+    private CSARUtil csarUtil;
 
     public boolean isTopologyExistForLocation(String topologyFileName, String locationName) {
         return Files.exists(Paths.get("src/test/resources/topologies/" + locationName + "/" + topologyFileName + ".yaml"));
     }
 
     @SneakyThrows
-    public Topology createAlienApplication(String applicationName, String topologyFileName, String locationName) {
+    public DeploymentTopology createAlienApplication(String applicationName, String topologyFileName, String locationName) {
         Application application = alienDAO.customFind(Application.class, QueryBuilders.termQuery("name", applicationName));
         if (application != null) {
             applicationService.delete(application.getId());
         }
-        ArchiveRoot archiveRoot = parseYamlTopology(topologyFileName, locationName);
+        Csar csar = parseYamlTopology(topologyFileName, locationName);
         String applicationId = applicationService.create("alien", applicationName, applicationName, null);
         // TODO validate this works
-        archiveRoot.getArchive().setDelegateId(applicationId);
-        archiveRoot.getArchive().setDelegateType(Application.class.getSimpleName().toLowerCase());
-        alienDAO.save(archiveRoot.getArchive());
-        alienDAO.save(archiveRoot.getTopology());
-        return archiveRoot.getTopology();
+        ApplicationVersion version = applicationVersionService.createInitialVersion(applicationId, csar.getId());
+        ApplicationEnvironment applicationEnvironment = applicationEnvironmentService.createApplicationEnvironment("alien", applicationId,
+                version.getTopologyVersions().keySet().iterator().next());
+        return deploymentTopologyDTOBuilder.prepareDeployment(topologyServiceCore.getOrFail(csar.getId()), application, applicationEnvironment).getTopology();
     }
 
-    private ArchiveRoot parseYamlTopology(String topologyFileName, String locationName) throws IOException, ParsingException {
-        Path zipPath = Files.createTempFile("csar", ".zip");
+    private Csar parseYamlTopology(String topologyFileName, String locationName) throws Exception {
         Path realTopologyPath = Files.createTempFile(topologyFileName, ".yaml");
         VelocityUtil.generate(Paths.get("src/test/resources/topologies/" + locationName + "/" + topologyFileName + ".yaml"), realTopologyPath,
                 MapUtil.newHashMap(new String[] { "projectVersion" }, new String[] { AbstractTest.VERSION }));
-        FileUtil.zip(realTopologyPath, zipPath);
-        ParsingResult<ArchiveRoot> parsingResult = parser.parse(zipPath, AlienConstants.GLOBAL_WORKSPACE_ID);
-        return parsingResult.getResult();
+        return csarUtil.uploadCSAR(realTopologyPath).getResult();
     }
 }

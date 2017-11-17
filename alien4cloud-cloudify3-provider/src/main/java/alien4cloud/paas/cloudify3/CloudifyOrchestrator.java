@@ -27,7 +27,13 @@ import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.*;
+import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
+import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
+import alien4cloud.paas.cloudify3.service.DeploymentService;
+import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
+import alien4cloud.paas.cloudify3.service.PluginArchiveService;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.StatusService;
 import alien4cloud.paas.cloudify3.service.event.EventService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
@@ -35,7 +41,12 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PaaSAlreadyDeployedException;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.InstanceInformation;
+import alien4cloud.paas.model.NodeOperationExecRequest;
+import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -157,7 +168,6 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             // add location vault credentials into cloudify vault
             cloudConfigurationHolder.getApiClient().getVaultClient().deleteSecret(secretKey);
             cloudConfigurationHolder.getApiClient().getVaultClient().putSecret(secretKey, secretValue);
-            log.error("TEMP LOG " + cloudConfigurationHolder.getApiClient().getVaultClient().getSecret(secretKey));
 
             // soon the deployment is completed (successfully or not) the credentials should be deleted
             IPaaSCallback callbackThenCleanVault = new IPaaSCallback() {
@@ -277,7 +287,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void getInstancesInformation(PaaSTopologyDeploymentContext deploymentContext,
-                                        IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
+            IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
         statusService.getInstancesInformation(deploymentContext, callback);
     }
 
@@ -312,7 +322,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> workflowParameters,
-                               IPaaSCallback<?> callback) {
+            IPaaSCallback<?> callback) {
         callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
         FutureUtil.associateFutureToPaaSCallback(
                 customWorkflowService.launchWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, workflowParameters), callback);
@@ -320,7 +330,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void executeOperation(PaaSTopologyDeploymentContext deploymentContext, NodeOperationExecRequest nodeOperationExecRequest,
-                                 IPaaSCallback<Map<String, String>> callback) throws OperationExecutionException {
+            IPaaSCallback<Map<String, String>> callback) throws OperationExecutionException {
         callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
 
         CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);

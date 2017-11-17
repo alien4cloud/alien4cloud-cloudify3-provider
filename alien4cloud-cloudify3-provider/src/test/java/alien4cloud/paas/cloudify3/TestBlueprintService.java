@@ -13,6 +13,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.location.AmazonLocationConfigurator;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
 import org.alien4cloud.tosca.model.definitions.IValue;
@@ -76,10 +77,10 @@ public class TestBlueprintService extends AbstractTestBlueprint {
 
     @PostConstruct
     public void postConstruct() {
-        LOCATIONS.add("openstack");
-        locationsConfigurators.put("openstack", applicationContext.getBean(OpenstackLocationConfigurator.class));
-        // LOCATIONS.add("amazon");
-        // locationsConfigurators.put("amazon", applicationContext.getBean(AmazonLocationConfigurator.class));
+//        LOCATIONS.add("openstack");
+//        locationsConfigurators.put("openstack", applicationContext.getBean(OpenstackLocationConfigurator.class));
+         LOCATIONS.add("amazon");
+         locationsConfigurators.put("amazon", applicationContext.getBean(AmazonLocationConfigurator.class));
         // LOCATIONS.add("byon");
         // locationsConfigurators.put("byon", applicationContext.getBean(ByonLocationConfigurator.class));
     }

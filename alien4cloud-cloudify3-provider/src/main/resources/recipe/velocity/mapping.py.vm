@@ -1,5 +1,7 @@
 #include("includes/common_wrapper_static.py")
-#parse("includes/cloudify_rest_client.py.vm")
+
+#include("includes/cloudify_rest_client.py")
+
 #include("includes/script_wrapper_static.py")
 
 # Check the inputs
