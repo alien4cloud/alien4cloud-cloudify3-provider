@@ -76,6 +76,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return ToscaNodeLifecycleConstants.STANDARD.equals(interfaceName) || ToscaNodeLifecycleConstants.STANDARD_SHORT.equals(interfaceName);
     }
 
+    public boolean propertyCanBeExposed(AbstractPropertyValue propertyValue) {
+        return propertyValue != null && !FunctionEvaluator.containGetSecretFunction(propertyValue);
+    }
+
     public String tryToMapToCloudifyInterface(String interfaceName) {
         if (isStandardLifecycleInterface(interfaceName)) {
             return "cloudify.interfaces.lifecycle";

@@ -18,7 +18,7 @@ ctx.instance.runtime_properties['tosca_name'] = ctx.node.id
 
 ## Make all node property an attribute
 #foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
-#if(!$util.common.isNull($propertyEntry.value))
+#if($util.nonNative.propertyCanBeExposed($propertyEntry.value))
 ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatValue($operation.owner, $propertyEntry.value)
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.properties))
@@ -26,7 +26,7 @@ ctx.instance.runtime_properties['$propertyEntry.key'] = $util.nonNative.formatVa
 ## Make all node capability property an attribute
 #foreach($capabilityEntry in $util.common.safeEntrySet($operation.owner.nodeTemplate.capabilities))
 #foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))
-#if(!$util.common.isNull($propertyEntry.value))
+#if($util.nonNative.propertyCanBeExposed($propertyEntry.value))
 ctx.instance.runtime_properties['capabilities.${capabilityEntry.key}.${propertyEntry.key}'] = $util.nonNative.formatValue($operation.owner, $propertyEntry.value)
 #end
 #end##foreach($propertyEntry in $util.common.safeEntrySet($capabilityEntry.value.properties))

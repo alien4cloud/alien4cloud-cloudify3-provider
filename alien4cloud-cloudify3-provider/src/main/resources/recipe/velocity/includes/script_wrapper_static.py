@@ -41,7 +41,7 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
     if command_prefix is not None:
         command = "{0} {1}".format(command_prefix, command)
 
-    ctx.logger.info('Executing: {0} in env {1}'.format(command, env))
+    ctx.logger.info('Executing: {0} in env {1}'.format(command, env.keys()))
 
     process = subprocess.Popen(command,
                                shell=True,
