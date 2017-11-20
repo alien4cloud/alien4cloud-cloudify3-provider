@@ -77,7 +77,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean propertyCanBeExposed(AbstractPropertyValue propertyValue) {
-        return propertyValue != null && !FunctionEvaluator.containGetSecretFunction(propertyValue);
+        return propertyValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(propertyValue);
     }
 
     public String tryToMapToCloudifyInterface(String interfaceName) {
