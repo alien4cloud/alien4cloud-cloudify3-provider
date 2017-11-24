@@ -50,7 +50,7 @@ class UnexpectedError(VaultError):
 
 class HashiCorpVaultClient(object):
     def __init__(self, url='http://localhost:8200', token=None,
-                 cert=None, verify=True, timeout=30, proxies=None,
+                 cert=None, verify_path=None, timeout=30, proxies=None,
                  allow_redirects=True, session=None):
 
         if not session:
@@ -58,12 +58,14 @@ class HashiCorpVaultClient(object):
 
         self.allow_redirects = allow_redirects
         self.session = session
+        if verify_path is not None:
+            self.session.verify = verify_path
         self.token = token
 
         self._url = url
         self._kwargs = {
             'cert': cert,
-            'verify': verify,
+            'verify': True,
             'timeout': timeout,
             'proxies': proxies,
         }
