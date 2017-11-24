@@ -12,6 +12,29 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import alien4cloud.exception.InvalidArgumentException;
+import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
+import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
+import alien4cloud.paas.cloudify3.service.model.Relationship;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
+import alien4cloud.paas.exception.NotSupportedException;
+import alien4cloud.paas.function.FunctionEvaluator;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
+import alien4cloud.rest.utils.JsonUtil;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.utils.FileUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
@@ -29,39 +52,14 @@ import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.alien4cloud.tosca.utils.TopologyUtils;
 import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import alien4cloud.exception.InvalidArgumentException;
-import alien4cloud.paas.IPaaSTemplate;
-import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
-import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
-import alien4cloud.paas.cloudify3.service.model.Relationship;
-import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
-import alien4cloud.paas.exception.NotSupportedException;
-import alien4cloud.paas.function.FunctionEvaluator;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
-import alien4cloud.rest.utils.JsonUtil;
-import org.alien4cloud.tosca.utils.TopologyUtils;
-import alien4cloud.tosca.PaaSUtils;
-import alien4cloud.utils.FileUtil;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
@@ -316,7 +314,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
-     * @param relationshipTemplate The relationship template for which to format the function request.
+     * @param relationshipTemplate  The relationship template for which to format the function request.
      * @return the formatted parameter understandable by Cloudify
      */
     private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
@@ -346,15 +344,14 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                 builder.append("])");
                 return builder.toString();
             }
-            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '"
-                    + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '" + functionPropertyValue
+                    .getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_PROPERTY.equals(functionPropertyValue.getFunction())) {
             return "get_property(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '" + functionPropertyValue.getElementNameToFetch()
                     + "')";
         } else if (ToscaFunctionConstants.GET_OPERATION_OUTPUT.equals(functionPropertyValue.getFunction())) {
-            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '_a4c_OO:"
-                    + functionPropertyValue.getInterfaceName() + ':' + functionPropertyValue.getOperationName() + ":"
-                    + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '_a4c_OO:" + functionPropertyValue
+                    .getInterfaceName() + ':' + functionPropertyValue.getOperationName() + ":" + functionPropertyValue.getElementNameToFetch() + "')";
         } else {
             throw new NotSupportedException("Function " + functionPropertyValue.getFunction() + " is not supported");
         }
@@ -439,8 +436,8 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean operationHasDeploymentArtifacts(OperationWrapper operationWrapper) {
-        return MapUtils.isNotEmpty(operationWrapper.getAllDeploymentArtifacts())
-                || MapUtils.isNotEmpty(operationWrapper.getAllRelationshipDeploymentArtifacts());
+        return MapUtils.isNotEmpty(operationWrapper.getAllDeploymentArtifacts()) || MapUtils
+                .isNotEmpty(operationWrapper.getAllRelationshipDeploymentArtifacts());
     }
 
     public String getOperationOutputNames(Operation operation) {
@@ -491,24 +488,24 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public String getArtifactPath(String nodeId, String artifactId, DeploymentArtifact artifact) {
-        return mappingConfiguration.getArtifactDirectoryName() + "/" + nodeId + "/" + artifactId + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + nodeId + "/" + artifactId + "/" + Paths.get(artifact.getArtifactPath()).getFileName()
+                .toString();
     }
 
     public String getRelationshipArtifactPath(String sourceId, String relationshipId, String artifactId, DeploymentArtifact artifact) {
-        return mappingConfiguration.getArtifactDirectoryName() + "/" + sourceId + "/" + relationshipId + "/" + artifactId + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + sourceId + "/" + relationshipId + "/" + artifactId + "/" + Paths
+                .get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getImplementationArtifactPath(PaaSNodeTemplate owner, String interfaceName, String operationName, ImplementationArtifact artifact) {
-        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getId() + "/" + interfaceName + "/" + operationName + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getId() + "/" + interfaceName + "/" + operationName + "/" + Paths
+                .get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getRelationshipImplementationArtifactPath(PaaSRelationshipTemplate owner, String interfaceName, String operationName,
             ImplementationArtifact artifact) {
-        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getSource() + "_" + owner.getTemplate().getTarget() + "/"
-                + owner.getId() + "/" + interfaceName + "/" + operationName + "/" + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getSource() + "_" + owner.getTemplate().getTarget() + "/" + owner
+                .getId() + "/" + interfaceName + "/" + operationName + "/" + Paths.get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getArtifactWrapperPath(IPaaSTemplate<?> owner, String interfaceName, String operationName) {
@@ -532,9 +529,20 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
      */
     public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
+
         if (isCustomResource(node)) {
             return false;
         }
+
+        if (isNonNative(node)) {
+            PaaSNodeTemplate topParentNode = getTopParentPaaSNodeTemplate(node);
+            if (!isCompute(topParentNode) && !isServiceNodeTemplate(topParentNode) && isCustomResource(topParentNode)) {
+                // If the top parent node is a custom resource but not a compute nor a service,
+                // operations of the hosted node are executed on the management agent's side.
+                return false;
+            }
+        }
+
         // If the node is compute only the create operation is executed on central node. Other operations are called on the compute instance (that we should be
         // able to connect to after create).
 
@@ -546,6 +554,22 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         }
 
         return true;
+    }
+
+    /**
+     * Iterates over the hostedOn relationship and returns the top parent node.
+     *
+     * @param node The node to get the parent
+     * @return The top parent node of the given node
+     */
+    private PaaSNodeTemplate getTopParentPaaSNodeTemplate(PaaSNodeTemplate node) {
+        for (PaaSRelationshipTemplate relationshipTemplate : node.getRelationshipTemplates()) {
+            if (relationshipTemplate.instanceOf(NormativeRelationshipConstants.HOSTED_ON) && !node.getId()
+                    .equals(this.getTargetNode(relationshipTemplate).getId())) {
+                return this.getTopParentPaaSNodeTemplate(this.getTargetNode(relationshipTemplate));
+            }
+        }
+        return node;
     }
 
     /**
@@ -619,7 +643,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean isEndpoint(String capabilityTypeName) {
         CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capabilityTypeName);
-        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId())
-                || (capabilityType.getDerivedFrom() != null && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
+        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId()) || (capabilityType.getDerivedFrom() != null
+                && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
     }
 }
