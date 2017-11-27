@@ -55,7 +55,7 @@ public class CSARUtil {
 
     private RepositoryManager repositoryManager = new RepositoryManager();
 
-    public void uploadCSAR(Path path) throws Exception {
+    public ParsingResult<Csar> uploadCSAR(Path path) throws Exception {
         log.info("Uploading csar {}", path);
         Path zipPath = Files.createTempFile("csar", ".zip");
         FileUtil.zip(path, zipPath);
@@ -75,6 +75,7 @@ public class CSARUtil {
             }
         }
         log.info("Uploaded csar {}", path);
+        return result;
     }
 
     public void uploadNormativeTypes() throws Exception {
@@ -132,7 +133,7 @@ public class CSARUtil {
 
     public void uploadAll() throws Exception {
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_SAMPLES, "master", SAMPLES_TYPES_NAME);
-        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "1.4.0", TOSCA_NORMATIVE_TYPES_NAME);
+        repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_NORMATIVES, "master", TOSCA_NORMATIVE_TYPES_NAME);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_STORAGE, "1.4.0", ALIEN4CLOUD_STORAGE_TYPES);
         repositoryManager.cloneOrCheckout(ARTIFACTS_DIRECTORY, URL_FOR_DOCKER, "master", DOCKER_TYPES_NAME);
         uploadNormativeTypes();

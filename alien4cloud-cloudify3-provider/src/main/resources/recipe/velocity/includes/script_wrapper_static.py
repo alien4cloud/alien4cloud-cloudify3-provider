@@ -41,7 +41,7 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
     if command_prefix is not None:
         command = "{0} {1}".format(command_prefix, command)
 
-    ctx.logger.info('Executing: {0} in env {1}'.format(command, env))
+    ctx.logger.info('Executing: {0} in env {1}'.format(command, env.keys()))
 
     process = subprocess.Popen(command,
                                shell=True,
@@ -76,7 +76,6 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
         error_message = "Script {0} encountered error with return code {1} and standard output {2}, error output {3}".format(command, return_code,
                                                                                                                              stdout_consumer.buffer.getvalue(),
                                                                                                                              stderr_consumer.buffer.getvalue())
-        error_message = str(unicode(error_message, errors='ignore'))
         ctx.logger.error(error_message)
 
         if raiseException:
@@ -85,7 +84,6 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
     else:
         ok_message = "Script {0} executed normally with standard output {1} and error output {2}".format(command, stdout_consumer.buffer.getvalue(),
                                                                                                          stderr_consumer.buffer.getvalue())
-        ok_message = str(unicode(ok_message, errors='ignore'))
         ctx.logger.info(ok_message)
 
     return parsed_output
@@ -93,7 +91,7 @@ def execute(script_path, process, outputNames, command_prefix=None, cwd=None, ra
 def executePy(script_path, tosca_env_map):
     tosca_params={'tosca': {'inputs': tosca_env_map, 'outputs': {}}}
     execfile(script_path, globals().copy(), tosca_params)
-    return tosca_params['tosca'];
+    return tosca_params['tosca']
 
 class OutputConsumer(object):
     def __init__(self, out):

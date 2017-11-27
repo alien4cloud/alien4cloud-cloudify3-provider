@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from cloudify import ctx
 from cloudify import utils
 from cloudify.exceptions import NonRecoverableError
