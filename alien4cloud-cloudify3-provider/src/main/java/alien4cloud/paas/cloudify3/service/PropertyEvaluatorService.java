@@ -111,7 +111,9 @@ public class PropertyEvaluatorService {
                 return new ScalarPropertyValue(reqTargetValue);
             } else {
                 AbstractPropertyValue processedValue = FunctionEvaluator.processGetPropertyFunction(value, node, allNodes);
-                if (processedValue == null || processedValue instanceof ConcatPropertyValue || processedValue instanceof FunctionPropertyValue
+                if (processedValue == null ) {
+                    return new ScalarPropertyValue(null);
+                } else if (processedValue instanceof ConcatPropertyValue || processedValue instanceof FunctionPropertyValue
                         || processedValue instanceof ScalarPropertyValue) {
                     return processedValue;
                 } else {
