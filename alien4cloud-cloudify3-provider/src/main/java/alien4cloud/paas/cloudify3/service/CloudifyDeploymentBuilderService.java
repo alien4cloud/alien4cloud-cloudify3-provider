@@ -19,8 +19,8 @@ import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.context.annotation.Lazy;
@@ -112,12 +112,9 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setCustomResources(customResources);
         Collection<PaaSNodeTemplate> customNatives = customResources.values();
         if (!customNatives.isEmpty()) {
-            if (cloudifyDeployment.getNonNatives() == null) {
-                List<PaaSNodeTemplate> nonNatives = Lists.newArrayList(customNatives);
-                cloudifyDeployment.setNonNatives(nonNatives);
-            } else {
-                cloudifyDeployment.getNonNatives().addAll(customNatives);
-            }
+            Set allNonNative = cloudifyDeployment.getNonNatives() == null ? Sets.newHashSet() : Sets.newHashSet(cloudifyDeployment.getNonNatives());
+            allNonNative.addAll(customNatives);
+            cloudifyDeployment.setNonNatives(Lists.newArrayList(allNonNative));
         }
 
         processNonNativeTypes(cloudifyDeployment, cloudifyDeployment.getNonNatives());
@@ -141,14 +138,14 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setPropertyMappings(PropertiesMappingUtil.loadPropertyMappings(cloudifyDeployment.getNativeTypes(), topologyContext));
 
         cloudifyDeployment.setCapabilityTypes(deploymentContext.getPaaSTopology().getCapabilityTypes());
-
+        cloudifyDeployment.setSecretConfiguration(deploymentContext.getSecretProviderConfigurationAndCredentials());
         return cloudifyDeployment;
     }
 
     private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
         List<PaaSNodeTemplate> result = Lists.newArrayList();
         for (PaaSNodeTemplate value : nodes) {
-            if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, value.getIndexedToscaElement())) {
+            if (ToscaTypeUtils.isOfType(value.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
                 result.add(value);
             }
         }
@@ -188,7 +185,7 @@ public class CloudifyDeploymentBuilderService {
             // if the type of the template is provided by the location, it can't be considered as a custom resource.
             return false;
         }
-        if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, node.getIndexedToscaElement())) {
+        if (ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
             // Docker Container types are not custom resources
             return false;
         }
@@ -452,9 +449,9 @@ public class CloudifyDeploymentBuilderService {
         List<PaaSNodeTemplate> publicNetworks = Lists.newArrayList();
         List<PaaSNodeTemplate> privateNetworks = Lists.newArrayList();
         for (PaaSNodeTemplate network : allNetworks) {
-            if (ToscaNormativeUtil.isFromType("alien.nodes.PublicNetwork", network.getIndexedToscaElement())) {
+            if (ToscaTypeUtils.isOfType(network.getIndexedToscaElement(), "alien.nodes.PublicNetwork")) {
                 publicNetworks.add(network);
-            } else if (ToscaNormativeUtil.isFromType("alien.nodes.PrivateNetwork", network.getIndexedToscaElement())) {
+            } else if (ToscaTypeUtils.isOfType(network.getIndexedToscaElement(), "alien.nodes.PrivateNetwork")) {
                 privateNetworks.add(network);
             } else {
                 throw new InvalidArgumentException(

@@ -12,6 +12,7 @@ import javax.annotation.Resource;
 
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -449,8 +450,8 @@ public class StatusService {
                     if (node != null && runtimeProperties != null) {
                         Map<String, String> attributes = runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap);
                         instanceInformation.setAttributes(attributes);
-                        String masterIP = (String) attributes.get("master_ip");
-                        if (ToscaNormativeUtil.isFromType("cloudify.kubernetes.Microservice", node.getType(), Lists.newArrayList(node.getTypeHierarchy()))
+                        String masterIP = attributes.get("master_ip");
+                        if (ToscaTypeUtils.isOfType(node.getType(), Lists.newArrayList(node.getTypeHierarchy()), "cloudify.kubernetes.Microservice")
                                 && attributes.containsKey("service")) {
                             String serviceJson = attributes.get("service");
                             if (StringUtils.isNotBlank(serviceJson)) {

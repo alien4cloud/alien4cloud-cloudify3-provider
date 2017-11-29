@@ -1,17 +1,28 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
+import alien4cloud.exception.InvalidArgumentException;
+import alien4cloud.paas.IPaaSTemplate;
+import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
+import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
+import alien4cloud.paas.cloudify3.service.model.Relationship;
+import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
+import alien4cloud.paas.exception.NotSupportedException;
+import alien4cloud.paas.function.FunctionEvaluator;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.paas.model.PaaSRelationshipTemplate;
+import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
+import alien4cloud.rest.utils.JsonUtil;
+import alien4cloud.tosca.PaaSUtils;
+import alien4cloud.utils.FileUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ConcatPropertyValue;
@@ -29,51 +40,43 @@ import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.types.CapabilityType;
 import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.NormativeCapabilityTypes;
 import org.alien4cloud.tosca.normative.constants.NormativeComputeConstants;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.alien4cloud.tosca.utils.TopologyUtils;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import alien4cloud.exception.InvalidArgumentException;
-import alien4cloud.paas.IPaaSTemplate;
-import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
-import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.cloudify3.service.model.OperationWrapper;
-import alien4cloud.paas.cloudify3.service.model.Relationship;
-import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
-import alien4cloud.paas.exception.NotSupportedException;
-import alien4cloud.paas.function.FunctionEvaluator;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.paas.model.PaaSRelationshipTemplate;
-import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
-import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
-import alien4cloud.rest.utils.JsonUtil;
-import alien4cloud.topology.TopologyUtils;
-import alien4cloud.tosca.PaaSUtils;
-import alien4cloud.utils.FileUtil;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     private ArtifactRegistryService artifactRegistryService;
 
     public NonNativeTypeGenerationUtil(MappingConfiguration mappingConfiguration, CloudifyDeployment alienDeployment, Path recipePath,
-            PropertyEvaluatorService propertyEvaluatorService, ArtifactRegistryService artifactRegistryService) {
+                                       PropertyEvaluatorService propertyEvaluatorService, ArtifactRegistryService artifactRegistryService) {
         super(mappingConfiguration, alienDeployment, recipePath, propertyEvaluatorService);
         this.artifactRegistryService = artifactRegistryService;
     }
 
     public boolean isStandardLifecycleInterface(String interfaceName) {
         return ToscaNodeLifecycleConstants.STANDARD.equals(interfaceName) || ToscaNodeLifecycleConstants.STANDARD_SHORT.equals(interfaceName);
+    }
+
+    public boolean propertyCanBeExposed(AbstractPropertyValue propertyValue) {
+        return propertyValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(propertyValue);
     }
 
     public String tryToMapToCloudifyInterface(String interfaceName) {
@@ -95,20 +98,20 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     public String tryToMapToCloudifyRelationshipOperation(String interfaceName, String operationName) {
         if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(interfaceName) || ToscaRelationshipLifecycleConstants.CONFIGURE_SHORT.equals(interfaceName)) {
             switch (operationName) {
-            case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_SOURCE:
-            case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_TARGET:
-                return "preconfigure";
-            case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_SOURCE:
-            case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_TARGET:
-                return "postconfigure";
-            case ToscaRelationshipLifecycleConstants.ADD_SOURCE:
-            case ToscaRelationshipLifecycleConstants.ADD_TARGET:
-                return "establish";
-            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
-            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
-                return "unlink";
-            default:
-                return operationName;
+                case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_SOURCE:
+                case ToscaRelationshipLifecycleConstants.PRE_CONFIGURE_TARGET:
+                    return "preconfigure";
+                case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_SOURCE:
+                case ToscaRelationshipLifecycleConstants.POST_CONFIGURE_TARGET:
+                    return "postconfigure";
+                case ToscaRelationshipLifecycleConstants.ADD_SOURCE:
+                case ToscaRelationshipLifecycleConstants.ADD_TARGET:
+                    return "establish";
+                case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+                case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+                    return "unlink";
+                default:
+                    return operationName;
             }
         } else {
             return operationName;
@@ -215,7 +218,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
             return "''";
         } else {
             String ownerId = owner == null ? "" : "for " + owner.getId();
-            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input ");
+            throw new NotSupportedException("The value " + input + "'s type is not supported as operation input for owner " + ownerId);
         }
     }
 
@@ -256,17 +259,17 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                 // Function case
                 FunctionPropertyValue functionPropertyValue = (FunctionPropertyValue) concatParam;
                 switch (functionPropertyValue.getFunction()) {
-                case ToscaFunctionConstants.GET_ATTRIBUTE:
-                    pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
-                    break;
-                case ToscaFunctionConstants.GET_PROPERTY:
-                    pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
-                    break;
-                case ToscaFunctionConstants.GET_OPERATION_OUTPUT:
-                    pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
-                    break;
-                default:
-                    throw new NotSupportedException("Function " + functionPropertyValue.getFunction() + " is not yet supported");
+                    case ToscaFunctionConstants.GET_ATTRIBUTE:
+                        pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
+                        break;
+                    case ToscaFunctionConstants.GET_PROPERTY:
+                        pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
+                        break;
+                    case ToscaFunctionConstants.GET_OPERATION_OUTPUT:
+                        pythonCall.append(formatFunctionPropertyValue(context, owner, functionPropertyValue)).append(" + ");
+                        break;
+                    default:
+                        throw new NotSupportedException("Function " + functionPropertyValue.getFunction() + " is not yet supported");
                 }
             } else {
                 throw new NotSupportedException("Do not support nested concat in a concat, please simplify your usage");
@@ -298,7 +301,9 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return the formatted parameter understandable by Cloudify
      */
     public String formatNodeFunctionPropertyValue(String context, FunctionPropertyValue functionPropertyValue) {
-        if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+        if (ToscaFunctionConstants.GET_SECRET.equals(functionPropertyValue.getFunction())) {
+            return "get_secret('" + functionPropertyValue.getTemplateName() + "')";
+        } else if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
             return "get_attribute(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_PROPERTY.equals(functionPropertyValue.getFunction())) {
             return "get_property(ctx" + context + ", '" + functionPropertyValue.getElementNameToFetch() + "')";
@@ -315,12 +320,14 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * Format operation parameter of a node
      *
      * @param functionPropertyValue the input which can be a function or a scalar
-     * @param relationshipTemplate The relationship template for which to format the function request.
+     * @param relationshipTemplate  The relationship template for which to format the function request.
      * @return the formatted parameter understandable by Cloudify
      */
     private String formatRelationshipFunctionPropertyValue(String context, PaaSRelationshipTemplate relationshipTemplate,
-            FunctionPropertyValue functionPropertyValue) {
-        if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
+                                                           FunctionPropertyValue functionPropertyValue) {
+        if (ToscaFunctionConstants.GET_SECRET.equals(functionPropertyValue.getFunction())) {
+            return "get_secret('" + functionPropertyValue.getTemplateName() + "')";
+        } else if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(functionPropertyValue.getFunction())) {
             if (ToscaFunctionConstants.R_TARGET.equals(functionPropertyValue.getTemplateName().toUpperCase())
                     && relationshipTemplate.getTemplate().getTargetedCapabilityName() != null) {
                 // If fetching from target and we know then try to fetch attribute from the target capability first and then the from the node.
@@ -345,15 +352,14 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                 builder.append("])");
                 return builder.toString();
             }
-            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '"
-                    + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '" + functionPropertyValue
+                    .getElementNameToFetch() + "')";
         } else if (ToscaFunctionConstants.GET_PROPERTY.equals(functionPropertyValue.getFunction())) {
             return "get_property(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '" + functionPropertyValue.getElementNameToFetch()
                     + "')";
         } else if (ToscaFunctionConstants.GET_OPERATION_OUTPUT.equals(functionPropertyValue.getFunction())) {
-            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '_a4c_OO:"
-                    + functionPropertyValue.getInterfaceName() + ':' + functionPropertyValue.getOperationName() + ":"
-                    + functionPropertyValue.getElementNameToFetch() + "')";
+            return "get_attribute(ctx." + functionPropertyValue.getTemplateName().toLowerCase() + context + ", '_a4c_OO:" + functionPropertyValue
+                    .getInterfaceName() + ':' + functionPropertyValue.getOperationName() + ":" + functionPropertyValue.getElementNameToFetch() + "')";
         } else {
             throw new NotSupportedException("Function " + functionPropertyValue.getFunction() + " is not supported");
         }
@@ -438,8 +444,8 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean operationHasDeploymentArtifacts(OperationWrapper operationWrapper) {
-        return MapUtils.isNotEmpty(operationWrapper.getAllDeploymentArtifacts())
-                || MapUtils.isNotEmpty(operationWrapper.getAllRelationshipDeploymentArtifacts());
+        return MapUtils.isNotEmpty(operationWrapper.getAllDeploymentArtifacts()) || MapUtils
+                .isNotEmpty(operationWrapper.getAllRelationshipDeploymentArtifacts());
     }
 
     public String getOperationOutputNames(Operation operation) {
@@ -460,17 +466,17 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     public boolean shouldRaiseExceptionOnFailure(OperationWrapper operationWrapper) {
         if (ToscaNodeLifecycleConstants.STANDARD.equals(operationWrapper.getInterfaceName())) {
             switch (operationWrapper.getOperationName()) {
-            case ToscaNodeLifecycleConstants.STOP:
-            case ToscaNodeLifecycleConstants.DELETE:
-                return false;
+                case ToscaNodeLifecycleConstants.STOP:
+                case ToscaNodeLifecycleConstants.DELETE:
+                    return false;
             }
         }
 
         if (ToscaRelationshipLifecycleConstants.CONFIGURE.equals(operationWrapper.getInterfaceName())) {
             switch (operationWrapper.getOperationName()) {
-            case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
-            case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
-                return false;
+                case ToscaRelationshipLifecycleConstants.REMOVE_TARGET:
+                case ToscaRelationshipLifecycleConstants.REMOVE_SOURCE:
+                    return false;
             }
         }
 
@@ -490,24 +496,24 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public String getArtifactPath(String nodeId, String artifactId, DeploymentArtifact artifact) {
-        return mappingConfiguration.getArtifactDirectoryName() + "/" + nodeId + "/" + artifactId + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + nodeId + "/" + artifactId + "/" + Paths.get(artifact.getArtifactPath()).getFileName()
+                .toString();
     }
 
     public String getRelationshipArtifactPath(String sourceId, String relationshipId, String artifactId, DeploymentArtifact artifact) {
-        return mappingConfiguration.getArtifactDirectoryName() + "/" + sourceId + "/" + relationshipId + "/" + artifactId + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getArtifactDirectoryName() + "/" + sourceId + "/" + relationshipId + "/" + artifactId + "/" + Paths
+                .get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getImplementationArtifactPath(PaaSNodeTemplate owner, String interfaceName, String operationName, ImplementationArtifact artifact) {
-        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getId() + "/" + interfaceName + "/" + operationName + "/"
-                + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getId() + "/" + interfaceName + "/" + operationName + "/" + Paths
+                .get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getRelationshipImplementationArtifactPath(PaaSRelationshipTemplate owner, String interfaceName, String operationName,
-            ImplementationArtifact artifact) {
-        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getSource() + "_" + owner.getTemplate().getTarget() + "/"
-                + owner.getId() + "/" + interfaceName + "/" + operationName + "/" + Paths.get(artifact.getArtifactPath()).getFileName().toString();
+                                                            ImplementationArtifact artifact) {
+        return mappingConfiguration.getImplementationArtifactDirectoryName() + "/" + owner.getSource() + "_" + owner.getTemplate().getTarget() + "/" + owner
+                .getId() + "/" + interfaceName + "/" + operationName + "/" + Paths.get(artifact.getArtifactPath()).getFileName().toString();
     }
 
     public String getArtifactWrapperPath(IPaaSTemplate<?> owner, String interfaceName, String operationName) {
@@ -531,9 +537,20 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * @return True if the operation should be executed on the host node and false if the operation should be executed on the management agent.
      */
     public boolean isHostAgent(PaaSNodeTemplate node, Operation operation) {
+
         if (isCustomResource(node)) {
             return false;
         }
+
+        if (isNonNative(node)) {
+            PaaSNodeTemplate topParentNode = getTopParentPaaSNodeTemplate(node);
+            if (!isCompute(topParentNode) && !isServiceNodeTemplate(topParentNode) && isCustomResource(topParentNode)) {
+                // If the top parent node is a custom resource but not a compute nor a service,
+                // operations of the hosted node are executed on the management agent's side.
+                return false;
+            }
+        }
+
         // If the node is compute only the create operation is executed on central node. Other operations are called on the compute instance (that we should be
         // able to connect to after create).
 
@@ -545,6 +562,22 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         }
 
         return true;
+    }
+
+    /**
+     * Iterates over the hostedOn relationship and returns the top parent node.
+     *
+     * @param node The node to get the parent
+     * @return The top parent node of the given node
+     */
+    private PaaSNodeTemplate getTopParentPaaSNodeTemplate(PaaSNodeTemplate node) {
+        for (PaaSRelationshipTemplate relationshipTemplate : node.getRelationshipTemplates()) {
+            if (relationshipTemplate.instanceOf(NormativeRelationshipConstants.HOSTED_ON) && !node.getId()
+                    .equals(this.getTargetNode(relationshipTemplate).getId())) {
+                return this.getTopParentPaaSNodeTemplate(this.getTargetNode(relationshipTemplate));
+            }
+        }
+        return node;
     }
 
     /**
@@ -609,7 +642,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     }
 
     public boolean isCompute(PaaSNodeTemplate node) {
-        return ToscaNormativeUtil.isFromType(NormativeComputeConstants.COMPUTE_TYPE, node.getIndexedToscaElement());
+        return ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), NormativeComputeConstants.COMPUTE_TYPE);
     }
 
     public boolean isServiceNodeTemplate(PaaSNodeTemplate node) {
@@ -618,7 +651,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean isEndpoint(String capabilityTypeName) {
         CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capabilityTypeName);
-        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId())
-                || (capabilityType.getDerivedFrom() != null && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
+        return capabilityType != null && (NormativeCapabilityTypes.ENDPOINT.equals(capabilityType.getElementId()) || (capabilityType.getDerivedFrom() != null
+                && capabilityType.getDerivedFrom().contains(NormativeCapabilityTypes.ENDPOINT)));
     }
 }

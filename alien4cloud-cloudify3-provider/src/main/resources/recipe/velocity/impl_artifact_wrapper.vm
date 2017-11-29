@@ -43,9 +43,20 @@ Include static wrapper python (functions etc.) in the current file.
 TODO: For smaller packages we should improve that and actually make a python package to import (from )
 *#
 #include("includes/common_wrapper_static.py")
-#parse("includes/cloudify_rest_client.py.vm")
+
+#include("includes/cloudify_rest_client.py")
+
 #if($util.nonNative.operationHasDeploymentArtifacts($operation))
 #include("includes/download_artifacts.py")
+
+#end
+#if(${deployment.secretConfiguration})
+#include("includes/hashicorp_vault_client_lib.py")
+
+#parse("includes/vault_client.py.vm")
+#else
+def get_secret(secret_path):
+    raise NonRecoverableError('Cannot get secret at path ' + secret_path + ' as no credentials configuration is found for a vault')
 #end
 
 #**
@@ -186,4 +197,9 @@ ${entity}.update()
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))
 #setAttributes(${util.nonNative.getSourceNode(${operation.owner})}, "ctx.source.instance", $util.nonNative.getSourceRelationshipAttributes(${operation.owner}), ".source")
 #setAttributes(${util.nonNative.getTargetNode(${operation.owner})}, "ctx.target.instance", $util.nonNative.getTargetRelationshipAttributes(${operation.owner}), ".target")
+#end
+
+#if(${deployment.secretConfiguration})
+if temp_vault_cert_file_name is not None:
+    os.remove(temp_vault_cert_file_name)
 #end

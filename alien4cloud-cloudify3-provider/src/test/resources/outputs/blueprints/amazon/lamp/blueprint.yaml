@@ -5,28 +5,12 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/4.0/types.yaml
   - http://www.getcloudify.org/spec/aws-plugin/1.3.1/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.5/plugin.yaml
+  - plugins/overrides/plugin-included.yaml
 
 node_types:
-  alien.cloudify.aws.nodes.Compute:
-    derived_from: cloudify.aws.nodes.Instance
-    properties:
-      _a4c_substitute_for:
-        default: []
-      _a4c_att_ip_address:
-        default:
-          function: get_attribute
-          parameters:
-            - SELF
-            - ip
-      _a4c_att_public_ip_address:
-        default:
-          function: get_attribute
-          parameters:
-            - SELF
-            - public_ip_address
   alien.nodes.aws.PublicNetwork:
     derived_from: cloudify.aws.nodes.ElasticIP
     properties:
@@ -43,135 +27,153 @@ node_types:
         type: cloudify.datatypes.AgentConfig
         default:
           port: 5985
-  alien.nodes.Wordpress:
-    derived_from: cloudify.nodes.ApplicationModule
-  alien.nodes.Mysql:
-    derived_from: cloudify.nodes.Database
-  alien.nodes.PHP:
+
+  org.alien4cloud.nodes.PHP:
     derived_from: cloudify.nodes.SoftwareComponent
-  alien.nodes.Apache:
+    properties:
+      component_version:
+        type: string
+        default: "5"
+        required: false
+  alien.cloudify.aws.nodes.Compute:
+    derived_from: cloudify.nodes.Compute
+    properties:
+      image_id:
+        type: string
+        required: false
+      parameters:
+        type: string
+        required: false
+      extra_parameters:
+        type: string
+        required: false
+      instance_type:
+        type: string
+        required: false
+      aws_config:
+        type: string
+        required: false
+  org.alien4cloud.nodes.Mysql:
+    derived_from: cloudify.nodes.Database
+    properties:
+      password:
+        type: string
+        required: false
+      port:
+        type: integer
+        default: 3306
+        required: false
+      storage_path:
+        type: string
+        default: "/mountedStorage"
+        required: false
+      db_user:
+        type: string
+        default: "pass"
+        required: false
+      name:
+        type: string
+        default: "wordpress"
+        required: false
+      bind_address:
+        type: boolean
+        default: true
+        required: false
+      user:
+        type: string
+        required: false
+      db_password:
+        type: string
+        default: "pass"
+        required: false
+  org.alien4cloud.nodes.Wordpress:
+    derived_from: cloudify.nodes.ApplicationModule
+    properties:
+      context_root:
+        type: string
+        default: "/"
+        required: false
+      zip_url:
+        type: string
+        default: "https://wordpress.org/latest.zip"
+        required: false
+  org.alien4cloud.nodes.Apache:
     derived_from: cloudify.nodes.WebServer
+    properties:
+      port:
+        type: integer
+        default: 80
+        required: false
+      document_root:
+        type: string
+        default: "/var/www"
+        required: false
+      component_version:
+        type: string
+        default: "2.4"
+        required: false
+
 
 relationships:
-  alien.relationships.WordpressHostedOnApache:
+  org.alien4cloud.relationships.WordpressConnectToPHP:
+    derived_from: cloudify.relationships.connected_to
+  org.alien4cloud.relationships.WordpressConnectToMysql:
+    derived_from: cloudify.relationships.connected_to
+  tosca.relationships.Network:
+    derived_from: cloudify.relationships.depends_on
+  org.alien4cloud.relationships.WordpressHostedOnApache:
     derived_from: cloudify.relationships.contained_in
-  alien.relationships.WordpressConnectToMysql:
-    derived_from: cloudify.relationships.connected_to
-  alien.relationships.WordpressConnectToPHP:
-    derived_from: cloudify.relationships.connected_to
 
 node_templates:
 
-  Server:
-    type: alien.cloudify.aws.nodes.Compute
-    properties: 
-      image_id: ami-47a23a30
-      instance_type: t2.small
-      user: ubuntu
-      name: Server
-    relationships:
-      - target: _a4c_floating_ip_Server_on_NetPub
-        type: cloudify.aws.relationships.instance_connected_to_elastic_ip
-    interfaces:
-      alien4cloud.mapping.device:
-        execute:
-          implementation: device-mapping-scripts/mapping.py
-          inputs:
-            iaas: amazon
-            os_mapping: ['linux']
-            device_key: device
-      cloudify.interfaces.monitoring_agent:
-        install:
-          implementation: diamond.diamond_agent.tasks.install
-          inputs:
-            diamond_config:
-               interval: 1
-        start: diamond.diamond_agent.tasks.start
-        stop: diamond.diamond_agent.tasks.stop
-        uninstall: diamond.diamond_agent.tasks.uninstall
-      cloudify.interfaces.monitoring:
-        start:
-          implementation: diamond.diamond_agent.tasks.add_collectors
-          inputs:
-            collectors_config:
-               CPUCollector: {}
-               MemoryCollector: {}
-               LoadAverageCollector: {}
-               DiskUsageCollector:
-                 config:
-                   devices: x?vd[a-z]+[0-9]*$
-               NetworkCollector: {}
-  _a4c_floating_ip_Server_on_NetPub:
-    type: alien.nodes.aws.PublicNetwork
-  DataBase:
-    type: alien.cloudify.aws.nodes.Compute
-    properties: 
-      image_id: ami-47a23a30
-      instance_type: t2.small
-      user: ubuntu
-      name: DataBase
-    interfaces:
-      alien4cloud.mapping.device:
-        execute:
-          implementation: device-mapping-scripts/mapping.py
-          inputs:
-            iaas: amazon
-            os_mapping: ['linux']
-            device_key: device
-      cloudify.interfaces.monitoring_agent:
-        install:
-          implementation: diamond.diamond_agent.tasks.install
-          inputs:
-            diamond_config:
-               interval: 1
-        start: diamond.diamond_agent.tasks.start
-        stop: diamond.diamond_agent.tasks.stop
-        uninstall: diamond.diamond_agent.tasks.uninstall
-      cloudify.interfaces.monitoring:
-        start:
-          implementation: diamond.diamond_agent.tasks.add_collectors
-          inputs:
-            collectors_config:
-               CPUCollector: {}
-               MemoryCollector: {}
-               LoadAverageCollector: {}
-               DiskUsageCollector:
-                 config:
-                   devices: x?vd[a-z]+[0-9]*$
-               NetworkCollector: {}
 
-  Wordpress:
-    type: alien.nodes.Wordpress
+
+## Non nat
+
+  PHP:
+    type: org.alien4cloud.nodes.PHP
     instances:
       deploy: 1
+    properties: 
+      component_version: 5
     interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/PHP/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
       cloudify.interfaces.lifecycle:
         create:
-          implementation: wrapper/Wordpress/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+          implementation: wrapper/PHP/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Apache
-        type: alien.relationships.WordpressHostedOnApache
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/Wordpress_Apache/wordpressHostedOnApacheApache/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-      - target: Mysql
-        type: alien.relationships.WordpressConnectToMysql
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/Wordpress_Mysql/wordpressConnectToMysqlMysql/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-      - target: PHP
-        type: alien.relationships.WordpressConnectToPHP
-        source_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            preconfigure:
-              implementation: wrapper/Wordpress_PHP/wordpressConnectToPHPPHP/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
-  Mysql:
-    type: alien.nodes.Mysql
+      - target: Server
+        type: cloudify.relationships.contained_in
+  DataBase:
+    type: alien.cloudify.aws.nodes.Compute
     instances:
       deploy: 1
+    properties: 
+      image_id: "ami-47a23a30"
+      instance_type: "t2.small"
     interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/DataBase/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
+  Mysql:
+    type: org.alien4cloud.nodes.Mysql
+    instances:
+      deploy: 1
+    properties: 
+      port: 3306
+      storage_path: "/mountedStorage"
+      db_user: pass
+      name: wordpress
+      bind_address: true
+    interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/Mysql/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
       cloudify.interfaces.lifecycle:
         start:
           implementation: wrapper/Mysql/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
@@ -180,22 +182,68 @@ node_templates:
     relationships:
       - target: DataBase
         type: cloudify.relationships.contained_in
-  PHP:
-    type: alien.nodes.PHP
+  Server:
+    type: alien.cloudify.aws.nodes.Compute
     instances:
       deploy: 1
+    properties: 
+      image_id: "ami-47a23a30"
+      instance_type: "t2.small"
     interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/Server/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
+    relationships:
+      - target: NetPub
+        type: tosca.relationships.Network
+  Wordpress:
+    type: org.alien4cloud.nodes.Wordpress
+    instances:
+      deploy: 1
+    properties: 
+      context_root: "/"
+      zip_url: "https://wordpress.org/latest.zip"
+    interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/Wordpress/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
       cloudify.interfaces.lifecycle:
         create:
-          implementation: wrapper/PHP/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
+          implementation: wrapper/Wordpress/tosca.interfaces.node.lifecycle.Standard/create/_a4c_create.py
     relationships:
-      - target: Server
-        type: cloudify.relationships.contained_in
+      - target: Apache
+        type: org.alien4cloud.relationships.WordpressHostedOnApache
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_Apache/host/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+      - target: Mysql
+        type: org.alien4cloud.relationships.WordpressConnectToMysql
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_Mysql/database/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
+      - target: PHP
+        type: org.alien4cloud.relationships.WordpressConnectToPHP
+        source_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            preconfigure:
+              implementation: wrapper/Wordpress_PHP/php/tosca.interfaces.relationship.Configure/pre_configure_source/_a4c_pre_configure_source.py
   Apache:
-    type: alien.nodes.Apache
+    type: org.alien4cloud.nodes.Apache
     instances:
       deploy: 1
+    properties: 
+      port: 80
+      document_root: "/var/www"
+      component_version: 2.4
     interfaces:
+      org.alien4cloud.interfaces.cfy.lifecycle:
+        NodeInit:
+          implementation: wrapper/Apache/org.alien4cloud.interfaces.cfy.lifecycle/NodeInit/_a4c_NodeInit.py
+          executor: central_deployment_agent
       cloudify.interfaces.lifecycle:
         start:
           implementation: wrapper/Apache/tosca.interfaces.node.lifecycle.Standard/start/_a4c_start.py
@@ -205,6 +253,10 @@ node_templates:
       - target: Server
         type: cloudify.relationships.contained_in
 
+## Monitor
+
+
+## scaling
 
 
 
@@ -215,8 +267,14 @@ plugins:
     source: custom_wf_plugin
 
 workflows:
-  a4c_install: custom_wf_plugin.plugin.workflows.a4c_install
-  a4c_uninstall: custom_wf_plugin.plugin.workflows.a4c_uninstall
+  a4c_install:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_install
+  a4c_uninstall:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_uninstall
+  a4c_start:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_start
+  a4c_stop:
+    mapping: custom_wf_plugin.plugin.workflows.a4c_stop
   a4c_scale:
     mapping: custom_wf_plugin.plugin.workflows.a4c_scale
     parameters:

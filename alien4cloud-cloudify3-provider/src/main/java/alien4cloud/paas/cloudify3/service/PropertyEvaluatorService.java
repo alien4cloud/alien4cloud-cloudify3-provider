@@ -11,8 +11,8 @@ import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.Capability;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -23,6 +23,7 @@ import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.utils.PropertyUtil;
 
 @Component("property-evaluator-service")
 public class PropertyEvaluatorService {
@@ -105,24 +106,26 @@ public class PropertyEvaluatorService {
 
     private AbstractPropertyValue processSimpleFunction(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
         if (ToscaFunctionConstants.GET_PROPERTY.equals(value.getFunction())) {
-            String evaluatedValue = evaluateGetPropertyFunction(value, node, allNodes);
-            return new ScalarPropertyValue(evaluatedValue);
+            String reqTargetValue = evaluateReqTarget(value, node, allNodes);
+            if (reqTargetValue != null) {
+                return new ScalarPropertyValue(reqTargetValue);
+            } else {
+                AbstractPropertyValue processedValue = FunctionEvaluator.processGetPropertyFunction(value, node, allNodes);
+                if (processedValue == null ) {
+                    return new ScalarPropertyValue(null);
+                } else if (processedValue instanceof ConcatPropertyValue || processedValue instanceof FunctionPropertyValue
+                        || processedValue instanceof ScalarPropertyValue) {
+                    return processedValue;
+                } else {
+                    return new ScalarPropertyValue(PropertyUtil.serializePropertyValue(processedValue));
+                }
+            }
         } else {
             return value;
         }
     }
 
-    /**
-     * !!! Copied and adapted from marathon plugin !!!
-     * Search for a property of a capability being required as a target of a relationship.
-     *
-     * @param value the function parameters, e.g. the requirement name & property name to lookup.
-     * @param node The source node of the relationships, which defines the requirement.
-     * @param allNodes all the nodes of the topology.
-     * @return a String representing the property value.
-     */
-    private String evaluateGetPropertyFunction(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
-
+    private String evaluateReqTarget(FunctionPropertyValue value, IPaaSTemplate node, Map<String, PaaSNodeTemplate> allNodes) {
         if (value.getParameters().contains("REQ_TARGET")) {
             // Search for the requirement's target by filter the relationships' templates of this node.
             // If a target is found, then lookup for the given property name in its capabilities.
@@ -153,23 +156,21 @@ public class PropertyEvaluatorService {
                 }
             }
         }
-        // Nominal case : get the requirement's targeted capability property.
-        // TODO: Add the REQ_TARGET keyword in the evaluateGetProperty function so this is evaluated at parsing
-        return FunctionEvaluator.evaluateGetPropertyFunction(value, node, allNodes);
+        return null;
     }
 
     private String kubernetesEvaluationWorkaround(FunctionPropertyValue value, PaaSNodeTemplate node, PaaSNodeTemplate target,
             PaaSRelationshipTemplate relationshipTemplate, String propertyName) {
         // If the node is a docker type, special case for port and ip_address properties
         // as it must be handled by the Cloudify's kubernetes plugin
-        boolean dockerTypeNode = ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, node.getIndexedToscaElement());
+        boolean dockerTypeNode = ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE);
         boolean connectsToRelationship = relationshipTemplate.instanceOf("tosca.relationships.ConnectsTo");
         boolean portOrIpAddress = ("port".equalsIgnoreCase(propertyName) || "ip_address".equalsIgnoreCase(propertyName));
         if (dockerTypeNode && connectsToRelationship && portOrIpAddress) {
             // Particular treatment for port and ip_address that needs to be retrieved at runtime from the kubernetes plugin of cloudify.
             // We need to generate a kind of custom function for the plugin in the generated blueprint.
             if ("ip_address".equalsIgnoreCase(propertyName)) {
-                if (ToscaNormativeUtil.isFromType(BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE, target.getIndexedToscaElement())) {
+                if (ToscaTypeUtils.isOfType(target.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
                     propertyName = "clusterIP";
                 } else { // Workaround(cfy3): If the property is 'ip_address', change it to 'ip'
                     propertyName = "ip";

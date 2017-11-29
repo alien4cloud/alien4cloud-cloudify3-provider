@@ -1,0 +1,4 @@
+plugins:
+  overrides:
+    executor: central_deployment_agent
+    source: overrides

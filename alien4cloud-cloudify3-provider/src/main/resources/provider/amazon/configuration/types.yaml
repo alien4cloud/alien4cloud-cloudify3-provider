@@ -3,11 +3,11 @@ tosca_definitions_version: alien_dsl_2_0_0
 metadata:
   template_name: cloudify-amazon-types
   template_author: alien4cloud
-  template_version: 2.0.0-SM3
+  template_version: 2.0.0-SM4
 
 imports:
-  - tosca-normative-types:1.0.0-ALIEN20SM3
-  - cloudify3-common-types:2.0.0-SM3
+  - tosca-normative-types:1.0.0-ALIEN20SM4
+  - cloudify3-common-types:2.0.0-SM4
 
 data_types:
   alien.data.aws.InstanceParameters:
