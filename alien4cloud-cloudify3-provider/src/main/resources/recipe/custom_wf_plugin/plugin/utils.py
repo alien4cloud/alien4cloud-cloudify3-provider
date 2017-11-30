@@ -161,7 +161,7 @@ def _relationship_operation_task(ctx, graph, source, target, operation_fqname, o
         fork = ForkjoinWrapper(graph)
         for instance in instances:
             instance_task = relationship_operation_task_for_instance(ctx, custom_context, graph, instance,
-                                                                     operation_fqname, operation_host, custom_context)
+                                                                     operation_fqname, operation_host)
             fork.add(instance_task)
         msg = "operation {0} on all {1} relationship instances".format(operation_fqname, source)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
