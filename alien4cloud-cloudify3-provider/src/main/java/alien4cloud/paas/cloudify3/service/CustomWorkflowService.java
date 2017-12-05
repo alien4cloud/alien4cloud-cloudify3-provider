@@ -1,27 +1,5 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
-
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
@@ -35,6 +13,25 @@ import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.utils.MapUtil;
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
+import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Handle custom workflow (non lifecycle workflow) which permit to modify the deployment at runtime
@@ -79,7 +76,7 @@ public class CustomWorkflowService extends RuntimeService {
 
         if (MapUtils.isNotEmpty(inputParameters) || MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
             Map<String, Object> process = Maps.newHashMap();
-            Map<String, String> inputParameterValues = Maps.newHashMap();
+            Map<String, Object> inputParameterValues = Maps.newHashMap();
 
             // operation_kwargs --> process --> env
             inputs.put("process", process);
@@ -132,8 +129,8 @@ public class CustomWorkflowService extends RuntimeService {
      * 
      * @param inputParameterValues
      */
-    private void replaceNullWithEmptyString(Map<String, String> inputParameterValues) {
-        for (Entry<String, String> paramEntry : inputParameterValues.entrySet()) {
+    private void replaceNullWithEmptyString(Map<String, Object> inputParameterValues) {
+        for (Entry<String, Object> paramEntry : inputParameterValues.entrySet()) {
             if (paramEntry.getValue() == null) {
                 paramEntry.setValue("");
             }

@@ -156,7 +156,22 @@ env_map.update(download_artifacts(artifacts, download_dir))
 ## Add current environment variables
 if inputs.get('process', None) is not None and inputs['process'].get('env', None) is not None:
     ctx.logger.info('Operation is executed with environment variable {0}'.format(inputs['process']['env']))
-    env_map.update(inputs['process']['env'])
+    for input_env_key, input_env_raw_value in inputs['process']['env'].items():
+        if input_env_raw_value.startswith('{') and input_env_raw_value.endswith('}'):
+            input_env_value = None
+            try:
+                input_env_value = json.loads(input_env_raw_value)
+            except:
+                env_map[input_env_key] = input_env_raw_value
+                continue
+            function_type = input_env_value.get('function')
+            function_parameters = input_env_value.get('parameters')
+            if function_type == 'get_secret':
+                env_map[input_env_key] = get_secret(function_parameters[0])
+            else:
+                raise NonRecoverableError('Only support get secret function but found {0}'.format(input_env_value))
+        else:
+            env_map[input_env_key] = input_env_raw_value
 
 ## Executor template depends on the artifact type and provides the right wrapper.
 #if($executor_template)
