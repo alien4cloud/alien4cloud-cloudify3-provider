@@ -1,5 +1,26 @@
 package alien4cloud.paas.cloudify3.service;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.Interface;
+import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.PropertyValue;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import alien4cloud.paas.cloudify3.blueprint.BlueprintGenerationUtil;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
@@ -9,29 +30,8 @@ import alien4cloud.paas.cloudify3.model.Workflow;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.paas.exception.OperationExecutionException;
-import alien4cloud.paas.function.FunctionEvaluator;
 import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.utils.MapUtil;
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import org.alien4cloud.tosca.model.definitions.FunctionPropertyValue;
-import org.alien4cloud.tosca.model.definitions.IValue;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import org.alien4cloud.tosca.normative.constants.ToscaFunctionConstants;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * Handle custom workflow (non lifecycle workflow) which permit to modify the deployment at runtime
@@ -43,8 +43,6 @@ public class CustomWorkflowService extends RuntimeService {
     @Resource
     private MappingConfigurationHolder mappingConfigurationHolder;
     @Resource
-    private RuntimePropertiesService runtimePropertiesService;
-    @Resource
     private BlueprintService blueprintService;
     @Resource
     private PropertyEvaluatorService propertyEvaluatorService;
@@ -55,8 +53,7 @@ public class CustomWorkflowService extends RuntimeService {
     @Inject
     private CfyConnectionManager configurationHolder;
 
-    private Map<String, Object> buildWorkflowParameters(CloudifyDeployment deployment, BlueprintGenerationUtil util,
-            NodeOperationExecRequest nodeOperationExecRequest, PaaSNodeTemplate node, Operation operation) {
+    private Map<String, Object> buildWorkflowParameters(NodeOperationExecRequest nodeOperationExecRequest, Operation operation) {
         Map<String, Object> workflowParameters = Maps.newHashMap();
         workflowParameters.put("operation", nodeOperationExecRequest.getInterfaceName() + "." + nodeOperationExecRequest.getOperationName());
         if (StringUtils.isNotBlank(nodeOperationExecRequest.getInstanceId())) {
@@ -82,38 +79,13 @@ public class CustomWorkflowService extends RuntimeService {
             inputs.put("process", process);
             process.put("env", inputParameterValues);
             if (MapUtils.isNotEmpty(inputParameters)) {
-                for (Map.Entry<String, IValue> inputParameterEntry : inputParameters.entrySet()) {
-                    String parameterName = inputParameterEntry.getKey();
-                    String parameterValue = null;
-                    if (inputParameterEntry.getValue() instanceof FunctionPropertyValue) {
-                        FunctionPropertyValue function = (FunctionPropertyValue) inputParameterEntry.getValue();
-                        if (ToscaFunctionConstants.GET_PROPERTY.equals(function.getFunction())) {
-                            parameterValue = FunctionEvaluator.evaluateGetPropertyFunction(function, node, deployment.getAllNodes());
-                        } else if (ToscaFunctionConstants.GET_ATTRIBUTE.equals(function.getFunction())) {
-                            String resolvedKeyword = FunctionEvaluator.getPaaSTemplatesFromKeyword(node, function.getTemplateName(), deployment.getAllNodes())
-                                    .iterator().next().getId();
-                            try {
-                                Map<String, String> attributes = MapUtil.toString(runtimePropertiesService
-                                        .evaluate(deployment.getDeploymentPaaSId(), resolvedKeyword, function.getElementNameToFetch()).get());
-                                if (MapUtils.isEmpty(attributes)) {
-                                    throw new OperationExecutionException("Node " + node.getId() + " do not have any instance at this moment");
-                                } else if (attributes.size() > 1) {
-                                    // TODO how to manage this use case
-                                    throw new OperationExecutionException("get_attribute for custom command is not supported for scaled node");
-                                } else {
-                                    parameterValue = String.valueOf(attributes.values().iterator().next());
-                                }
-                            } catch (Exception e) {
-                                throw new OperationExecutionException("Could not evaluate get_attribute function", e);
-                            }
-                        } else {
-                            throw new OperationExecutionException("Only support get_property or get_attribute for custom command parameters");
-                        }
-                    } else if (inputParameterEntry.getValue() instanceof ScalarPropertyValue) {
-                        parameterValue = ((ScalarPropertyValue) inputParameterEntry.getValue()).getValue();
+                inputParameterValues.putAll(inputParameters.entrySet().stream().collect(Collectors.toMap(Entry::getKey, entry -> {
+                    if (entry.getValue() instanceof PropertyValue) {
+                        return ((PropertyValue) entry.getValue()).getValue();
+                    } else {
+                        return entry.getValue();
                     }
-                    inputParameterValues.put(parameterName, parameterValue);
-                }
+                })));
             }
             if (MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
                 inputParameterValues.putAll(nodeOperationExecRequest.getParameters());
@@ -127,7 +99,7 @@ public class CustomWorkflowService extends RuntimeService {
     /**
      * as we do not have the hand on the execute_operation wf, we consider a null parameter value to be an empty string
      * 
-     * @param inputParameterValues
+     * @param inputParameterValues the inputs to replace
      */
     private void replaceNullWithEmptyString(Map<String, Object> inputParameterValues) {
         for (Entry<String, Object> paramEntry : inputParameterValues.entrySet()) {
@@ -156,33 +128,26 @@ public class CustomWorkflowService extends RuntimeService {
             }
         }
 
-        ListenableFuture<Deployment> operationExecutionFuture = waitForExecutionFinish(
-                configurationHolder.getApiClient().getExecutionClient().asyncStart(deployment.getDeploymentPaaSId(), Workflow.EXECUTE_OPERATION,
-                        buildWorkflowParameters(deployment, util, nodeOperationExecRequest, node, operation), true, false));
-        AsyncFunction<Deployment, Map<String, String>> getOperationResultFunction = new AsyncFunction<Deployment, Map<String, String>>() {
-            @Override
-            public ListenableFuture<Map<String, String>> apply(Deployment input) throws Exception {
-                ListenableFuture<NodeInstance[]> allInstances = configurationHolder.getApiClient().getNodeInstanceClient()
-                        .asyncList(deployment.getDeploymentPaaSId());
-                Function<NodeInstance[], Map<String, String>> nodeInstanceToResultFunction = new Function<NodeInstance[], Map<String, String>>() {
-                    @Override
-                    public Map<String, String> apply(NodeInstance[] nodeInstances) {
-                        Map<String, String> results = Maps.newHashMap();
-                        for (NodeInstance nodeInstance : nodeInstances) {
-                            if (StringUtils.isBlank(nodeOperationExecRequest.getInstanceId())) {
-                                if (StringUtils.isNotBlank(nodeOperationExecRequest.getNodeTemplateName())
-                                        && nodeOperationExecRequest.getNodeTemplateName().equals(nodeInstance.getNodeId())) {
-                                    results.put(nodeInstance.getId(), fabricMessage(nodeOperationExecRequest, nodeInstance));
-                                }
-                            } else if (nodeOperationExecRequest.getInstanceId().equals(nodeInstance.getId())) {
-                                results.put(nodeInstance.getId(), fabricMessage(nodeOperationExecRequest, nodeInstance));
-                            }
+        ListenableFuture<Deployment> operationExecutionFuture = waitForExecutionFinish(configurationHolder.getApiClient().getExecutionClient().asyncStart(
+                deployment.getDeploymentPaaSId(), Workflow.EXECUTE_OPERATION, buildWorkflowParameters(nodeOperationExecRequest, operation), true, false));
+        AsyncFunction<Deployment, Map<String, String>> getOperationResultFunction = input -> {
+            ListenableFuture<NodeInstance[]> allInstances = configurationHolder.getApiClient().getNodeInstanceClient()
+                    .asyncList(deployment.getDeploymentPaaSId());
+            Function<NodeInstance[], Map<String, String>> nodeInstanceToResultFunction = nodeInstances -> {
+                Map<String, String> results = Maps.newHashMap();
+                for (NodeInstance nodeInstance : nodeInstances) {
+                    if (StringUtils.isBlank(nodeOperationExecRequest.getInstanceId())) {
+                        if (StringUtils.isNotBlank(nodeOperationExecRequest.getNodeTemplateName())
+                                && nodeOperationExecRequest.getNodeTemplateName().equals(nodeInstance.getNodeId())) {
+                            results.put(nodeInstance.getId(), fabricMessage(nodeOperationExecRequest, nodeInstance));
                         }
-                        return results;
+                    } else if (nodeOperationExecRequest.getInstanceId().equals(nodeInstance.getId())) {
+                        results.put(nodeInstance.getId(), fabricMessage(nodeOperationExecRequest, nodeInstance));
                     }
-                };
-                return Futures.transform(allInstances, nodeInstanceToResultFunction);
-            }
+                }
+                return results;
+            };
+            return Futures.transform(allInstances, nodeInstanceToResultFunction::apply);
         };
         return Futures.transform(operationExecutionFuture, getOperationResultFunction);
     }

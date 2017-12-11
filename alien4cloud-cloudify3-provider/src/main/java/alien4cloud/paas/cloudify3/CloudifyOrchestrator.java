@@ -334,6 +334,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
 
         CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
+        propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
         ListenableFuture<Map<String, String>> executionFutureResult = customWorkflowService.executeOperation(deployment, nodeOperationExecRequest);
         FutureUtil.associateFutureToPaaSCallback(executionFutureResult, callback);
     }
