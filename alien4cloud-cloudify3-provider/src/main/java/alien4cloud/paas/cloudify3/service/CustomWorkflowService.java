@@ -79,13 +79,15 @@ public class CustomWorkflowService extends RuntimeService {
             inputs.put("process", process);
             process.put("env", inputParameterValues);
             if (MapUtils.isNotEmpty(inputParameters)) {
-                inputParameterValues.putAll(inputParameters.entrySet().stream().collect(Collectors.toMap(Entry::getKey, entry -> {
-                    if (entry.getValue() instanceof PropertyValue) {
-                        return ((PropertyValue) entry.getValue()).getValue();
-                    } else {
-                        return entry.getValue();
-                    }
-                })));
+                inputParameterValues.putAll(inputParameters.entrySet().stream()
+                        .filter(entry -> !(entry.getValue() instanceof PropertyValue) || ((PropertyValue) entry.getValue()).getValue() != null)
+                        .collect(Collectors.toMap(Entry::getKey, entry -> {
+                            if (entry.getValue() instanceof PropertyValue) {
+                                return ((PropertyValue) entry.getValue()).getValue();
+                            } else {
+                                return entry.getValue();
+                            }
+                        })));
             }
             if (MapUtils.isNotEmpty(nodeOperationExecRequest.getParameters())) {
                 inputParameterValues.putAll(nodeOperationExecRequest.getParameters());

@@ -14,7 +14,7 @@ vault_client = None
 
 import tempfile
 
-vault_cert_content = vault_configuration['secretProviderConfiguration']['configuration']['configuration'].get('certificate')
+vault_cert_content = vault_configuration['secretProviderConfiguration']['configuration'].get('certificate')
 temp_vault_cert_file = None
 temp_vault_cert_file_name = None
 if vault_cert_content is not None:
@@ -23,15 +23,15 @@ if vault_cert_content is not None:
     temp_vault_cert_file.close()
     temp_vault_cert_file_name = temp_vault_cert_file.name
 
-if vault_configuration['secretProviderConfiguration']['configuration']['configuration'][
+if vault_configuration['secretProviderConfiguration']['configuration'][
     'authenticationMethod'] == 'ldap':
     vault_client = connect_to_vault_by_ldap(
-        url=vault_configuration['secretProviderConfiguration']['configuration']['configuration']['url'],
+        url=vault_configuration['secretProviderConfiguration']['configuration']['url'],
         user=vault_configuration['credentials']['user'], password=vault_configuration['credentials']['password'],
         verify_path=temp_vault_cert_file_name)
 else:
     vault_client = connect_to_vault_by_token(
-        url=vault_configuration['secretProviderConfiguration']['configuration']['configuration']['url'],
+        url=vault_configuration['secretProviderConfiguration']['configuration']['url'],
         token=vault_configuration['credentials']['token'], verify_path=temp_vault_cert_file_name)
 
 
