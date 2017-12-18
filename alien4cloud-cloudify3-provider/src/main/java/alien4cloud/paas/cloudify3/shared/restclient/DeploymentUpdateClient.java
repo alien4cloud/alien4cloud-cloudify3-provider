@@ -1,10 +1,11 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
+import alien4cloud.paas.cloudify3.model.DeploymentUpdate;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import alien4cloud.utils.FileUtil;
+import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -12,12 +13,10 @@ import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-import alien4cloud.utils.FileUtil;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Created by xdegenne on 06/03/2017.
@@ -34,7 +33,7 @@ public class DeploymentUpdateClient {
     }
 
     @SneakyThrows
-    public ListenableFuture<Void> asyncUpdate(String deploymentId, String path) {
+    public ListenableFuture<DeploymentUpdate> asyncUpdate(String deploymentId, String path) {
         if (log.isDebugEnabled()) {
             log.debug("Update deployment {} with path {}", deploymentId, path);
         }
@@ -50,14 +49,14 @@ public class DeploymentUpdateClient {
             MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
             headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
             return FutureUtil.unwrapRestResponse(client.exchange(client.buildRequestUrl(DEPLOYMENT_UPDATE_PATH, "application_file_name"), HttpMethod.POST,
-                    new HttpEntity<>(Files.readAllBytes(destination.toPath()), headers), Void.class, deploymentId, sourceName));
+                    new HttpEntity<>(Files.readAllBytes(destination.toPath()), headers), DeploymentUpdate.class, deploymentId, sourceName));
         } finally {
             destination.delete();
         }
     }
 
     @SneakyThrows
-    public Void update(String deploymentId, String path) {
+    public DeploymentUpdate update(String deploymentId, String path) {
         return asyncUpdate(deploymentId, path).get();
     }
 

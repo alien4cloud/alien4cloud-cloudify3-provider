@@ -1,24 +1,5 @@
 package alien4cloud.paas.cloudify3;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import org.apache.commons.lang.NotImplementedException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -48,7 +29,23 @@ import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.NotImplementedException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The cloudify PaaS Provider implementation
@@ -226,8 +223,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             osAzPPolicyService.process(deploymentContext);
 
             CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
-            ListenableFuture<Void> deploymentUpdate = deploymentService.update(deployment);
-            FutureUtil.associateFutureToPaaSCallback(deploymentUpdate, callback);
+            ListenableFuture<?> updateFinish = deploymentService.update(deployment);
+            FutureUtil.associateFutureToPaaSCallback(updateFinish, callback);
 
         } catch (Throwable e) {
             statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UPDATE_FAILURE);
@@ -334,6 +331,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
         callback = handleLocationVaultCredentialsIfNeeded(deploymentContext, callback);
 
         CloudifyDeployment deployment = cloudifyDeploymentBuilderService.buildCloudifyDeployment(deploymentContext);
+        propertyEvaluatorService.processGetPropertyFunction(deploymentContext);
         ListenableFuture<Map<String, String>> executionFutureResult = customWorkflowService.executeOperation(deployment, nodeOperationExecRequest);
         FutureUtil.associateFutureToPaaSCallback(executionFutureResult, callback);
     }

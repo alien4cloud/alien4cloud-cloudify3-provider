@@ -59,6 +59,8 @@ def get_secret(secret_path):
     raise NonRecoverableError('Cannot get secret at path ' + secret_path + ' as no credentials configuration is found for a vault')
 #end
 
+#include("includes/workflow_inputs.py")
+
 #**
 TOSCA environment variables mapping as defined in specification.
 *#
@@ -153,10 +155,8 @@ download_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'downlo
 env_map.update(download_artifacts(artifacts, download_dir))
 #end
 
-## Add current environment variables
-if inputs.get('process', None) is not None and inputs['process'].get('env', None) is not None:
-    ctx.logger.info('Operation is executed with environment variable {0}'.format(inputs['process']['env']))
-    env_map.update(inputs['process']['env'])
+## Process inputs for custom workflows
+process_custom_workflow_inputs(inputs, env_map)
 
 ## Executor template depends on the artifact type and provides the right wrapper.
 #if($executor_template)

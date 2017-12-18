@@ -1,28 +1,11 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Date;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
 import alien4cloud.deployment.DeploymentLoggingService;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
 import alien4cloud.paas.cloudify3.error.CloudifyAPIException;
 import alien4cloud.paas.cloudify3.model.Blueprint;
 import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.model.DeploymentUpdate;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.Workflow;
@@ -32,7 +15,22 @@ import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Date;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Handle deployment of the topology on cloudify 3. This service handle from the creation of blueprint from alien model to execution of default workflow
@@ -71,8 +69,9 @@ public class DeploymentService extends RuntimeService {
         try {
             blueprintPath = blueprintService.generateBlueprint(alienDeployment);
         } catch (IOException e) {
-            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
-                    + alienDeployment.getDeploymentId(), e);
+            log.error(
+                    "Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
+                            + alienDeployment.getDeploymentId(), e);
 
             statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
             return Futures.immediateFailedFuture(e);
@@ -109,33 +108,37 @@ public class DeploymentService extends RuntimeService {
         ListenableFuture<Deployment> installedExecution = waitForExecutionFinish(installingExecution);
 
         // Add a callback to handled failures and provide alien with the correct events.
-        addFailureCallback(installedExecution, "Deployment", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
-                DeploymentStatus.FAILURE);
+        addFailureCallback(installedExecution, "Deployment", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(), DeploymentStatus.FAILURE);
         return installedExecution;
     }
 
-    public ListenableFuture<Void> update(final CloudifyDeployment alienDeployment) {
+    public ListenableFuture<?> update(final CloudifyDeployment alienDeployment) {
         // generate the blueprint and return in case of failure.
         Path blueprintPath;
         try {
             blueprintPath = blueprintService.generateBlueprint(alienDeployment);
         } catch (IOException e) {
-            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
-                    + alienDeployment.getDeploymentId(), e);
+            log.error(
+                    "Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
+                            + alienDeployment.getDeploymentId(), e);
 
             statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
             return Futures.immediateFailedFuture(e);
         }
 
         // update the deployment.
-        ListenableFuture<Void> updatingDeployment = configurationHolder.getApiClient().getDeploymentUpdateClient()
+        ListenableFuture<DeploymentUpdate> updatingDeployment = configurationHolder.getApiClient().getDeploymentUpdateClient()
                 .asyncUpdate(alienDeployment.getDeploymentPaaSId(), blueprintPath.toString());
 
-        // Add a callback to handled failures and provide alien with the correct events.
-        addFailureCallback(updatingDeployment, "Update", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(),
-                DeploymentStatus.UPDATE_FAILURE);
+        ListenableFuture<Execution> updateExecution = Futures.transform(
+                updatingDeployment,
+                (AsyncFunction<DeploymentUpdate, Execution>) deploymentUpdate -> configurationHolder.getApiClient().getExecutionClient()
+                        .asyncRead(deploymentUpdate.getExecutionId()));
 
-        return updatingDeployment;
+        ListenableFuture<?> finishUpdate = waitForExecutionFinish(updateExecution);
+        // Add a callback to handled failures and provide alien with the correct events.
+        addFailureCallback(finishUpdate, "Update", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(), DeploymentStatus.UPDATE_FAILURE);
+        return finishUpdate;
     }
 
     /**
@@ -227,8 +230,8 @@ public class DeploymentService extends RuntimeService {
     private AsyncFunction<Deployment, Deployment> deleteDeploymentFunction(final PaaSDeploymentContext deploymentContext) {
         return deployment -> {
             // TODO Due to bug index not refreshed of cloudify 3.1 (will be corrected in 3.2). We schedule the delete of deployment 2 seconds after the
-            ListenableFuture<?> deleteDeploymentFuture = Futures.dereference(scheduledExecutorService.schedule(
-                    () -> configurationHolder.getApiClient().getDeploymentClient().asyncDelete(deploymentContext.getDeploymentPaaSId()), 2, TimeUnit.SECONDS));
+            ListenableFuture<?> deleteDeploymentFuture = Futures.dereference(scheduledExecutorService.schedule(() -> configurationHolder.getApiClient()
+                    .getDeploymentClient().asyncDelete(deploymentContext.getDeploymentPaaSId()), 2, TimeUnit.SECONDS));
             return Futures.transform(deleteDeploymentFuture,
                     (AsyncFunction<Object, Deployment>) input -> waitForDeploymentDeleted(deploymentContext.getDeploymentPaaSId()));
         };
