@@ -13,6 +13,7 @@ import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -95,6 +96,9 @@ public class StatusService {
 
     @Resource
     private RuntimePropertiesService runtimePropertiesService;
+
+    @Resource(name = "cloudify-async-thread-pool")
+    private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     @Resource
     private ListeningScheduledExecutorService scheduler;
@@ -351,7 +355,7 @@ public class StatusService {
             if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
                 // The deployment is being created means that currently it's not monitored, it's in transition
                 // The deployment is currently monitored so the cache can be used
-                callback.onSuccess(statusFromCache);
+                threadPoolTaskExecutor.execute(() -> callback.onSuccess(statusFromCache));
             } else {
                 Futures.addCallback(asyncGetStatus(deploymentPaaSId), new FutureCallback<DeploymentStatus>() {
                     @Override
