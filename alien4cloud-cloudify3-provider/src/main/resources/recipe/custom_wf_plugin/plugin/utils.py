@@ -1,8 +1,10 @@
+from cloudify.workflows import tasks as workflow_tasks
+
+from handlers import _set_send_node_event_on_error_handler
 from handlers import build_persistent_event_tasks
 from handlers import build_wf_event_task
 from handlers import host_post_start
 from handlers import host_pre_stop
-from cloudify.workflows import tasks as workflow_tasks
 
 
 def _get_nodes_instances(ctx, node_id):
@@ -65,23 +67,13 @@ def _get_nodes_instances_from_nodes(nodes, node_id):
 
 
 def set_state_task(ctx, graph, node_id, state_name, step_id, custom_context):
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="call: set_state_task(node_id: {0}, state_name: {1}, step_id: {2})".format(node_id, state_name, step_id))
     sequence = _set_state_task(ctx, graph, node_id, state_name, step_id, custom_context)
     if sequence is not None:
         sequence.name = step_id
-        # start = ctx.internal.send_workflow_event(event_type='custom_workflow', message=build_wf_event(WfEvent(step_id, "in")))
-        # sequence.set_head(start)
-        # end = ctx.internal.send_workflow_event(event_type='custom_workflow', message=build_wf_event(WfEvent(step_id, "ok")))
-        # sequence.add(end)
         custom_context.tasks[step_id] = sequence
 
 
 def _set_state_task(ctx, graph, node_id, state_name, step_id, custom_context):
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="call: _set_state_task(node_id: {0}, state_name: {1}, step_id: {2})".format(node_id, state_name, step_id))
     sequence = None
     instances = custom_context.modified_instances_per_node.get(node_id, [])
     instance_count = len(instances)
@@ -94,23 +86,14 @@ def _set_state_task(ctx, graph, node_id, state_name, step_id, custom_context):
             fork.add(set_state_task_for_instance(ctx, graph, node_id, instance, state_name, step_id))
         msg = "state {0} on all {1} node instances".format(state_name, node_id)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="return: _set_state_task(node_id: {0}, state_name: {1}, step_id: {2}): instance_count: {3}, sequence: {4}".format(node_id, state_name, step_id, instance_count, sequence))
     return sequence
 
 
 def set_state_task_for_instance(ctx, graph, node_id, instance, state_name, step_id):
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="call: set_state_task_for_instance(node_id: {0}, state_name: {1}, step_id: {2}, instance: {3})".format(node_id, state_name, step_id, instance))
     task = TaskSequenceWrapper(graph)
     task.add(build_wf_event_task(instance, step_id, "in"))
     task.add(instance.set_state(state_name))
     task.add(build_wf_event_task(instance, step_id, "ok"))
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="return: set_state_task_for_instance(node_id: {0}, state_name: {1}, step_id: {2}, instance: {3})".format(node_id, state_name, step_id, instance))
     return task
 
 
@@ -118,10 +101,6 @@ def operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_contex
     sequence = _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_context)
     if sequence is not None:
         sequence.name = step_id
-        # start = ctx.internal.send_workflow_event(event_type='custom_workflow', message=build_wf_event(WfEvent(step_id, "in")))
-        # sequence.set_head(start)
-        # end = ctx.internal.send_workflow_event(event_type='custom_workflow', message=build_wf_event(WfEvent(step_id, "ok")))
-        # sequence.add(end)
         custom_context.tasks[step_id] = sequence
 
 
@@ -130,11 +109,21 @@ def _operation_task(ctx, graph, node_id, operation_fqname, step_id, custom_conte
     instances = custom_context.modified_instances_per_node.get(node_id, [])
     instance_count = len(instances)
     if instance_count == 1:
-        sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id, custom_context)
+        if custom_context.is_native_node(node_id):
+            sequence = operation_task_for_native_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id,
+                                                          custom_context)
+        else:
+            sequence = operation_task_for_instance(ctx, graph, node_id, instances[0], operation_fqname, step_id,
+                                                   custom_context)
     elif instance_count > 1:
         fork = ForkjoinWrapper(graph)
         for instance in instances:
-            instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context)
+            if custom_context.is_native_node(node_id):
+                instance_task = operation_task_for_native_instance(ctx, graph, node_id, instance, operation_fqname,
+                                                                   step_id, custom_context)
+            else:
+                instance_task = operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname, step_id,
+                                                            custom_context)
             fork.add(instance_task)
         msg = "operation {0} on all {1} node instances".format(operation_fqname, node_id)
         sequence = forkjoin_sequence(graph, fork, instances[0], msg)
@@ -285,7 +274,6 @@ def run_relationship_step(sequence, rel_instance, operation_fqname, operation_ho
 def relationship_operation_task_for_instance(ctx, custom_context, graph, rel_instance, operation_fqname,
                                              operation_host):
     sequence = TaskSequenceWrapper(graph)
-    # sequence.add(build_wf_event_task(rel_instance, step_id, "in"))
     if operation_fqname == 'cloudify.interfaces.relationship_lifecycle.preconfigure':
         if __check_and_register_call_config_around(ctx, custom_context, rel_instance, operation_host.lower(), 'pre'):
             run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
@@ -294,7 +282,6 @@ def relationship_operation_task_for_instance(ctx, custom_context, graph, rel_ins
             run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
     else:
         run_relationship_step(sequence, rel_instance, operation_fqname, operation_host)
-    # sequence.add(build_wf_event_task(rel_instance, step_id, "ok"))
     return sequence
 
 
@@ -342,6 +329,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
             def send_node_event_error_handler(tsk):
                 instance.send_event('ignore stop failure')
                 return workflow_tasks.HandlerResult.ignore()
+
             task.on_failure = send_node_event_error_handler
 
         sequence.add(task)
@@ -352,6 +340,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
             def send_node_event_error_handler(tsk):
                 instance.send_event('ignore delete failure')
                 return workflow_tasks.HandlerResult.ignore()
+
             task.on_failure = send_node_event_error_handler
 
         sequence.add(task)
@@ -364,9 +353,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
 
 def forkjoin_sequence(graph, forkjoin_wrapper, instance, label):
     sequence = TaskSequenceWrapper(graph)
-    # sequence.add(instance.send_event("forking: {0} instance '{1}'".format(label, instance.id)))
     sequence.add(forkjoin_wrapper)
-    # sequence.add(instance.send_event("joining: {0} instance '{1}'".format(label, instance.id)))
     return sequence
 
 
@@ -407,9 +394,6 @@ def is_kubernetes_node(node):
 
 
 def generate_native_node_workflows(ctx, graph, custom_context, stage):
-    # ctx.internal.send_workflow_event(
-    #        event_type='other',
-    #        message="call: generate_native_node_workflows(stage: {0})".format(stage))
     native_node_ids = custom_context.get_native_node_ids()
     # for each native node we build a sequence of operations
     native_sequences = {}
@@ -457,15 +441,9 @@ def generate_native_node_workflows(ctx, graph, custom_context, stage):
             # we register this fork using the delegate wf step id
             # so it can be referenced later to link non native tasks
             custom_context.tasks[stepId] = fork
-            # ctx.internal.send_workflow_event(
-            #        event_type='other',
-            #        message="return: generate_native_node_workflows")
 
 
 def _generate_native_node_sequence(ctx, graph, node_id, stage, custom_context):
-    # ctx.internal.send_workflow_event(
-    #    event_type='other',
-    #    message="call: _generate_native_node_sequence(node: {0}, stage: {1})".format(node, stage))
     if stage == 'install':
         return _generate_native_node_sequence_install(ctx, graph, node_id, custom_context)
     elif stage == 'uninstall':
@@ -475,9 +453,6 @@ def _generate_native_node_sequence(ctx, graph, node_id, stage, custom_context):
 
 
 def _generate_native_node_sequence_install(ctx, graph, node_id, custom_context):
-    # ctx.internal.send_workflow_event(
-    #    event_type='other',
-    #    message="call: _generate_native_node_sequence_install(node: {0})".format(node))
     sequence = TaskSequenceWrapper(graph)
     sequence.add(_set_state_task(ctx, graph, node_id, 'initial', '_{0}_initial'.format(node_id), custom_context))
     sequence.add(_set_state_task(ctx, graph, node_id, 'creating', '_{0}_creating'.format(node_id), custom_context))
@@ -495,16 +470,10 @@ def _generate_native_node_sequence_install(ctx, graph, node_id, custom_context):
         _operation_task(ctx, graph, node_id, 'cloudify.interfaces.lifecycle.start', '_start_{0}'.format(node_id),
                         custom_context))
     sequence.add(_set_state_task(ctx, graph, node_id, 'started', '_{0}_started'.format(node_id), custom_context))
-    # ctx.internal.send_workflow_event(
-    #    event_type='other',
-    #    message="return: _generate_native_node_sequence_install(node: {0})".format(node))
     return sequence
 
 
 def _generate_native_node_sequence_uninstall(ctx, graph, node_id, custom_context):
-    # ctx.internal.send_workflow_event(
-    #    event_type='other',
-    #    message="call: _generate_native_node_sequence_uninstall(node: {0})".format(node))
     sequence = TaskSequenceWrapper(graph)
     sequence.add(_set_state_task(ctx, graph, node_id, 'stopping', '_{0}_stopping'.format(node_id), custom_context))
     sequence.add(_operation_task(ctx, graph, node_id, 'cloudify.interfaces.lifecycle.stop', '_stop_{0}'.format(node_id),
@@ -515,9 +484,6 @@ def _generate_native_node_sequence_uninstall(ctx, graph, node_id, custom_context
         _operation_task(ctx, graph, node_id, 'cloudify.interfaces.lifecycle.delete', '_delete_{0}'.format(node_id),
                         custom_context))
     sequence.add(_set_state_task(ctx, graph, node_id, 'deleted', '_{0}_deleted'.format(node_id), custom_context))
-    # ctx.internal.send_workflow_event(
-    #    event_type='other',
-    #    message="return: _generate_native_node_sequence_uninstall(node: {0})".format(node))
     return sequence
 
 
@@ -594,6 +560,8 @@ class CustomContext(object):
         # we'll use a string like sourceId#targetId#pre|post#source|target
         self.executed_operation = set()
         self.tasks = {}
+        # map of target -> relationship instances
+        self.relationship_targets = {}
         # map of source -> target -> relationship instances
         self.relationships_per_source_target = {}
         # a set of nodeId for which wf is customized (designed using a4c)
@@ -641,15 +609,26 @@ class CustomContext(object):
             ctx.internal.send_workflow_event(
                 event_type='other',
                 message="found an instance of {0} : {1}".format(node_instance.node_id, node_instance.id))
+            # build target_relationships
+            for relationship in node_instance.relationships:
+                target_relationships = self.relationship_targets.get(relationship.target_id, None)
+                if target_relationships is None:
+                    target_relationships = set()
+                    self.relationship_targets[relationship.target_id] = target_relationships
+                ctx.internal.send_workflow_event(
+                    event_type='other',
+                    message="found a relationship that targets {0} from {1}".format(relationship.target_id, relationship.node_instance.id))
+                target_relationships.add(relationship)
+            # build relationships_per_source_target
             source_relationships = self.relationships_per_source_target.get(node_instance.node_id, None)
             if source_relationships is None:
                 source_relationships = {}
                 self.relationships_per_source_target[node_instance.node_id] = source_relationships
             for relationship in node_instance.relationships:
-                target_relationships = source_relationships.get(relationship.target_node_instance.node_id, None)
-                if target_relationships is None:
-                    target_relationships = []
-                    source_relationships[relationship.target_node_instance.node_id] = target_relationships
+                target_relationships_from_node = source_relationships.get(relationship.target_node_instance.node_id, None)
+                if target_relationships_from_node is None:
+                    target_relationships_from_node = []
+                    source_relationships[relationship.target_node_instance.node_id] = target_relationships_from_node
                 ctx.internal.send_workflow_event(
                     event_type='other',
                     message="found a relationship that targets {0}/{1} from {2}/{3}".format(
@@ -657,7 +636,7 @@ class CustomContext(object):
                         relationship.node_instance.node_id, relationship.node_instance.id))
                 if should_call_relationship_op(ctx, relationship):
                     # Only call relationship if it's not cross instance relationships
-                    target_relationships.append(relationship)
+                    target_relationships_from_node.append(relationship)
 
     def add_customized_wf_node(self, nodeId):
         self.customized_wf_nodes.add(nodeId)
@@ -678,3 +657,162 @@ class CustomContext(object):
 
     def register_native_delegate_wf_step(self, nodeId, stepId):
         self.delegate_wf_steps[nodeId] = stepId
+
+
+def count_relationships(instance):
+    relationship_count = 0
+    for relationship in instance.relationships:
+        relationship_count += 1
+    return relationship_count
+
+
+def operation_task_for_native_instance(ctx, graph, node_id, instance, operation_fqname, step_id, custom_context):
+    sequence = TaskSequenceWrapper(graph)
+    sequence.add(build_wf_event_task(instance, step_id, "in"))
+    relationship_count = count_relationships(instance)
+    if operation_fqname == 'cloudify.interfaces.lifecycle.start':
+        sequence.add(instance.execute_operation(operation_fqname))
+        if _is_host_node_instance(instance):
+            sequence.add(*host_post_start(ctx, instance))
+        sequence.add(instance.execute_operation('cloudify.interfaces.monitoring.start'))
+        as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
+        host_instance = None
+        if relationship_count > 0 or len(as_target_relationships) > 0:
+            for relationship in instance.relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    sequence.add(
+                        relationship.execute_source_operation('cloudify.interfaces.relationship_lifecycle.establish'))
+                    # if the target of the relation is not in modified instances, we should call the target.add_source
+                    # if relationship.target_node_instance.id not in custom_context.modified_instance_ids:
+                    sequence.add(
+                        relationship.execute_target_operation('cloudify.interfaces.relationship_lifecycle.establish'))
+                    if 'cloudify.nodes.Volume' in instance.node.type_hierarchy:
+                        ctx.logger.info(
+                            "[MAPPING] instance={} hierarchy={}".format(instance.id, instance.node.type_hierarchy))
+                        host_instance = __get_host(ctx, relationship.target_node_instance)
+            for relationship in as_target_relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if relationship.node_instance.id not in custom_context.modified_instance_ids:
+                        sequence.add(relationship.execute_target_operation(
+                            'cloudify.interfaces.relationship_lifecycle.establish'))
+                    if relationship.node_instance.id not in custom_context.modified_instance_ids:
+                        sequence.add(relationship.execute_source_operation(
+                            'cloudify.interfaces.relationship_lifecycle.establish'))
+        sequence.add(instance.send_event("Start monitoring on node '{0}' instance '{1}'".format(node_id, instance.id)))
+        if host_instance is not None and host_instance.id == instance.id:
+            ctx.logger.info("[MAPPING] Do nothing it is the same instance: host_instance.id={} instance.id={}".format(
+                host_instance.id, instance.id))
+        elif 'cloudify.nodes.Compute' in instance.node.type_hierarchy:
+            # This part is specific to Azure as with the Azure plugin, the relationship is from the Compute to a Volume
+            for relationship in instance.relationships:
+                # In the Azure definition types of the Cloudify plugin, the datadisk type doesn't derived from cloudify.nodes.Volume
+                if 'cloudify.azure.nodes.storage.DataDisk' in relationship.target_node_instance.node.type_hierarchy and 'alien4cloud.mapping.device.execute' in instance.node.operations:
+                    volume_instance_id = relationship.target_id
+                    sequence.add(instance.send_event(
+                        "Updating device attribute for instance {} and volume {} (Azure)".format(instance.id,
+                                                                                                 volume_instance_id)))
+                    sequence.add(instance.execute_operation("alien4cloud.mapping.device.execute",
+                                                            kwargs={'volume_instance_id': volume_instance_id}))
+        elif host_instance is not None and 'alien4cloud.mapping.device.execute' in host_instance.node.operations:
+            sequence.add(host_instance.send_event(
+                "Updating device attribute for instance {} and volume {}".format(host_instance.id, instance.id)))
+            sequence.add(host_instance.execute_operation("alien4cloud.mapping.device.execute",
+                                                         kwargs={'volume_instance_id': instance.id}))
+    elif operation_fqname == 'cloudify.interfaces.lifecycle.configure':
+        as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
+        if relationship_count > 0 or len(as_target_relationships) > 0:
+            sequence.add(instance.send_event("preconfiguring task for instance {0}'".format(instance.id)))
+            for relationship in instance.relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if __check_and_register_call_config_around(ctx, custom_context, relationship, 'source', 'pre'):
+                        sequence.add(relationship.execute_source_operation(
+                            'cloudify.interfaces.relationship_lifecycle.preconfigure'))
+            for relationship in as_target_relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if __check_and_register_call_config_around(ctx, custom_context, relationship, 'target', 'pre'):
+                        sequence.add(relationship.execute_target_operation(
+                            'cloudify.interfaces.relationship_lifecycle.preconfigure'))
+        # the configure operation call itself
+        sequence.add(instance.execute_operation(operation_fqname))
+        if relationship_count > 0 or len(as_target_relationships) > 0:
+            sequence.add(instance.send_event("postconfiguring task for instance {0}'".format(instance.id)))
+            for relationship in instance.relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if __check_and_register_call_config_around(ctx, custom_context, relationship, 'source', 'post'):
+                        sequence.add(relationship.execute_source_operation(
+                            'cloudify.interfaces.relationship_lifecycle.postconfigure'))
+                        has_postconfigure_tasks = True
+            for relationship in as_target_relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if __check_and_register_call_config_around(ctx, custom_context, relationship, 'target', 'post'):
+                        task = relationship.execute_target_operation(
+                            'cloudify.interfaces.relationship_lifecycle.postconfigure')
+                        _set_send_node_event_on_error_handler(task, instance,
+                                                              "Error occurred while postconfiguring node as target for relationship {0} - ignoring...".format(
+                                                                  relationship))
+                        sequence.add(task)
+
+        persistent_event_tasks = build_persistent_event_tasks(instance)
+        if persistent_event_tasks is not None:
+            sequence.add(*persistent_event_tasks)
+
+    elif operation_fqname == 'cloudify.interfaces.lifecycle.stop':
+        if _is_host_node_instance(instance):
+            sequence.add(*host_pre_stop(instance))
+        task = instance.execute_operation(operation_fqname)
+
+        if custom_context.is_native_node(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore stop failure')
+                return workflow_tasks.HandlerResult.ignore()
+
+            task.on_failure = send_node_event_error_handler
+
+        sequence.add(task)
+        as_target_relationships = custom_context.relationship_targets.get(instance.id, set())
+        # now call unlink onto relations' target
+        if relationship_count > 0 or len(as_target_relationships) > 0:
+            for relationship in instance.relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    unlink_task_source = relationship.execute_source_operation(
+                        'cloudify.interfaces.relationship_lifecycle.unlink')
+                    sequence.add(unlink_task_source)
+                    # call unlink on the target of the relationship
+                    unlink_task_target = relationship.execute_target_operation(
+                        'cloudify.interfaces.relationship_lifecycle.unlink')
+                    sequence.add(unlink_task_target)
+            for relationship in as_target_relationships:
+                # add a condition in order to test if it's a 1-1 rel
+                if should_call_relationship_op(ctx, relationship):
+                    if relationship.node_instance.id not in custom_context.modified_instance_ids:
+                        unlink_task_source = relationship.execute_source_operation(
+                            'cloudify.interfaces.relationship_lifecycle.unlink')
+                        sequence.add(unlink_task_source)
+                        unlink_task_target = relationship.execute_target_operation(
+                            'cloudify.interfaces.relationship_lifecycle.unlink')
+                        sequence.add(unlink_task_target)
+
+
+    elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
+        task = instance.execute_operation(operation_fqname)
+
+        if custom_context.is_native_node(instance):
+            def send_node_event_error_handler(tsk):
+                instance.send_event('ignore delete failure')
+                return workflow_tasks.HandlerResult.ignore()
+
+            task.on_failure = send_node_event_error_handler
+
+        sequence.add(task)
+    else:
+        # the default behavior : just do the job
+        sequence.add(instance.execute_operation(operation_fqname))
+    sequence.add(build_wf_event_task(instance, step_id, "ok"))
+    return sequence

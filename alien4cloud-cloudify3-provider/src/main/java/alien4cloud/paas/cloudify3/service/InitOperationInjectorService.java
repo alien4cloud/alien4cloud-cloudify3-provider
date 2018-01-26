@@ -65,11 +65,11 @@ public class InitOperationInjectorService {
                     initStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
                     for (String followerId : safe(initStep.getOnSuccess())) {
                         WorkflowStep follower = installWorkflow.getSteps().get(followerId);
-                        follower.getPrecedingSteps().remove(stepEntry.getKey());
-                        follower.getPrecedingSteps().add(stepName);
+                        follower.removePreceding(stepEntry.getKey());
+                        follower.addPreceding(stepName);
                     }
                     initStep.setPrecedingSteps(Sets.newHashSet(stepEntry.getKey()));
-                    installWorkflow.getSteps().put(stepName, initStep);
+                    installWorkflow.addStep(initStep);
                     stepEntry.getValue().setOnSuccess(Sets.newHashSet(stepName));
                     return;
                 }

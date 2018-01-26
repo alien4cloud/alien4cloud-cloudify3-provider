@@ -77,8 +77,8 @@ public class ServiceDelegateWorkflowService {
                     creatingStep.setPrecedingSteps(stepEntry.getValue().getPrecedingSteps());
                     for (String precederId : safe(creatingStep.getPrecedingSteps())) {
                         WorkflowStep preceder = installWorkflow.getSteps().get(precederId);
-                        preceder.getOnSuccess().remove(stepEntry.getKey());
-                        preceder.getOnSuccess().add(creatingStep.getName());
+                        preceder.removeFollowing(stepEntry.getKey());
+                        preceder.addFollowing(creatingStep.getName());
                     }
                     creatingStep.setOnSuccess(Sets.newHashSet(createStep.getName()));
 
@@ -95,9 +95,9 @@ public class ServiceDelegateWorkflowService {
                         if (preceder.getOnSuccess() == null) {
                             preceder.setOnSuccess(Sets.newHashSet());
                         }
-                        preceder.getOnSuccess().add(startingStep.getName());
+                        preceder.addFollowing(startingStep.getName());
                     }
-                    startingStep.getPrecedingSteps().add(createdStep.getName());
+                    startingStep.addPreceding(createdStep.getName());
                     startingStep.setOnSuccess(Sets.newHashSet(startStep.getName()));
 
                     startStep.setPrecedingSteps(Sets.newHashSet(startingStep.getName()));
@@ -107,8 +107,8 @@ public class ServiceDelegateWorkflowService {
                     startedStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
                     for (String followerId : safe(startedStep.getOnSuccess())) {
                         WorkflowStep follower = installWorkflow.getSteps().get(followerId);
-                        follower.getPrecedingSteps().remove(stepEntry.getKey());
-                        follower.getPrecedingSteps().add(startedStep.getName());
+                        follower.removePreceding(stepEntry.getKey());
+                        follower.addPreceding(startedStep.getName());
                     }
 
                     // Remove old step
@@ -158,8 +158,8 @@ public class ServiceDelegateWorkflowService {
                     stoppingStep.setPrecedingSteps(stepEntry.getValue().getPrecedingSteps());
                     for (String precederId : safe(stoppingStep.getPrecedingSteps())) {
                         WorkflowStep preceder = uninstallWorkflow.getSteps().get(precederId);
-                        preceder.getOnSuccess().remove(stepEntry.getKey());
-                        preceder.getOnSuccess().add(stoppingStep.getName());
+                        preceder.removeFollowing(stepEntry.getKey());
+                        preceder.addFollowing(stoppingStep.getName());
                     }
                     stoppingStep.setOnSuccess(Sets.newHashSet(stopStep.getName()));
 
@@ -176,8 +176,8 @@ public class ServiceDelegateWorkflowService {
                     deletedStep.setOnSuccess(stepEntry.getValue().getOnSuccess());
                     for (String followerId : safe(deletedStep.getOnSuccess())) {
                         WorkflowStep follower = uninstallWorkflow.getSteps().get(followerId);
-                        follower.getPrecedingSteps().remove(stepEntry.getKey());
-                        follower.getPrecedingSteps().add(deletedStep.getName());
+                        follower.removePreceding(stepEntry.getKey());
+                        follower.addPreceding(deletedStep.getName());
                     }
 
                     // Remove old step

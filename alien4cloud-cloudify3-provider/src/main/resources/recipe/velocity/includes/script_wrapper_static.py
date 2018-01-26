@@ -103,7 +103,7 @@ class OutputConsumer(object):
 
     def consume_output(self):
         for line in iter(self.out.readline, b''):
-            self.buffer.write(line)
+            self.buffer.write(unicode(line, errors='ignore'))
         self.out.close()
 
     def join(self):
