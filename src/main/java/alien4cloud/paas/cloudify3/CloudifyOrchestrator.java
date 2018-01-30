@@ -147,7 +147,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     public void update(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback callback) {
         // first of all, let's check this deployment's status
         DeploymentStatus currentStatus = statusService.getFreshStatus(deploymentContext.getDeploymentPaaSId());
-        if (!(DeploymentStatus.DEPLOYED.equals(currentStatus) || DeploymentStatus.UPDATED.equals(currentStatus))) {
+        if (!(DeploymentStatus.DEPLOYED.equals(currentStatus) || DeploymentStatus.UPDATED.equals(currentStatus)
+                || DeploymentStatus.UPDATE_FAILURE.equals(currentStatus))) {
             log.warn("Not possible to update {} for alien deployment {}: deployment is not active on Cloudify.", deploymentContext.getDeploymentPaaSId(),
                     deploymentContext.getDeploymentId());
             callback.onFailure(new PaaSNotYetDeployedException("Deployment " + deploymentContext.getDeploymentPaaSId()
