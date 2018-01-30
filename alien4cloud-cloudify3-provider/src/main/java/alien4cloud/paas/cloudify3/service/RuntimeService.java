@@ -1,12 +1,15 @@
 package alien4cloud.paas.cloudify3.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.rest.utils.JsonUtil;
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AsyncFunction;
 import com.google.common.util.concurrent.Futures;
@@ -14,6 +17,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
+import alien4cloud.paas.cloudify3.error.DeploymentRuntimeException;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.ExecutionStatus;
@@ -32,9 +36,14 @@ public abstract class RuntimeService {
 
     private ListenableFuture<Execution> internalWaitForExecutionFinish(final ListenableFuture<Execution> futureExecution) {
         AsyncFunction<Execution, Execution> waitFunc = execution -> {
-            if (ExecutionStatus.isTerminated(execution.getStatus())) {
+            if (ExecutionStatus.isTerminatedSuccessfully(execution.getStatus()) || ExecutionStatus.isCancelled(execution.getStatus())) {
                 log.info("Execution {} for workflow {} has finished with status {}", execution.getId(), execution.getWorkflowId(), execution.getStatus());
                 return futureExecution;
+            } else if (ExecutionStatus.isTerminatedWithFailure(execution.getStatus())) {
+                String errMessage = String.format("Execution %s for workflow %s fails with error:\n %s", execution.getId(), execution.getWorkflowId(), execution.getError());
+                log.info(errMessage);
+                Map<String, String> errMap = ImmutableMap.of("executionId", execution.getId(), "workflowId", execution.getWorkflowId(), "error", execution.getError());
+                return Futures.immediateFailedFuture(new DeploymentRuntimeException(JsonUtil.toString(errMap)));
             } else {
                 // If it's not finished, schedule another poll in 2 seconds
                 ListenableFuture<Execution> newFutureExecution = Futures.dereference(scheduledExecutorService
