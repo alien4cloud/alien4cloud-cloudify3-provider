@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import lombok.experimental.var;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
@@ -60,6 +61,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
@@ -226,14 +229,11 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         if (StringUtils.isEmpty(text)) {
             return "''";
         }
-        if (text.contains("'")) {
-            text = text.replace("'", "\\'");
-        }
-        if (text.contains("\n") || text.contains("\r")) {
-            return "r'''" + text + "'''";
-        } else {
-            return "r'" + text + "'";
-        }
+        // Even in raw string the backslash need to be escaped so env variable export works correctly.
+        String escaped = text.replaceAll(Pattern.quote("\\"), Matcher.quoteReplacement("\\\\"));
+        // In the case we have 3 simple quotes we don't want the string to end so concatenate a python variable we add to the velocity files.
+        escaped = escaped.replaceAll(Pattern.quote("'''"), Matcher.quoteReplacement("'''+sqotes+'''"));
+        return "r'''" + escaped + "'''";
     }
 
     public String formatConcatPropertyValue(IPaaSTemplate<?> owner, ConcatPropertyValue concatPropertyValue) {
