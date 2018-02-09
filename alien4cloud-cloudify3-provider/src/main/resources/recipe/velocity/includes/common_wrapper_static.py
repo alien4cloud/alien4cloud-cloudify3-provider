@@ -15,6 +15,8 @@ import threading
 import platform
 import json
 
+sqotes="'''"
+
 def convert_env_value_to_string(envDict):
     for key, value in envDict.items():
         envDict[str(key)] = str(envDict.pop(key))
