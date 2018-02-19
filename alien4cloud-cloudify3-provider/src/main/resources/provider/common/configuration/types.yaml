@@ -14,7 +14,7 @@ data_types:
     properties:
       install_method:
         type: string
-        required: true
+        required: false
       service_name:
         type: string
         required: false
