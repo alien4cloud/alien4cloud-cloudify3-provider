@@ -36,4 +36,9 @@ else:
 
 
 def get_secret(secret_path):
-    return vault_client.read(secret_path)['data']['value']
+    secret = vault_client.read(secret_path)
+    if secret is not None:
+        if 'data' in secret:
+            if 'value' in secret['data']:
+                return secret['data']['value']
+    raise NonRecoverableError('Cannot get secret at path ' + secret_path + ', the secret does not exist or no data found at the path data.value of the secret response')

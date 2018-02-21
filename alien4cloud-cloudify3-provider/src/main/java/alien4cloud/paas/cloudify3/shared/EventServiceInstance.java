@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3.shared;
 
-import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -54,7 +53,7 @@ public class EventServiceInstance {
      */
     public synchronized void register(String consumerId, IEventConsumer logEventConsumer) {
         eventDispatcher.register(consumerId, logEventConsumer);
-        log.info("Registed event consumer {} with date {} while last polling date was {}", consumerId);
+        log.info("Registered event consumer {} ", consumerId);
 
         // If the configuration is not set then we wait for it to be set before scheduling next poll.
         initScheduling();

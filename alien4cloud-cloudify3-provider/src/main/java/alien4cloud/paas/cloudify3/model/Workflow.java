@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
 
 @Getter
 @Setter
@@ -29,6 +30,8 @@ public class Workflow extends AbstractCloudifyModel {
     public static final String DELETE_DEPLOYMENT_ENVIRONMENT = "delete_deployment_environment";
 
     public static final String UPDATE_DEPLOYMENT = "update";
+
+    public static final String POST_UPDATE_DEPLOYMENT = A4C_PREFIX + NormativeWorkflowNameConstants.POST_UPDATE;
 
     public static final String SCALE = A4C_PREFIX + "scale";
 
