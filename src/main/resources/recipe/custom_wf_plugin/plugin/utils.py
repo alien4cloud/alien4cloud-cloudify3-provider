@@ -334,7 +334,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
             sequence.add(*host_pre_stop(instance))
         task = instance.execute_operation(operation_fqname)
 
-        if custom_context.is_native_node(instance):
+        if _is_host_node_instance(instance):
             def send_node_event_error_handler(tsk):
                 instance.send_event('ignore stop failure')
                 return workflow_tasks.HandlerResult.ignore()
@@ -365,7 +365,7 @@ def operation_task_for_instance(ctx, graph, node_id, instance, operation_fqname,
     elif operation_fqname == 'cloudify.interfaces.lifecycle.delete':
         task = instance.execute_operation(operation_fqname)
 
-        if custom_context.is_native_node(instance):
+        if _is_host_node_instance(instance):
             def send_node_event_error_handler(tsk):
                 instance.send_event('ignore delete failure')
                 return workflow_tasks.HandlerResult.ignore()
