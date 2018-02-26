@@ -124,7 +124,7 @@ def _all_instances_get_attribute(entity, attribute_name):
     # we have to get the node using the rest client with node_instance.node_id
     # then we will have the relationships
     node = client.nodes.get(ctx.deployment.id, entity.node.id)
-    all_node_instances = client.node_instances.list(ctx.deployment.id, entity.node.id)
+    all_node_instances = client.node_instances.list(deployment_id = ctx.deployment.id, node_id = entity.node.id)
     for node_instance in all_node_instances:
         prop_value = __recursively_get_instance_data(node, node_instance, attribute_name)
         if prop_value is not None:
@@ -137,7 +137,7 @@ def _all_instances_get_attribute(entity, attribute_name):
 def _all_instances_get_target_capa_or_node_attribute(entity, capability_attribute_name, attribute_name):
     result_map = {}
     node = client.nodes.get(ctx.deployment.id, entity.node.id)
-    all_node_instances = client.node_instances.list(ctx.deployment.id, entity.node.id)
+    all_node_instances = client.node_instances.list(deployment_id = ctx.deployment.id, node_id = entity.node.id)
     for node_instance in all_node_instances:
         attribute_value = node_instance.runtime_properties.get(capability_attribute_name, None)
         if attribute_value is not None:
@@ -168,7 +168,7 @@ def get_property(entity, property_name):
 
 def get_instance_list(node_id):
     result = ''
-    all_node_instances = client.node_instances.list(ctx.deployment.id, node_id)
+    all_node_instances = client.node_instances.list(deployment_id = ctx.deployment.id, node_id = node_id)
     for node_instance in all_node_instances:
         if len(result) > 0:
             result += ','
