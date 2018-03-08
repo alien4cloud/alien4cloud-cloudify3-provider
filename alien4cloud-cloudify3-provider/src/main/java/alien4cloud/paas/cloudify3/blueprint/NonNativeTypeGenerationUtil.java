@@ -1,19 +1,5 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
@@ -36,7 +22,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import lombok.experimental.var;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
@@ -64,6 +49,20 @@ import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     private ArtifactRegistryService artifactRegistryService;
@@ -80,6 +79,10 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
 
     public boolean propertyCanBeExposed(AbstractPropertyValue propertyValue) {
         return propertyValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(propertyValue);
+    }
+
+    public boolean attributeCanBeExposed(AbstractPropertyValue attributeValue) {
+        return attributeValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(attributeValue);
     }
 
     public String tryToMapToCloudifyInterface(String interfaceName) {
