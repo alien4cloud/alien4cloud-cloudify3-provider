@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
 import java.net.ConnectException;
+import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.function.Supplier;
@@ -29,17 +30,21 @@ public final class ApiHttpClient {
     private final int maxRetry;
     private final long retrySleep;
     private AsyncRestTemplate restTemplate;
-    /** The authentication manager to use. */
+    /**
+     * The authentication manager to use.
+     */
     private AuthenticationInterceptor authenticationInterceptor;
-    /** Url of the current master manager. */
+    /**
+     * Url of the current master manager.
+     */
     private String currentManagerUrl;
     private List<String> managerUrls;
 
     /**
      * Create a new api client for the given urls.
      *
-     * @param restTemplate The spring rest template to leverage for requests.
-     * @param managerUrls The urls of the manager(s) part of the cluster to connect to.
+     * @param restTemplate              The spring rest template to leverage for requests.
+     * @param managerUrls               The urls of the manager(s) part of the cluster to connect to.
      * @param authenticationInterceptor The authentication interceptor to use to add the authentication headers.
      */
     public ApiHttpClient(AsyncRestTemplate restTemplate, List<String> managerUrls, AuthenticationInterceptor authenticationInterceptor, Integer failOverRetry,
@@ -99,35 +104,12 @@ public final class ApiHttpClient {
 
     /**
      * Get request url
-     * 
+     *
      * @param parameterNames all parameters' name
      * @return the url
      */
     public RequestUrlBuilder buildRequestUrl(String requestPath, String... parameterNames) {
         return new RequestUrlBuilder(requestPath, parameterNames);
-    }
-
-    private class RequestUrlBuilder {
-        private String requestPath;
-        private String[] parameterNames;
-
-        private RequestUrlBuilder(String requestPath, String... parameterNames) {
-            this.requestPath = requestPath;
-            this.parameterNames = parameterNames;
-        }
-
-        private String getUrl() {
-            String requestUrl = currentManagerUrl + requestPath;
-            if (parameterNames != null && parameterNames.length > 0) {
-                UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(requestUrl);
-                for (String parameterName : parameterNames) {
-                    uriComponentsBuilder.queryParam(parameterName, "{" + parameterName + "}");
-                }
-                return uriComponentsBuilder.build().toUriString();
-            } else {
-                return requestUrl;
-            }
-        }
     }
 
     private HttpEntity<?> createHttpEntity() {
@@ -148,8 +130,8 @@ public final class ApiHttpClient {
      * If no url works then it will sleep and then try again all urls as long as max retry has not been reached.
      *
      * @param retryCounter A retry counter to stop the recursive retry.
-     * @param function The function to execute.
-     * @param <T> The type the function returns in it's future.
+     * @param function     The function to execute.
+     * @param <T>          The type the function returns in it's future.
      * @return The listener that takes retry in account.
      */
     @VisibleForTesting
@@ -160,6 +142,9 @@ public final class ApiHttpClient {
             function.get().addCallback(t -> {
                 retryFuture.set(t);
             }, throwable -> {
+                if (log.isDebugEnabled()) {
+                    log.debug("Request has failed to get a response from the manager", throwable);
+                }
                 if (isRetriableException(throwable)) {
                     retryCounter.increment();
                     if (retryCounter.loopedRetry <= maxRetry) {
@@ -197,10 +182,34 @@ public final class ApiHttpClient {
 
     private boolean isRetriableException(Throwable throwable) {
         if (throwable instanceof RestClientException) {
-            return throwable.getCause() instanceof NotClusterMasterException || throwable.getCause() instanceof ConnectException || throwable.getCause() instanceof SocketTimeoutException;
+            return throwable.getCause() instanceof NotClusterMasterException || throwable.getCause() instanceof ConnectException || throwable
+                    .getCause() instanceof SocketTimeoutException;
         }
 
-        return throwable instanceof NotClusterMasterException || throwable instanceof ConnectException || throwable instanceof SocketTimeoutException;
+        return throwable instanceof NotClusterMasterException || throwable instanceof ConnectException || throwable instanceof SocketTimeoutException || throwable instanceof NoRouteToHostException;
+    }
+
+    private class RequestUrlBuilder {
+        private String requestPath;
+        private String[] parameterNames;
+
+        private RequestUrlBuilder(String requestPath, String... parameterNames) {
+            this.requestPath = requestPath;
+            this.parameterNames = parameterNames;
+        }
+
+        private String getUrl() {
+            String requestUrl = currentManagerUrl + requestPath;
+            if (parameterNames != null && parameterNames.length > 0) {
+                UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(requestUrl);
+                for (String parameterName : parameterNames) {
+                    uriComponentsBuilder.queryParam(parameterName, "{" + parameterName + "}");
+                }
+                return uriComponentsBuilder.build().toUriString();
+            } else {
+                return requestUrl;
+            }
+        }
     }
 
     @VisibleForTesting
