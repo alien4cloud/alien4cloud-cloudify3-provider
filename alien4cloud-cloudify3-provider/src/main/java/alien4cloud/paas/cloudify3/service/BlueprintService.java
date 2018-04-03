@@ -59,7 +59,6 @@ import static alien4cloud.utils.AlienUtils.safe;
 @Component("cloudify-blueprint-service")
 @Slf4j
 public class BlueprintService {
-    public static final String TOSCA_DOCKER_CONTAINER_TYPE = "tosca.nodes.Container.Application.DockerContainer";
     @Resource
     private CfyConnectionManager connectionManager;
     @Resource
@@ -70,7 +69,9 @@ public class BlueprintService {
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Resource
     private ManagedPlugin pluginContext;
-    /** Registry of implementation artifacts supported by the plugin. */
+    /**
+     * Registry of implementation artifacts supported by the plugin.
+     */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
     @Inject
@@ -115,8 +116,7 @@ public class BlueprintService {
     /**
      * Delete a blueprint on the file system.
      *
-     * @param deploymentPaaSId
-     *            Alien's paas deployment id used to identify the blueprint.
+     * @param deploymentPaaSId Alien's paas deployment id used to identify the blueprint.
      */
     public void deleteBlueprint(String deploymentPaaSId) {
         try {
@@ -129,8 +129,7 @@ public class BlueprintService {
     /**
      * Generate blueprint from an alien deployment request
      *
-     * @param alienDeployment
-     *            the alien deployment's configuration
+     * @param alienDeployment the alien deployment's configuration
      * @return the generated blueprint
      */
     public Path generateBlueprint(CloudifyDeployment alienDeployment) throws IOException {
@@ -275,14 +274,12 @@ public class BlueprintService {
         return generatedBlueprintFilePath;
     }
 
-
     private void generateServiceCreateOperation(IPaaSTemplate<?> owner, BlueprintGenerationUtil util, Map<String, Object> context,
             Path generatedBlueprintDirectoryPath) throws IOException {
 
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("template", owner);
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"),
-                generatedBlueprintDirectoryPath
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"), generatedBlueprintDirectoryPath
                         .resolve(util.getNonNative().getArtifactWrapperPath(owner, ToscaNodeLifecycleConstants.STANDARD, ToscaNodeLifecycleConstants.CREATE)),
                 operationContext);
     }
@@ -295,8 +292,8 @@ public class BlueprintService {
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("operation", operationWrapper);
 
-        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService
-                .getCloudifyImplementationArtifact(operation.getImplementationArtifact().getArtifactType());
+        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService.getCloudifyImplementationArtifact(
+                operation.getImplementationArtifact().getArtifactType());
         if (cloudifyImplementationArtifact == null) {
             // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
             log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
@@ -339,8 +336,8 @@ public class BlueprintService {
     private void ensureArtifactDefined(IArtifact artifact, String pathToNode) {
         if (artifact.getArtifactRef() == null || artifact.getArtifactRef().isEmpty()) {
             throw new BlueprintGenerationException(
-                    "Cloudify plugin only manage deployment artifact with an artifact ref not null or empty. Failed to copy artifact of type <"
-                            + artifact.getArtifactType() + "> for node <" + pathToNode + ">.");
+                    "Cloudify plugin only manage deployment artifact with an artifact ref not null or empty. Failed to copy artifact of type <" + artifact
+                            .getArtifactType() + "> for node <" + pathToNode + ">.");
         }
     }
 
@@ -389,9 +386,7 @@ public class BlueprintService {
                     } else {
                         throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
                     }
-                    if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
-                        copyArtifact(artifactsDir, relativePathToArtifact, artifact);
-                    }
+                    copyArtifact(artifactsDir, relativePathToArtifact, artifact);
                 }
             }
         }
