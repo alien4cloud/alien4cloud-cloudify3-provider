@@ -15,18 +15,9 @@ imports:
 #foreach($import in $cloud.getConfigurationLocation($deployment.locationType).getImports())
   - $import
 #end
-#if($util.collectionHasElement($deployment.dockerTypes))
-#foreach($import in $cloud.getKubernetes().getImports())
-  - $import
-#end## foreach
-#end## if($util.collectionHasElement($deployment.dockerTypes))
 
 node_types:
 #parse("types.yaml.vm")
-
-#if($util.collectionHasElement($deployment.dockerTypes))
-#parse("provider/common/kubernetes_types.yaml.vm")
-#end## if($util.collectionHasElement($deployment.dockerTypes))
 
 #if($util.collectionHasElement($deployment.nonNativesTypes))
 #foreach($nonNativeType in ${deployment.nonNativesTypes})
@@ -69,12 +60,6 @@ relationships:
 
 node_templates:
 
-#if($util.collectionHasElement($deployment.dockerTypes))
-#[[
-## Kube
-]]#
-#parse("provider/common/kubernetes.yaml.vm")
-#end## #if($util.collectionHasElement($deployment.dockerTypes))
 #parse("provider/${deployment.locationType}/compute_node.yaml.vm")
 #parse("provider/${deployment.locationType}/network_node.yaml.vm")
 #parse("provider/${deployment.locationType}/volume_node.yaml.vm")

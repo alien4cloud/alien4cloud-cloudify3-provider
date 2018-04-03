@@ -577,7 +577,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * In the node properties, isolate:
      * <ul>
      * <li>those related to cloudify type inherited properties.</li>
-     * <li>properties that can be serailized as string (for kubernetes)</li>
+     * <li>(deprecated) properties that can be serialized as string (for kubernetes)</li>
      * </ul>
      */
     public Map<String, AbstractPropertyValue> getCloudifyAndSimpleProperties(PaaSNodeTemplate node) {
@@ -593,7 +593,6 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                 // for custom native nodes we add inherited cloudify properties
                 result.put(e.getKey(), e.getValue());
             } else if (propertyValuesAsString.containsKey(e.getKey())) {
-                // for kubernetes we add simple scalar properties
                 result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
             }
         }

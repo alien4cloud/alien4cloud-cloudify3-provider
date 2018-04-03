@@ -15,7 +15,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @FormProperties({ "url", "logQueueUrl", "locations", "userName", "password", "tenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
-        "delayBetweenInProgressDeploymentStatusPolling", "failOverRetry", "failOverDelay", "connectionTimeout", "disableDiamondMonitorAgent", "kubernetes" })
+        "delayBetweenInProgressDeploymentStatusPolling", "failOverRetry", "failOverDelay", "connectionTimeout", "disableDiamondMonitorAgent" })
 @EqualsAndHashCode(of = { "url", "userName", "password", "tenant" })
 public class CloudConfiguration {
 
@@ -61,8 +61,6 @@ public class CloudConfiguration {
 
     @NotNull
     private Boolean disableDiamondMonitorAgent = false;
-
-    private KubernetesConfiguration kubernetes;
 
     @JsonIgnore
     public LocationConfiguration getConfigurationLocation(String locationName) {
