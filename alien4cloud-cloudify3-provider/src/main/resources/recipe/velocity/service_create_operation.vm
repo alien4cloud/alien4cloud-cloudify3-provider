@@ -1,7 +1,9 @@
 from cloudify import ctx
 
 #foreach($attributeEntry in ${template.nodeTemplate.attributeValues.entrySet()})
+#if($util.nonNative.attributeCanBeExposed($attributeEntry.value))
 ctx.instance.runtime_properties['${attributeEntry.key}'] = '${attributeEntry.value}'
+#end
 #end## foreach($attributeEntry in ${attributes.entrySet()})
 
 ctx.instance.update()

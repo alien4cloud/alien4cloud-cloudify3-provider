@@ -54,7 +54,7 @@ def handle_resource_ids():
 
     ids_array = resource_ids.split(",")
 
-    if(instance_index < len(ids_array) ):
+    if (instance_index < len(ids_array) ):
       # Save the resource id in the runtime properties for the instance
       ctx.instance.runtime_properties[resource_id_key] = ids_array[instance_index]
 
@@ -69,10 +69,10 @@ def handle_resource_ids():
     lock.release()
 
 def _get_index(filepath):
-  if(os.path.isfile(filepath)):
+  if (os.path.isfile(filepath)):
     with open(filepath, 'r') as f:
       line = f.read()
-      if(line):
+      if (line):
         return int(line)
   return 0
 
