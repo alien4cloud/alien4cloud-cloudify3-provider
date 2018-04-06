@@ -27,10 +27,10 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<CloudifyOrchestrator, CloudConfiguration> {
 
     public static final String CFY_DSL_1_3 = "cloudify_dsl_1_3";
-    public static final String CFY_VERSION = "4.0";
+    public static final String CFY_VERSION = "4.3";
 
     public static final String CFY_AWS_PLUGIN_VERSION = "1.3.1";
-    public static final String CFY_OPENSTACK_PLUGIN_VERSION = "1.3.1";
+    public static final String CFY_OPENSTACK_PLUGIN_VERSION = "2.7.1";
     public static final String CFY_BYON_PLUGIN_VERSION = "1.5";
 
     public static final String CFY_DIAMOND_VERSION = "1.3.5";
@@ -56,16 +56,18 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
     @Override
     public CloudConfiguration getDefaultConfiguration() {
         CloudConfiguration cloudConfiguration = new CloudConfiguration();
-        cloudConfiguration.setUrl("http://yourManagerIP");
-        cloudConfiguration.setUserName("username");
-        cloudConfiguration.setPassword("password");
+        cloudConfiguration.setUrl("https://yourManagerIP");
+        cloudConfiguration.setLogQueueUrl("https://yourManagerIP:8200");
+        cloudConfiguration.setUserName("admin");
+        cloudConfiguration.setPassword("admin");
         cloudConfiguration.setTenant("default_tenant");
         cloudConfiguration.setFailOverRetry(1);
         cloudConfiguration.setFailOverDelay(1000);
         cloudConfiguration.setDisableSSLVerification(false);
         cloudConfiguration.setDelayBetweenDeploymentStatusPolling(30);
         cloudConfiguration.setDelayBetweenInProgressDeploymentStatusPolling(5);
-        cloudConfiguration.setDisableDiamondMonitorAgent(false);
+        cloudConfiguration.setDisableDiamondMonitorAgent(true);
+
         LocationConfigurations locationConfigurations = new LocationConfigurations();
 
         LocationConfiguration amazon = new LocationConfiguration();
