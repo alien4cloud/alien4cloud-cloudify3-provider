@@ -7,6 +7,8 @@
           implementation: overrides.openstack.wrapper.overrided_create_volume
           inputs:
             args: {}
+            status_attempts: 20
+            status_timeout: 15
 #if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.openstack.nodes.Volume")
         delete: {}
 #end## if

@@ -8,8 +8,8 @@ from openstack.volume import create
 
 @operation
 @with_cinder_client
-def overrided_create_volume(cinder_client, args, **_):
+def overrided_create_volume(cinder_client, status_attempts, status_timeout, args, **_):
   handle_external_resource()
   if(ctx.instance.runtime_properties[USE_EXTERNAL_RESOURCE_KEY]):
     handle_resource_ids()
-  create(cinder_client, args, **_)
+  create(cinder_client, status_attempts, status_timeout, args, **_)
