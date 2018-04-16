@@ -7,7 +7,7 @@
   </parent>
 
   <artifactId>alien4cloud-cfy-logs</artifactId>
-  <version>1.4.3.3-SNAPSHOT</version>
+  <version>1.4.3.3</version>
   <packaging>war</packaging>
 
   <name>Alien4Cloud cloudify log queue server</name>
