@@ -1,7 +1,5 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
-import static alien4cloud.utils.AlienUtils.safe;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -9,6 +7,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
+import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
+import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
+import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
+import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.utils.MapUtil;
+import alien4cloud.utils.services.PropertyValueService;
 import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.alien4cloud.tosca.model.definitions.PropertyValue;
@@ -21,14 +27,7 @@ import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import alien4cloud.paas.cloudify3.configuration.MappingConfiguration;
-import alien4cloud.paas.cloudify3.model.DeploymentPropertiesNames;
-import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.utils.MapUtil;
-import alien4cloud.utils.services.PropertyValueService;
+import static alien4cloud.utils.AlienUtils.safe;
 
 public class CommonGenerationUtil extends AbstractGenerationUtil {
 

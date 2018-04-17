@@ -389,10 +389,6 @@ def is_host_node(node):
     return 'cloudify.nodes.Compute' in node.type_hierarchy
 
 
-def is_kubernetes_node(node):
-    return 'cloudify.kubernetes.Microservice' in node.type_hierarchy
-
-
 def generate_native_node_workflows(ctx, graph, custom_context, stage):
     native_node_ids = custom_context.get_native_node_ids()
     # for each native node we build a sequence of operations

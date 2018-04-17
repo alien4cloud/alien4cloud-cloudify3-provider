@@ -1,34 +1,12 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.io.IOException;
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.annotation.Resource;
-
-import org.alien4cloud.tosca.model.templates.NodeTemplate;
-import org.alien4cloud.tosca.utils.ToscaTypeUtils;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableScheduledFuture;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.dao.model.GetMultipleDataResult;
@@ -51,9 +29,23 @@ import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.rest.utils.JsonUtil;
 import alien4cloud.utils.MapUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListenableScheduledFuture;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.model.templates.NodeTemplate;
+import org.apache.commons.collections4.MapUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
 
 /**
  * Handle all deployment status request
@@ -448,39 +440,6 @@ public class StatusService {
                         log.error("Unable to stringify runtime properties", e);
                     }
                     instanceInformation.setRuntimeProperties(runtimeProperties);
-
-                    // FIXME Workaround to handle docker/kubernetes endpoint attributes
-                    Node node = nodeMap.get(instance.getNodeId());
-                    if (node != null && runtimeProperties != null) {
-                        Map<String, String> attributes = runtimePropertiesService.getAttributes(node, instance, nodeMap, nodeInstanceMap);
-                        instanceInformation.setAttributes(attributes);
-                        String masterIP = attributes.get("master_ip");
-                        if (ToscaTypeUtils.isOfType(node.getType(), Lists.newArrayList(node.getTypeHierarchy()), "cloudify.kubernetes.Microservice")
-                                && attributes.containsKey("service")) {
-                            String serviceJson = attributes.get("service");
-                            if (StringUtils.isNotBlank(serviceJson)) {
-                                try {
-                                    Map<String, Object> map = JsonUtil.toMap(serviceJson);
-                                    String endpointPort = null;
-                                    List<Object> ports = (List<Object>) map.get("ports");
-                                    if (ports != null && !ports.isEmpty()) {
-                                        Map<String, Object> portMap = (Map<String, Object>) (((List<Object>) map.get("ports")).get(0));
-                                        if (portMap != null && portMap.get("nodePort") != null) {
-                                            endpointPort = portMap.get("nodePort").toString();
-                                        } else if (portMap.get("port") != null) {
-                                            endpointPort = portMap.get("port").toString();
-                                        }
-                                    }
-                                    instanceInformation.getAttributes().put("endpoint", String.format("http://%s:%s", masterIP, endpointPort));
-                                    instanceInformation.getAttributes().put("endpoint_port", endpointPort);
-                                    instanceInformation.getAttributes().put("endpoint_ip", masterIP);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                    }
-                    // FIXME End workaround
 
                     nodeInformation.put(instanceId, instanceInformation);
                 }

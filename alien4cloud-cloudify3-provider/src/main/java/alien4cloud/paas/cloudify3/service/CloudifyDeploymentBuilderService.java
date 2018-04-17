@@ -1,34 +1,11 @@
 package alien4cloud.paas.cloudify3.service;
 
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
-import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
-
+import javax.inject.Inject;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import javax.inject.Inject;
-
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.model.types.RelationshipType;
-import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
-import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
-import org.alien4cloud.tosca.model.workflow.Workflow;
-import org.alien4cloud.tosca.model.workflow.WorkflowStep;
-import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
-import org.alien4cloud.tosca.utils.ToscaTypeUtils;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.model.components.IndexedModelUtils;
@@ -51,7 +28,27 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.wf.TopologyContext;
 import alien4cloud.paas.wf.WorkflowsBuilderService;
 import alien4cloud.paas.wf.util.WorkflowUtils;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.model.types.RelationshipType;
+import org.alien4cloud.tosca.model.workflow.NodeWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.RelationshipWorkflowStep;
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
+import org.alien4cloud.tosca.utils.ToscaTypeUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.INSTALL;
+import static org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants.UNINSTALL;
 
 @Component("cloudify-deployment-builder-service")
 @Slf4j
@@ -102,11 +99,6 @@ public class CloudifyDeploymentBuilderService {
         cloudifyDeployment.setVolumes(deploymentContext.getPaaSTopology().getVolumes());
         cloudifyDeployment.setNonNatives(deploymentContext.getPaaSTopology().getNonNatives());
 
-        // Filter docker types
-        List<PaaSNodeTemplate> dockerTypes = extractDockerType(deploymentContext.getPaaSTopology().getNonNatives());
-        cloudifyDeployment.setDockerTypes(dockerTypes);
-        cloudifyDeployment.getNonNatives().removeAll(dockerTypes); // TODO Not needed thanks to custom resources filtering ?
-
         // Filter custom resources
         Map<String, PaaSNodeTemplate> customResources = extractCustomNativeType(deploymentContext.getPaaSTopology().getAllNodes(), locationProvidedTypes);
         cloudifyDeployment.setCustomResources(customResources);
@@ -142,15 +134,6 @@ public class CloudifyDeploymentBuilderService {
         return cloudifyDeployment;
     }
 
-    private List<PaaSNodeTemplate> extractDockerType(List<PaaSNodeTemplate> nodes) {
-        List<PaaSNodeTemplate> result = Lists.newArrayList();
-        for (PaaSNodeTemplate value : nodes) {
-            if (ToscaTypeUtils.isOfType(value.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
-                result.add(value);
-            }
-        }
-        return result;
-    }
 
     private Map<String, PaaSNodeTemplate> extractCustomNativeType(Map<String, PaaSNodeTemplate> nodes, Set<String> locationProvidedTypes) {
         Map<String, PaaSNodeTemplate> result = Maps.newHashMap();
@@ -167,9 +150,6 @@ public class CloudifyDeploymentBuilderService {
      * <ul>
      * <li>is not of a type provided by the location</li>
      * <li>AND doesn't have a host</li>
-     * *
-     * <li>AND is not a Docker container</li>
-     * *
      * <li>AND is not a service</li>
      * </ul>
      *
@@ -183,10 +163,6 @@ public class CloudifyDeploymentBuilderService {
         }
         if (locationProvidedTypes.contains(node.getTemplate().getType())) {
             // if the type of the template is provided by the location, it can't be considered as a custom resource.
-            return false;
-        }
-        if (ToscaTypeUtils.isOfType(node.getIndexedToscaElement(), BlueprintService.TOSCA_DOCKER_CONTAINER_TYPE)) {
-            // Docker Container types are not custom resources
             return false;
         }
         if (node.getTemplate() instanceof ServiceNodeTemplate) {
