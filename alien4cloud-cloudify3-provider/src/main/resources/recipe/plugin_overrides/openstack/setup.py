@@ -13,7 +13,7 @@ setup(
     description='custom overrides',
 
     # This must correspond to the actual packages in the plugin.
-    packages=['a4c_common','openstack'],
+    packages=['a4c_common','cinder_plugin'],
 
     license='Apache',
     zip_safe=True,

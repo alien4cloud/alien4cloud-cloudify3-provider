@@ -12,6 +12,7 @@ import alien4cloud.paas.IPaaSProvider;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfiguration;
 import alien4cloud.paas.cloudify3.configuration.LocationConfigurations;
+import alien4cloud.paas.cloudify3.configuration.OpenstackLocationConfiguration;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
 import alien4cloud.paas.cloudify3.shared.ApiClientFactoryService;
 import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
@@ -78,7 +79,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         amazon.setDsl(CFY_DSL_1_3);
         locationConfigurations.setAmazon(amazon);
 
-        LocationConfiguration openstack = new LocationConfiguration();
+        OpenstackLocationConfiguration openstack = new OpenstackLocationConfiguration();
         openstack.setImports(Lists.newArrayList("http://www.getcloudify.org/spec/cloudify/" + CFY_VERSION + "/types.yaml",
                 "http://www.getcloudify.org/spec/openstack-plugin/" + CFY_OPENSTACK_PLUGIN_VERSION + "/plugin.yaml",
                 "http://www.getcloudify.org/spec/diamond-plugin/" + CFY_DIAMOND_VERSION + "/plugin.yaml",

@@ -16,6 +16,10 @@ imports:
   - $import
 #end
 
+#if($util.common.doesVelocityFileExists("${velocityResourcesPath}/provider/${deployment.locationType}/iaas_credentials_datatype.yaml.vm"))
+#parse("provider/${deployment.locationType}/iaas_credentials_datatype.yaml.vm")
+#end
+
 node_types:
 #parse("types.yaml.vm")
 

@@ -16,7 +16,7 @@
 # https://github.com/cloudify-cosmo/cloudify-openstack-plugin/blob/2.7.1/cinder_plugin/volume.py
 #
 # [a4c_override]: 
-#  - Replaced import 'openstack_plugin_common' with 'openstack'
+#  - Replaced import 'openstack_plugin_common' with 'cinder_plugin'
 #  - Removed annotations on create() method
 #
 
@@ -26,7 +26,7 @@ from cloudify import ctx
 from cloudify import exceptions as cfy_exc
 
 #[a4c_override]
-from openstack import (with_cinder_client,
+from cinder_plugin import (with_cinder_client,
                          use_external_resource,
                          create_object_dict,
                          COMMON_RUNTIME_PROPERTIES_KEYS,
@@ -91,11 +91,12 @@ def wait_until_status(cinder_client, volume_id, status, num_tries,
 
 #
 # [a4c_override]
-# def handle_image_from_relationship() is copied from glance plugin, source can be found here:
-# https://github.com/cloudify-cosmo/cloudify-openstack-plugin/blob/2.7.1/glance_plugin/volume.py
+# The function handle_image_from_relationship() is copied from glance plugin, source can be found here:
+#  - https://github.com/cloudify-cosmo/cloudify-openstack-plugin/blob/2.7.1/glance_plugin/volume.py
+#  - Watch out the import of get_openstack_ids_of_connected_nodes_by_openstack_type which is included from our local cinder_plugin/__init__.py
 #
 IMAGE_OPENSTACK_TYPE = 'image'
-from openstack import get_openstack_ids_of_connected_nodes_by_openstack_type
+from cinder_plugin import get_openstack_ids_of_connected_nodes_by_openstack_type
 
 def handle_image_from_relationship(obj_dict, property_name_to_put, ctx):
     images = get_openstack_ids_of_connected_nodes_by_openstack_type(

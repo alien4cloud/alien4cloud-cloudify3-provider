@@ -176,12 +176,12 @@ data_types:
         description: Keystone's URL (used for authentication).
         type: string
         required: false
-      tenant_name:
-        description: Name of tenant.
-        type: string
-        required: false
       region:
         description: The region's name (optional if only one region exists).
+        type: string
+        required: false
+      tenant_name:
+        description: Name of tenant.
         type: string
         required: false
       project_id:

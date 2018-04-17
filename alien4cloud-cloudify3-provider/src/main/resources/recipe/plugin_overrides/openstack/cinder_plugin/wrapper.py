@@ -3,8 +3,8 @@ from cloudify.decorators import operation
 
 from a4c_common.wrapper_util import (USE_EXTERNAL_RESOURCE_KEY,handle_external_resource,handle_resource_ids)
 
-from openstack import with_cinder_client
-from openstack.volume import create
+from cinder_plugin import with_cinder_client
+from cinder_plugin.volume import create
 
 @operation
 @with_cinder_client
