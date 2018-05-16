@@ -1,13 +1,12 @@
 package alien4cloud.paas.cloudify3.service.event;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
+import alien4cloud.paas.model.*;
+import org.elasticsearch.common.collect.Sets;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,14 +28,6 @@ import alien4cloud.paas.cloudify3.model.NodeInstance;
 import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
 import alien4cloud.paas.cloudify3.shared.IEventConsumer;
 import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
-import alien4cloud.paas.model.PaaSInstancePersistentResourceMonitorEvent;
-import alien4cloud.paas.model.PaaSInstanceStateMonitorEvent;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.model.PaaSWorkflowMonitorEvent;
-import alien4cloud.paas.model.PaaSWorkflowStepMonitorEvent;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -74,6 +65,17 @@ public class EventService implements IEventConsumer {
         return paaSDeploymentIdToAlienDeploymentIdMapping.get(event.getContext().getDeploymentId());
     }
 
+    private static Set<String> ACCEPTED_EVENTS = Sets.newHashSet();
+    static {
+        ACCEPTED_EVENTS.add(EventType.TASK_SUCCEEDED);
+        ACCEPTED_EVENTS.add(EventType.A4C_PERSISTENT_EVENT);
+        ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_EVENT);
+        ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_STARTED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_STARTED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_SUCCEEDED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_FAILED);
+    }
+
     @Override
     public synchronized void accept(CloudifyEvent[] cloudifyEvents) {
         List<CloudifyEvent> filteredEvents = Lists.newArrayList();
@@ -81,9 +83,10 @@ public class EventService implements IEventConsumer {
             if (event.getEvent().getEventType() == null) {
                 continue;
             }
-            if (EventType.TASK_SUCCEEDED.equals(event.getEvent().getEventType()) || EventType.A4C_PERSISTENT_EVENT.equals(event.getEvent().getEventType())
-                    || EventType.A4C_WORKFLOW_EVENT.equals(event.getEvent().getEventType())
-                    || EventType.A4C_WORKFLOW_STARTED.equals(event.getEvent().getEventType())) {
+            if (log.isDebugEnabled()) {
+                log.debug("Received an event of type {}", event.getEvent().getEventType());
+            }
+            if (ACCEPTED_EVENTS.contains(event.getEvent().getEventType())) {
                 filteredEvents.add(event);
             }
         }
@@ -263,6 +266,28 @@ public class EventService implements IEventConsumer {
                 log.warn("Problem processing workflow event " + cloudifyEvent.getEvent().getId(), e);
                 return null;
             }
+            break;
+        case EventType.WORKFLOW_STARTED:
+            PaaSWorkflowStartedEvent wste = new PaaSWorkflowStartedEvent();
+            String workflowId = cloudifyEvent.getEvent().getContext().getWorkflowId();
+            wste.setWorkflowId(workflowId);
+            if (workflowId.startsWith("a4c_")) {
+                wste.setWorkflowName(workflowId.substring(4));
+            }
+            wste.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvent = wste;
+            break;
+        case EventType.WORKFLOW_SUCCEEDED:
+            PaaSWorkflowSucceededEvent wse = new PaaSWorkflowSucceededEvent();
+            wse.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wse.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvent = wse;
+            break;
+        case EventType.WORKFLOW_FAILED:
+            PaaSWorkflowFailedEvent wfe = new PaaSWorkflowFailedEvent();
+            wfe.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wfe.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvent = wfe;
             break;
         default:
             return null;
