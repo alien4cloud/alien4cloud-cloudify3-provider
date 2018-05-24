@@ -27,6 +27,7 @@ public class EventType {
 
     public static final String A4C_PERSISTENT_EVENT = "a4c_persistent_event";
     public static final String A4C_WORKFLOW_EVENT = "a4c_workflow_event";
+    public static final String A4C_WORKFLOW_RELATIONSHIP_STEP_EVENT = "a4c_workflow_rel_step_event";
     public static final String A4C_WORKFLOW_STARTED = "a4c_workflow_started";
 
     public static final Collection<String> ALL = Lists.newArrayList(WORKFLOW_STARTED, WORKFLOW_SUCCEEDED, WORKFLOW_FAILED, TASK_SUCCEEDED);
