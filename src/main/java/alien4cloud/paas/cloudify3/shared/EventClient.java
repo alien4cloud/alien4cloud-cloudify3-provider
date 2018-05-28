@@ -1,21 +1,17 @@
 package alien4cloud.paas.cloudify3.shared;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
-
-import javax.xml.bind.DatatypeConverter;
-
+import alien4cloud.paas.cloudify3.restclient.AbstractEventClient;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.springframework.stereotype.Component;
 
-import alien4cloud.paas.cloudify3.restclient.AbstractEventClient;
-import lombok.extern.slf4j.Slf4j;
+import javax.xml.bind.DatatypeConverter;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
 
-@Component
 @Slf4j
 public class EventClient extends AbstractEventClient {
     @Override

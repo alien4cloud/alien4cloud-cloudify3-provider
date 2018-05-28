@@ -1,15 +1,28 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.annotation.Resource;
-
+import alien4cloud.dao.IGenericSearchDAO;
+import alien4cloud.dao.model.GetMultipleDataResult;
+import alien4cloud.paas.IPaaSCallback;
+import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
+import alien4cloud.paas.cloudify3.model.*;
+import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
+import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
+import alien4cloud.paas.cloudify3.restclient.NodeClient;
+import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.model.*;
+import alien4cloud.rest.utils.JsonUtil;
+import alien4cloud.utils.MapUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.*;
+import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
+import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -17,45 +30,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableScheduledFuture;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-
-import alien4cloud.dao.IGenericSearchDAO;
-import alien4cloud.dao.model.GetMultipleDataResult;
-import alien4cloud.paas.IPaaSCallback;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
-import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
-import alien4cloud.paas.cloudify3.model.AbstractCloudifyModel;
-import alien4cloud.paas.cloudify3.model.Deployment;
-import alien4cloud.paas.cloudify3.model.Execution;
-import alien4cloud.paas.cloudify3.model.ExecutionStatus;
-import alien4cloud.paas.cloudify3.model.Node;
-import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
-import alien4cloud.paas.cloudify3.model.Workflow;
-import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
-import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
-import alien4cloud.paas.cloudify3.restclient.NodeClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
-import alien4cloud.paas.cloudify3.util.DateUtil;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.InstanceInformation;
-import alien4cloud.paas.model.InstanceStatus;
-import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.rest.utils.JsonUtil;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
-import alien4cloud.utils.MapUtil;
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.Resource;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Handle all deployment status request
@@ -100,7 +81,7 @@ public class StatusService {
     @Resource(name = "cloudify-async-thread-pool")
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
-    @Resource
+    @Resource(name="cloudify-scheduler")
     private ListeningScheduledExecutorService scheduler;
 
     public void scheduleRefreshStatus(final String deploymentPaaSId) {

@@ -1,10 +1,8 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.annotation.Resource;
-
+import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import com.google.common.collect.Maps;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -12,17 +10,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.client.AsyncRestTemplate;
 
-import com.google.common.collect.Maps;
-
-import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.Resource;
+import java.util.Map;
+import java.util.Map.Entry;
 
 @Slf4j
 public abstract class AbstractClient {
 
     @Resource(name = "cloudify-async-rest-template")
-    @Setter
+    public void setRestTemplate(AsyncRestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
     private AsyncRestTemplate restTemplate;
 
     @Resource

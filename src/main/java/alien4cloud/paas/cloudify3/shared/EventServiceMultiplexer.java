@@ -1,19 +1,15 @@
 package alien4cloud.paas.cloudify3.shared;
 
-import java.util.Map;
-import java.util.Set;
+import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
-
-import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
-import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
-import com.google.common.collect.Maps;
-import org.springframework.stereotype.Service;
-
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * This instance is responsible to manage events services per cloudify url rather than per orchestrator instance.
@@ -21,11 +17,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class EventServiceMultiplexer {
-    @Resource
+
+    /**
+     * The event client for live stream.
+     */
+    @Resource(name = "live-event-client")
     private EventClient logEventClient;
+
+    /**
+     * The event client for delayed pollers.
+     */
+    @Resource(name = "delayed-event-client")
+    private EventClient delayedEventClient;
 
     @Resource(name = "cloudify-scheduler")
     private ListeningScheduledExecutorService scheduler;
+
+    /** This scheduler should only be used for delayed instances. */
+    @Resource(name = "delayed-scheduler")
+    private ListeningScheduledExecutorService delayedScheduler;
 
     @Resource
     private PluginConfigurationHolder pluginConfigurationHolder;
@@ -41,6 +51,7 @@ public class EventServiceMultiplexer {
         interceptor.setUserName(username);
         interceptor.setPassword(password);
         logEventClient.registerAuthenticationManager(managerUrl, interceptor);
+        delayedEventClient.registerAuthenticationManager(managerUrl, interceptor);
 
         EventServiceInstance logEventServiceInstance = eventServices.get(managerUrl);
         if (logEventServiceInstance == null) {
@@ -68,7 +79,7 @@ public class EventServiceMultiplexer {
     }
 
     protected EventServiceInstance newEventServiceInstance(final String managerUrl) {
-        return new EventServiceInstance(managerUrl, logEventClient, scheduler, pluginConfigurationHolder);
+        return new EventServiceInstance(managerUrl, logEventClient, scheduler, delayedEventClient, delayedScheduler, pluginConfigurationHolder);
     }
 
     protected boolean hasRemaningConsumers(Set<String> remainingConsumerIds) {

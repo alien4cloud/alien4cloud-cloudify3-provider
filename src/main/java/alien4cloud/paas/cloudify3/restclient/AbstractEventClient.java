@@ -1,8 +1,15 @@
 package alien4cloud.paas.cloudify3.restclient;
 
-import java.util.Date;
-import java.util.Map;
-
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.model.GetEventsResult;
+import alien4cloud.paas.cloudify3.util.FutureUtil;
+import alien4cloud.rest.utils.JsonUtil;
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -10,18 +17,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.AsyncRestTemplate;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.model.GetEventsResult;
-import alien4cloud.paas.cloudify3.util.FutureUtil;
-import alien4cloud.rest.utils.JsonUtil;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Date;
+import java.util.Map;
 
 /**
  * Base class for event access
@@ -32,6 +31,15 @@ public abstract class AbstractEventClient extends AbstractClient {
     public static final String EVENTS_PATH = "/events";
 
     protected abstract QueryBuilder createEventsQuery(Date fromDate, Date toDate);
+
+    @Override
+    public void setRestTemplate(AsyncRestTemplate restTemplate) {
+        // do nothing since we don't want to be injected with the commons one.
+    }
+
+    public void setSpecificRestTemplate(AsyncRestTemplate restTemplate) {
+        super.setRestTemplate(restTemplate);
+    }
 
     @Override
     protected String getPath() {

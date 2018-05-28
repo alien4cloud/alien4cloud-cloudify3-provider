@@ -1,10 +1,5 @@
 package alien4cloud.paas.cloudify3.service;
 
-import javax.annotation.Resource;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 import alien4cloud.paas.cloudify3.error.DeploymentRuntimeException;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
@@ -23,6 +18,11 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.annotation.Resource;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Base class to manage deployment's runtime.
  */
@@ -37,7 +37,7 @@ public abstract class RuntimeService {
     @Resource
     protected DeploymentClient deploymentClient;
 
-    @Resource
+    @Resource(name="cloudify-scheduler")
     protected ListeningScheduledExecutorService scheduledExecutorService;
 
     private ListenableFuture<Execution> internalWaitForExecutionFinish(final ListenableFuture<Execution> futureExecution) {

@@ -1,23 +1,34 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.util.concurrent.Executors;
-
-import org.springframework.beans.factory.FactoryBean;
-
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.springframework.beans.factory.FactoryBean;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SchedulerServiceFactoryBean implements FactoryBean<ListeningScheduledExecutorService> {
 
-    private int poolSize = 4;
+    private final int poolSize;
 
-    public void setPoolSize(int poolSize) {
+    private final String poolName;
+
+    public SchedulerServiceFactoryBean(String poolName, int poolSize) {
+        this.poolName = poolName;
         this.poolSize = poolSize;
     }
 
+    private static final AtomicInteger POOL_ID = new AtomicInteger(0);
+
     @Override
     public ListeningScheduledExecutorService getObject() throws Exception {
-        return MoreExecutors.listeningDecorator(Executors.newScheduledThreadPool(poolSize));
+        BasicThreadFactory factory = new BasicThreadFactory.Builder()
+                .namingPattern(poolName + "-" + POOL_ID.incrementAndGet() + "-%d")
+                .build();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(poolSize, factory);
+        return MoreExecutors.listeningDecorator(executor);
     }
 
     @Override

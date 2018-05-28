@@ -1,28 +1,22 @@
 package alien4cloud.paas.cloudify3.shared;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.xml.bind.DatatypeConverter;
-
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.util.DateUtil;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Instance that polls events.
@@ -33,6 +27,9 @@ public class EventServiceInstance {
     public static final int BATCH_SIZE = 100;
     private final EventClient logEventClient;
     private final ListeningScheduledExecutorService scheduler;
+    // separate event client and scheduler for DelayedPollerInstances
+    private final EventClient delayedEventClient;
+    private final ListeningScheduledExecutorService delayedScheduler;
     private final PluginConfigurationHolder pluginConfigurationHolder;
 
     private final EventReceivedManager eventReceivedManager = new EventReceivedManager();
@@ -46,8 +43,10 @@ public class EventServiceInstance {
     private Date nextPollingDate = null;
     private Date pollingFromDate = null;
     private int from = 0;
+    /** A lock to prevent settings from multithreaded access (from, nextPollingDate, pollingFromDate ...). */
+    private final Lock resourceLock = new ReentrantLock();
 
-    private boolean stopPolling = false;
+    private final AtomicBoolean stopPolling = new AtomicBoolean(false);
 
     /**
      * Create a new event service instance to fetch events.
@@ -57,17 +56,20 @@ public class EventServiceInstance {
      * @param pluginConfigurationHolder
      */
     public EventServiceInstance(final String managerUrl, final EventClient logEventClient, final ListeningScheduledExecutorService scheduler,
-            final PluginConfigurationHolder pluginConfigurationHolder) {
+                                final EventClient delayedEventClient, final ListeningScheduledExecutorService delayedScheduler,
+                                final PluginConfigurationHolder pluginConfigurationHolder) {
         log.info("Creating new event service instance for manager <{}>", managerUrl);
 
         this.managerUrl = managerUrl;
         this.logEventClient = logEventClient;
         this.scheduler = scheduler;
+        this.delayedEventClient = delayedEventClient;
+        this.delayedScheduler = delayedScheduler;
         this.pluginConfigurationHolder = pluginConfigurationHolder;
 
         delayedPollerInstances = Lists.newArrayList(
-                new DelayedPollerInstance(managerUrl, scheduler, logEventClient, pluginConfigurationHolder, 30 * 1000, eventDispatcher, false),
-                new DelayedPollerInstance(managerUrl, scheduler, logEventClient, pluginConfigurationHolder, 5 * 60 * 1000, eventDispatcher, true));
+                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 30 * 1000, eventDispatcher, false),
+                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 5 * 60 * 1000, eventDispatcher, true));
     }
 
     /**
@@ -135,37 +137,52 @@ public class EventServiceInstance {
         initialized = true;
     }
 
-    private synchronized ListenableScheduledFuture<?> schedulePollLog() {
+    private ListenableScheduledFuture<?> schedulePollLog() {
         log.debug("Scheduling event poll request in {} seconds.", pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling());
         long scheduleTime = pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling();
         return scheduler.schedule(() -> triggerLogPolling(), scheduleTime, TimeUnit.SECONDS);
     }
 
-    private synchronized void triggerLogPolling() {
-        if (nextPollingDate != null) {
-            pollingFromDate = nextPollingDate;
-            for (DelayedPollerInstance instance : delayedPollerInstances) {
-                instance.registerLastLive(pollingFromDate);
+    private void triggerLogPolling() {
+        resourceLock.lock();
+        try {
+            if (nextPollingDate != null) {
+                pollingFromDate = nextPollingDate;
+                for (DelayedPollerInstance instance : delayedPollerInstances) {
+                    instance.registerLastLive(pollingFromDate);
+                }
+                nextPollingDate = null;
             }
-            nextPollingDate = null;
+            if (log.isDebugEnabled()) {
+                log.debug("Triggering event poll request from date {} ", DateUtil.logDate(pollingFromDate));
+            }
+            // This may create a loop actually if there is batch size events in the given delay (30 secs).
+            Futures.addCallback(logEventClient.asyncGetBatch(managerUrl, pollingFromDate, null, from, BATCH_SIZE), new EventCallBack());
+        } finally {
+            resourceLock.unlock();
         }
+    }
 
-        log.debug("Triggering event poll request from date {} ", pollingFromDate.getTime());
-        // This may create a loop actually if there is batch size events in the given delay (30 secs).
-        Futures.addCallback(logEventClient.asyncGetBatch(managerUrl, pollingFromDate, null, from, BATCH_SIZE), new FutureCallback<Event[]>() {
+    /**
+     * The callback passed to the eventClient.
+     */
+    private class EventCallBack implements FutureCallback<Event[]> {
+        @Override
+        public void onSuccess(Event[] events) {
+            if (stopPolling.get()) {
+                return;
+            }
+            log.debug("Polled {} events", events.length);
+            if (events.length == 0) {
+                scheduler.submit(() -> { schedulePollLog(); });
+                return;
+            }
+            Date lastPolledEventDate = eventDispatcher.dispatch(pollingFromDate, events, "Live feed");
+            eventDispatcher.getEventReceivedManager().logSize(log, "Live feed");
 
-            @Override
-            public void onSuccess(Event[] events) {
-                if (stopPolling) {
-                    return;
-                }
-                log.debug("Polled {} events", events.length);
-                if (events.length == 0) {
-                    schedulePollLog();
-                    return;
-                }
-                Date lastPolledEventDate = eventDispatcher.dispatch(pollingFromDate, events, "Live feed");
-                eventDispatcher.getEventReceivedManager().logSize(log, "Live feed");
+            // We will now eventually modify settings, so let's acquire a lock.
+            resourceLock.lock();
+            try {
                 if (pollingFromDate.equals(lastPolledEventDate)) {
                     // Events are still on the same date, let's poll for next batch
                     from += events.length;
@@ -176,26 +193,29 @@ public class EventServiceInstance {
                         instance.registerLastLive(pollingFromDate);
                     }
                 }
-                // If the event batch is full then don't wait before polling again
-                if (events.length == BATCH_SIZE) {
-                    triggerLogPolling();
-                    return;
-                }
-                schedulePollLog();
+            } finally {
+                resourceLock.unlock();
             }
 
-            @Override
-            public void onFailure(Throwable t) {
-                log.warn("Unable to poll log event", t);
-                if (!stopPolling) {
-                    schedulePollLog();
-                }
+            // If the event batch is full then don't wait before polling again
+            if (events.length == BATCH_SIZE) {
+                scheduler.submit(() -> { triggerLogPolling(); });
+                return;
             }
-        });
+            scheduler.submit(() -> { schedulePollLog(); });
+        }
+
+        @Override
+        public void onFailure(Throwable t) {
+            log.warn("Unable to poll log event", t);
+            if (!stopPolling.get()) {
+                scheduler.submit(() -> { schedulePollLog(); });
+            }
+        }
     }
 
     public void preDestroy() {
         log.debug("Cancel running schedule.");
-        stopPolling = true;
+        stopPolling.set(true);
     }
 }
