@@ -1,6 +1,8 @@
 package alien4cloud.paas.cloudify3.restclient;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.AsyncClientHttpRequestExecution;
 import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
@@ -9,6 +11,8 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -25,7 +29,11 @@ public class AsyncClientHttpRequestLogger implements AsyncClientHttpRequestInter
         }
         long requestStartTime = System.currentTimeMillis();
         String requestUUID = UUID.randomUUID().toString();
-        log.trace("REST Query [{}] : {} {}", requestUUID, request.getMethod(), request.getURI());
+        log.trace("REST Request [{}] : {} {}", requestUUID, request.getMethod(), request.getURI());
+        if (request.getMethod().equals(HttpMethod.POST)) {
+            log.trace("REST Request body [{}] : {}", requestUUID, new String(body, "UTF-8"));
+        }
+
         ListenableFuture<ClientHttpResponse> response = execution.executeAsync(request, body);
         response.addCallback(new ListenableFutureCallback<ClientHttpResponse>() {
             @Override
@@ -37,6 +45,7 @@ public class AsyncClientHttpRequestLogger implements AsyncClientHttpRequestInter
             public void onSuccess(ClientHttpResponse result) {
                 try {
                     log.trace("REST Response to [{}] : {} {} is {} - {} (took {} ms)", requestUUID, request.getMethod(), request.getURI(), result.getStatusCode(), result.getStatusText(), System.currentTimeMillis() - requestStartTime);
+//                    log.trace("REST Response body to [{}] : {}", requestUUID, IOUtils.toString(result.getBody(), "UTF-8"));
                 } catch (IOException e) {
                     // nothing to do here, we are in trace log context !
                 }

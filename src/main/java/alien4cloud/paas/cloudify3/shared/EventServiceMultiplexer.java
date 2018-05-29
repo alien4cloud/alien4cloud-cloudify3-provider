@@ -21,8 +21,8 @@ public class EventServiceMultiplexer {
     /**
      * The event client for live stream.
      */
-    @Resource(name = "live-event-client")
-    private EventClient logEventClient;
+//    @Resource(name = "live-event-client")
+//    private EventClient logEventClient;
 
     /**
      * The event client for delayed pollers.
@@ -50,7 +50,7 @@ public class EventServiceMultiplexer {
         AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
         interceptor.setUserName(username);
         interceptor.setPassword(password);
-        logEventClient.registerAuthenticationManager(managerUrl, interceptor);
+//        logEventClient.registerAuthenticationManager(managerUrl, interceptor);
         delayedEventClient.registerAuthenticationManager(managerUrl, interceptor);
 
         EventServiceInstance logEventServiceInstance = eventServices.get(managerUrl);
@@ -79,7 +79,7 @@ public class EventServiceMultiplexer {
     }
 
     protected EventServiceInstance newEventServiceInstance(final String managerUrl) {
-        return new EventServiceInstance(managerUrl, logEventClient, scheduler, delayedEventClient, delayedScheduler, pluginConfigurationHolder);
+        return new EventServiceInstance(managerUrl, delayedEventClient, delayedScheduler, delayedEventClient, delayedScheduler, pluginConfigurationHolder);
     }
 
     protected boolean hasRemaningConsumers(Set<String> remainingConsumerIds) {

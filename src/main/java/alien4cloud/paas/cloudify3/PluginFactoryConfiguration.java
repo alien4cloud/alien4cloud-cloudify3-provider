@@ -62,13 +62,13 @@ public class PluginFactoryConfiguration {
         return new AuthenticationInterceptor();
     }
 
-    @Bean(name = "live-event-client")
-    public EventClient liveEventClient() {
-        // Object mapper configuration
-        EventClient eventClient = new EventClient();
-        eventClient.setSpecificRestTemplate(asyncRestTemplate());
-        return eventClient;
-    }
+//    @Bean(name = "live-event-client")
+//    public EventClient liveEventClient() {
+//        // Object mapper configuration
+//        EventClient eventClient = new EventClient();
+//        eventClient.setSpecificRestTemplate(asyncRestTemplate());
+//        return eventClient;
+//    }
 
     @Bean(name= "cloudify-async-thread-pool")
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
@@ -101,8 +101,9 @@ public class PluginFactoryConfiguration {
         RestTemplate syncRestTemplate = new RestTemplate();
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
-        syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactory());
-
+        if (log.isTraceEnabled()) {
+            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactory()));
+        }
         return syncRestTemplate;
     }
 
@@ -150,8 +151,9 @@ public class PluginFactoryConfiguration {
         RestTemplate syncRestTemplate = new RestTemplate();
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
-        syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactoryDelayed());
-
+        if (log.isTraceEnabled()) {
+            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactoryDelayed()));
+        }
         return syncRestTemplate;
     }
 
