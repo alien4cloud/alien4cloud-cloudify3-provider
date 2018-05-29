@@ -101,9 +101,10 @@ public class PluginFactoryConfiguration {
         RestTemplate syncRestTemplate = new RestTemplate();
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
-        if (log.isTraceEnabled()) {
-            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactory()));
-        }
+        syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactory());
+//        if (log.isTraceEnabled()) {
+//            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactory()));
+//        }
         return syncRestTemplate;
     }
 
@@ -151,9 +152,10 @@ public class PluginFactoryConfiguration {
         RestTemplate syncRestTemplate = new RestTemplate();
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
-        if (log.isTraceEnabled()) {
-            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactoryDelayed()));
-        }
+        syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactoryDelayed());
+//        if (log.isTraceEnabled()) {
+//            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactoryDelayed()));
+//        }
         return syncRestTemplate;
     }
 
