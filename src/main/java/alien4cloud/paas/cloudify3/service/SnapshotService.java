@@ -1,20 +1,34 @@
 package alien4cloud.paas.cloudify3.service;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
+import alien4cloud.paas.cloudify3.event.CloudifyInitiationError;
 import alien4cloud.paas.cloudify3.event.CloudifySnapshotReceived;
+import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
@@ -44,7 +58,7 @@ public class SnapshotService {
     @Resource(name = "cloudify-async-thread-pool")
     private ThreadPoolTaskExecutor restPool;
 
-    @Resource(name="cloudify-scheduler")
+    @Resource(name = "cloudify-scheduler")
     private ListeningScheduledExecutorService scheduler;
 
     @Autowired
@@ -56,13 +70,35 @@ public class SnapshotService {
     @PostConstruct
     public void init() {
 
-        CloudifySnapshot cloudifySnapshot = new CloudifySnapshot();
-        // TODO: Do the necessary stuff ...
-        // deploymentClient.asyncList() then executionClient.asyncList()
+        AsyncFunction<Deployment[], CloudifySnapshot> createCloudifySnapshot = new AsyncFunction<Deployment[], CloudifySnapshot>() {
+            @Override
+            public ListenableFuture<CloudifySnapshot> apply(Deployment[] input) throws Exception {
+                Map<String, List<Execution>> map = Arrays.stream(input).collect(Collectors.toMap(Deployment::getId, d -> {
+                    try {
+                        Execution[] executions = executionClient.asyncList(d.getId(), true).get();
+                        return Arrays.asList(executions);
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
+                return Futures.immediateFuture(new CloudifySnapshot(Arrays.asList(input), map));
+            }
+        };
 
-        // better call this asynchronously
-        bus.publishEvent(new CloudifySnapshotReceived(this, cloudifySnapshot));
+        ListenableFuture<Deployment[]> clientsFuture = deploymentClient.asyncList();
+        ListenableFuture<CloudifySnapshot> snapshot = Futures.transform(clientsFuture, createCloudifySnapshot);
+
+        Futures.addCallback(snapshot, new FutureCallback<CloudifySnapshot>() {
+            @Override
+            public void onSuccess(CloudifySnapshot result) {
+                bus.publishEvent(new CloudifySnapshotReceived(this, result));
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                bus.publishEvent(new CloudifyInitiationError(this, t));
+            }
+        });
     }
-
 
 }
