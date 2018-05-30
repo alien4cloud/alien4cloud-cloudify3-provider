@@ -11,6 +11,7 @@ import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.model.*;
 import alien4cloud.rest.utils.JsonUtil;
@@ -151,6 +152,11 @@ public class StatusService {
     @EventListener
     public void cloudifySnapshotReceived(CloudifySnapshotReceived event) {
         log.info("Cloudify Snapshot received");
+        CloudifySnapshot snp = event.getCloudifySnapshot();
+        for (Deployment d : snp.getDeployments()) {
+            log.debug("Deployment id {} contains {} executions",  d.getId(), snp.getExecutions().get(d.getId()).size());
+        }
+
         // TODO: feed the cache ...
     }
 

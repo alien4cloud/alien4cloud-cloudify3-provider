@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.cloudify3.service.*;
 import alien4cloud.paas.exception.PaaSNotYetDeployedException;
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.ApplicationContext;
@@ -27,14 +28,6 @@ import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.event.AboutToDeployTopologyEvent;
 import alien4cloud.paas.cloudify3.location.ITypeAwareLocationConfigurator;
-import alien4cloud.paas.cloudify3.service.CloudifyDeploymentBuilderService;
-import alien4cloud.paas.cloudify3.service.CustomWorkflowService;
-import alien4cloud.paas.cloudify3.service.DeploymentService;
-import alien4cloud.paas.cloudify3.service.EventService;
-import alien4cloud.paas.cloudify3.service.OpenStackAvailabilityZonePlacementPolicyService;
-import alien4cloud.paas.cloudify3.service.PluginArchiveService;
-import alien4cloud.paas.cloudify3.service.PropertyEvaluatorService;
-import alien4cloud.paas.cloudify3.service.StatusService;
 import alien4cloud.paas.cloudify3.service.model.CloudifyDeployment;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import alien4cloud.paas.exception.OperationExecutionException;
@@ -69,6 +62,9 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Resource(name = "cloudify-deployment-builder-service")
     private CloudifyDeploymentBuilderService cloudifyDeploymentBuilderService;
+
+    @Resource(name = "cloudify-snapshot-service")
+    private SnapshotService snapshotService;
 
     @Resource
     private ApplicationContext applicationContext;
@@ -191,11 +187,13 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
+        snapshotService.snapshotCloudify();
         if (activeDeployments == null) {
             return;
         } else {
             eventService.init(activeDeployments);
             statusService.init(activeDeployments);
+
         }
     }
 

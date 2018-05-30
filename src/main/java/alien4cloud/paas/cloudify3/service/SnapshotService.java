@@ -67,9 +67,11 @@ public class SnapshotService {
     /**
      * Snapshots the state of cfy for other services.
      */
-    @PostConstruct
-    public void init() {
+    public void snapshotCloudify() {
+        log.info("Snapshoting cfy");
 
+        // FIXME: please don't chain 2 calls, query alien4cloud.paas.cloudify3.restclient.ExecutionClient.asyncList(boolean)
+        // we must wait for the 2 terminations to build the CloudifySnapshotReceived
         AsyncFunction<Deployment[], CloudifySnapshot> createCloudifySnapshot = new AsyncFunction<Deployment[], CloudifySnapshot>() {
             @Override
             public ListenableFuture<CloudifySnapshot> apply(Deployment[] input) throws Exception {
