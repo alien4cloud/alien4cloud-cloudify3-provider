@@ -5,6 +5,7 @@ import alien4cloud.dao.model.GetMultipleDataResult;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
+import alien4cloud.paas.cloudify3.event.CloudifySnapshotReceived;
 import alien4cloud.paas.cloudify3.model.*;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
@@ -25,6 +26,7 @@ import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -146,6 +148,15 @@ public class StatusService {
         }
     }
 
+    @EventListener
+    public void cloudifySnapshotReceived(CloudifySnapshotReceived event) {
+        log.info("Cloudify Snapshot received");
+        // TODO: feed the cache ...
+    }
+
+
+    // As soon as we will receive the snap this will be useless.
+    @Deprecated
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
         for (Map.Entry<String, PaaSTopologyDeploymentContext> contextEntry : activeDeploymentContexts.entrySet()) {
             String deploymentPaaSId = contextEntry.getKey();
