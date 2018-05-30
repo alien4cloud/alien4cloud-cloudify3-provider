@@ -38,7 +38,7 @@ public class ExecutionClient extends AbstractClient {
 
     public ListenableFuture<Execution[]> asyncList(String deploymentId, boolean includeSystemWorkflow) {
         if (log.isDebugEnabled()) {
-            log.debug("List execution");
+            log.debug("List executions for deployment {}", deploymentId);
         }
         if (deploymentId != null && deploymentId.length() > 0) {
             return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl(), "deployment_id", "include_system_workflows"), Execution[].class,
@@ -47,6 +47,15 @@ public class ExecutionClient extends AbstractClient {
             return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl()), Execution[].class));
         }
     }
+
+    public ListenableFuture<Execution[]> asyncList(boolean includeSystemWorkflow) {
+        if (log.isDebugEnabled()) {
+            log.debug("List all executions");
+        }
+        return FutureUtil.unwrapRestResponse(getForEntity(getBaseUrl(getManagerUrl(), "include_system_workflows"), Execution[].class,
+                     includeSystemWorkflow));
+    }
+
 
     @SneakyThrows
     public Execution[] list(String deploymentId, boolean includeSystemWorkflow) {
