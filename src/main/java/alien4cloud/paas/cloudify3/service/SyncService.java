@@ -56,7 +56,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class SyncService {
 
     @Resource
-    private ExecutionClient executionDAO;
+    private ExecutionClient executionClient;
 
     @Resource
     private NodeInstanceClient nodeInstanceClient;
@@ -89,9 +89,8 @@ public class SyncService {
     public void init() {
 
         CloudifySnapshot cloudifySnapshot = new CloudifySnapshot();
-
         // TODO: Do the necessary stuff ...
-
+        // deploymentClient.asyncList() then executionClient.asyncList()
         bus.publishEvent(new CloudifySnapshotReceived(this, cloudifySnapshot));
     }
 
