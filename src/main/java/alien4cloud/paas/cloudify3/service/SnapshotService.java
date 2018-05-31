@@ -76,13 +76,6 @@ public class SnapshotService {
         Callable<CloudifySnapshot> task = new Callable<CloudifySnapshot>() {
             @Override
             public CloudifySnapshot call() throws Exception {
-                ExecutorService es = Executors.newFixedThreadPool(2);
-                es.submit(new Callable<List<Deployment>>() {
-                    @Override
-                    public List<Deployment> call() throws Exception {
-                        return Arrays.asList(deploymentClient.asyncList().get());
-                    }
-                });
                 Map<String, Deployment> deployments = Arrays.stream(deploymentClient.asyncList().get()).collect(Collectors.toMap(d -> d.getId(), d -> d));
                 List<Execution> executions = Arrays.asList(executionClient.asyncList(true).get());
                 Set<String> ids = deployments.keySet();
