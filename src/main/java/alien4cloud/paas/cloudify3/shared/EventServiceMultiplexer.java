@@ -46,6 +46,10 @@ public class EventServiceMultiplexer {
     // When a new one registers with a previous date then we have to re-poll older events but not dispatch events to listener that already processed them...
 
     public synchronized void register(final String managerUrl, final String username, final String password, String consumerId, IEventConsumer eventConsumer) {
+        if (true) {
+            // desactivate event polling
+            return;
+        }
         // Register a new authentication interceptor for the manager (this will not be taken in account if one is already registered).
         AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
         interceptor.setUserName(username);

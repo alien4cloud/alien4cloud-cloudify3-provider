@@ -127,7 +127,7 @@ public class PluginFactoryConfiguration {
 
     @Bean(name = "cloudify-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("cloudify-scheduler", 2);
+        return new SchedulerServiceFactoryBean("cloudify-scheduler", 4);
     }
 
     // Dedicated delayed pollers stuffs: EventClient, RequestFactory, Thread pools.
