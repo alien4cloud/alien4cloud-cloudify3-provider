@@ -94,6 +94,7 @@ public class SnapshotService {
 
             @Override
             public void onFailure(Throwable t) {
+                log.error("Not able to snapshot CLoudify", t);
                 bus.publishEvent(new CloudifyInitiationError(this, t));
             }
         });

@@ -52,6 +52,10 @@ public class StatusService {
 
     private Map<String, ListenableScheduledFuture<?>> statusRefreshJobs = Maps.newHashMap();
 
+    private Map<String, PaaSTopologyDeploymentContext> initialDeployments;
+
+    private CloudifySnapshot cloudifySnapshot;
+
     private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
 
     @Resource
@@ -153,30 +157,58 @@ public class StatusService {
     public void cloudifySnapshotReceived(CloudifySnapshotReceived event) {
         log.info("Cloudify Snapshot received");
         CloudifySnapshot snp = event.getCloudifySnapshot();
-        for (Deployment d : snp.getDeployments()) {
-            log.debug("Deployment id {} contains {} executions",  d.getId(), snp.getExecutions().get(d.getId()).size());
-        }
-
+//        for (Deployment d : snp.getDeployments()) {
+//            log.debug("Deployment id {} contains {} executions",  d.getId(), snp.getExecutions().get(d.getId()).size());
+//        }
+        this.cloudifySnapshot = snp;
+        this.reconcilate();
         // TODO: feed the cache ...
+    }
+
+    private void reconcilate() {
+        if (this.cloudifySnapshot == null) {
+            return;
+        }
+        if (initialDeployments == null) {
+            return;
+        }
+        log.info("Reconciliate A4C & CFY worlds");
+        for (Map.Entry<String, PaaSTopologyDeploymentContext> contextEntry : initialDeployments.entrySet()) {
+            String passDeploymentId = contextEntry.getKey();
+            Deployment deployment = cloudifySnapshot.getDeployments().get(passDeploymentId);
+            DeploymentStatus status = null;
+            if (deployment == null) {
+                status = DeploymentStatus.UNDEPLOYED;
+            } else {
+                List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
+                Execution[] executions = new Execution[]{};
+                executions = executionList.toArray(executions);
+                status = doGetStatus(executions);
+            }
+            statusCache.put(passDeploymentId, status);
+        }
+        log.info("Reconciliation finished");
     }
 
 
     // As soon as we will receive the snap this will be useless.
     @Deprecated
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
-        for (Map.Entry<String, PaaSTopologyDeploymentContext> contextEntry : activeDeploymentContexts.entrySet()) {
-            String deploymentPaaSId = contextEntry.getKey();
-            // Try to retrieve the last deployment status event to initialize the cache
-            Map<String, String[]> filters = Maps.newHashMap();
-            filters.put("deploymentId", new String[] { contextEntry.getValue().getDeploymentId() });
-            GetMultipleDataResult<PaaSDeploymentStatusMonitorEvent> lastEventResult = alienMonitorDao.search(PaaSDeploymentStatusMonitorEvent.class, null,
-                    filters, null, null, 0, 1, "date", true);
-            if (lastEventResult.getData() != null && lastEventResult.getData().length > 0) {
-                statusCache.put(deploymentPaaSId, lastEventResult.getData()[0].getDeploymentStatus());
-            }
-            // Query the manager to be sure that the status has not changed
-            getStatusFromCloudify(deploymentPaaSId);
-        }
+        this.initialDeployments = activeDeploymentContexts;
+        reconcilate();
+//        for (Map.Entry<String, PaaSTopologyDeploymentContext> contextEntry : activeDeploymentContexts.entrySet()) {
+//            String deploymentPaaSId = contextEntry.getKey();
+//            // Try to retrieve the last deployment status event to initialize the cache
+//            Map<String, String[]> filters = Maps.newHashMap();
+//            filters.put("deploymentId", new String[] { contextEntry.getValue().getDeploymentId() });
+//            GetMultipleDataResult<PaaSDeploymentStatusMonitorEvent> lastEventResult = alienMonitorDao.search(PaaSDeploymentStatusMonitorEvent.class, null,
+//                    filters, null, null, 0, 1, "date", true);
+//            if (lastEventResult.getData() != null && lastEventResult.getData().length > 0) {
+//                statusCache.put(deploymentPaaSId, lastEventResult.getData()[0].getDeploymentStatus());
+//            }
+//            // Query the manager to be sure that the status has not changed
+//            getStatusFromCloudify(deploymentPaaSId);
+//        }
     }
 
     private ListenableFuture<DeploymentStatus> asyncGetStatus(String deploymentPaaSId) {
