@@ -24,25 +24,7 @@ public class EventReceivedManager {
      * Add an event in the list of received events.
      */
     public void addEvent(String id, Date date) {
-        resourceLock.writeLock().lock();
-        try {
-            if (receivedEventIds.contains(id)) {
-                return;
-            }
-            EventReceived eventReceived = new EventReceived(id, date);
-            if (receivedEventList.size() == 0) {
-                receivedEventList.add(eventReceived);
-            } else {
-                int i = receivedEventList.size() - 1;
-                while (i >= 0 && receivedEventList.get(i).date.compareTo(date) > 0) {
-                    i--;
-                }
-                receivedEventList.add(i + 1, eventReceived);
-            }
-            receivedEventIds.add(id);
-        } finally {
-            resourceLock.writeLock().unlock();
-        }
+
     }
 
     /**
@@ -51,24 +33,11 @@ public class EventReceivedManager {
      * @param to The date until which to remove events (exclusive)
      */
     public void remove(Date to) {
-        resourceLock.writeLock().lock();
-        try {
-            while (receivedEventList.size() > 0 && receivedEventList.get(0).date.compareTo(to) < 0) {
-                EventReceived removed = receivedEventList.remove(0);
-                receivedEventIds.remove(removed.id);
-            }
-        } finally {
-            resourceLock.writeLock().unlock();
-        }
+
     }
 
     public void logSize(Logger log, String logPrefix) {
-        resourceLock.readLock().lock();
-        try {
-            log.debug("{}:  Event de-duplication list size: {} | {}", logPrefix, receivedEventIds.size(), receivedEventList.size());
-        } finally {
-            resourceLock.readLock().unlock();
-        }
+
     }
 
     /**
@@ -78,12 +47,7 @@ public class EventReceivedManager {
      * @return
      */
     public boolean contains(String id) {
-        resourceLock.readLock().lock();
-        try {
-            return receivedEventIds.contains(id);
-        } finally {
-            resourceLock.readLock().unlock();
-        }
+        return false;
     }
 
     @AllArgsConstructor
