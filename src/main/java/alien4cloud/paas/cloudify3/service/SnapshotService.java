@@ -3,19 +3,21 @@ package alien4cloud.paas.cloudify3.service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import com.google.common.util.concurrent.AsyncFunction;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListenableFutureTask;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
@@ -70,27 +72,24 @@ public class SnapshotService {
     public void snapshotCloudify() {
         log.info("Snapshoting cfy");
 
-        // FIXME: please don't chain 2 calls, query alien4cloud.paas.cloudify3.restclient.ExecutionClient.asyncList(boolean)
-        // we must wait for the 2 terminations to build the CloudifySnapshotReceived
-        AsyncFunction<Deployment[], CloudifySnapshot> createCloudifySnapshot = new AsyncFunction<Deployment[], CloudifySnapshot>() {
+        Futures.addCallback(ListenableFutureTask.create(new Callable<CloudifySnapshot>() {
             @Override
-            public ListenableFuture<CloudifySnapshot> apply(Deployment[] input) throws Exception {
-                Map<String, List<Execution>> map = Arrays.stream(input).collect(Collectors.toMap(Deployment::getId, d -> {
-                    try {
-                        Execution[] executions = executionClient.asyncList(d.getId(), true).get();
-                        return Arrays.asList(executions);
-                    } catch (Throwable e) {
-                        throw new RuntimeException(e);
+            public CloudifySnapshot call() throws Exception {
+                ExecutorService es = Executors.newFixedThreadPool(2);
+                es.submit(new Callable<List<Deployment>>() {
+                    @Override
+                    public List<Deployment> call() throws Exception {
+                        return Arrays.asList(deploymentClient.asyncList().get());
                     }
-                }));
-                return Futures.immediateFuture(new CloudifySnapshot(Arrays.asList(input), map));
+                });
+                Map<String, Deployment> deployments = Arrays.stream(deploymentClient.asyncList().get()).collect(Collectors.toMap(d -> d.getId(), d -> d));
+                List<Execution> executions = Arrays.asList(executionClient.asyncList(true).get());
+                Set<String> ids = deployments.keySet();
+                Map<String, List<Execution>> map = executions.stream().filter(e -> ids.contains(e.getDeploymentId()))
+                        .collect(Collectors.groupingBy(Execution::getDeploymentId, Collectors.toList()));
+                return new CloudifySnapshot(deployments, map);
             }
-        };
-
-        ListenableFuture<Deployment[]> clientsFuture = deploymentClient.asyncList();
-        ListenableFuture<CloudifySnapshot> snapshot = Futures.transform(clientsFuture, createCloudifySnapshot);
-
-        Futures.addCallback(snapshot, new FutureCallback<CloudifySnapshot>() {
+        }), new FutureCallback<CloudifySnapshot>() {
             @Override
             public void onSuccess(CloudifySnapshot result) {
                 bus.publishEvent(new CloudifySnapshotReceived(this, result));

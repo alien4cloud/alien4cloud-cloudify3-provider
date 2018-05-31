@@ -21,7 +21,7 @@ import lombok.Setter;
 public class CloudifySnapshot {
 
     @NonNull
-    public List<Deployment> deployments;
+    public Map<String, Deployment> deployments;
 
     @NonNull
     // deployment.id -> execution
