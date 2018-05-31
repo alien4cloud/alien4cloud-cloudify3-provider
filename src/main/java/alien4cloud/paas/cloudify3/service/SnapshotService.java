@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -72,7 +73,7 @@ public class SnapshotService {
     public void snapshotCloudify() {
         log.info("Snapshoting cfy");
 
-        Futures.addCallback(ListenableFutureTask.create(new Callable<CloudifySnapshot>() {
+        Callable<CloudifySnapshot> task = new Callable<CloudifySnapshot>() {
             @Override
             public CloudifySnapshot call() throws Exception {
                 ExecutorService es = Executors.newFixedThreadPool(2);
@@ -89,7 +90,10 @@ public class SnapshotService {
                         .collect(Collectors.groupingBy(Execution::getDeploymentId, Collectors.toList()));
                 return new CloudifySnapshot(deployments, map);
             }
-        }), new FutureCallback<CloudifySnapshot>() {
+        };
+        ListenableFuture<CloudifySnapshot> future = scheduler.submit(task);
+
+        Futures.addCallback(future, new FutureCallback<CloudifySnapshot>() {
             @Override
             public void onSuccess(CloudifySnapshot result) {
                 bus.publishEvent(new CloudifySnapshotReceived(this, result));
