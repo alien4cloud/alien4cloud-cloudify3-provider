@@ -32,7 +32,7 @@ public class EventServiceInstance {
 
     private final EventReceivedManager eventReceivedManager = new EventReceivedManager();
     private final EventDispatcher eventDispatcher = new EventDispatcher(eventReceivedManager);
-    private final List<DelayedPollerInstance> delayedPollerInstances;
+//    private final List<DelayedPollerInstance> delayedPollerInstances;
 
     /**
      * The cloudify manager url.
@@ -65,9 +65,9 @@ public class EventServiceInstance {
         this.delayedScheduler = delayedScheduler;
         this.pluginConfigurationHolder = pluginConfigurationHolder;
 
-        delayedPollerInstances = Lists.newArrayList(
-                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 30 * 1000, eventDispatcher, false),
-                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 5 * 60 * 1000, eventDispatcher, true));
+//        delayedPollerInstances = Lists.newArrayList(
+//                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 30 * 1000, eventDispatcher, false),
+//                new DelayedPollerInstance(managerUrl, delayedScheduler, delayedEventClient, pluginConfigurationHolder, 5 * 60 * 1000, eventDispatcher, true));
     }
 
     /**
@@ -111,10 +111,10 @@ public class EventServiceInstance {
             return;
         }
 
-        log.info("Register to fetch events from {} for manager <{}>", nextPollingDate, managerUrl);
-        for (DelayedPollerInstance instance : delayedPollerInstances) {
-            instance.initFromDate(nextPollingDate);
-        }
+//        log.info("Register to fetch events from {} for manager <{}>", nextPollingDate, managerUrl);
+//        for (DelayedPollerInstance instance : delayedPollerInstances) {
+//            instance.initFromDate(nextPollingDate);
+//        }
 
         // If the configuration is not set then we wait for it to be set before scheduling next poll.
         initScheduling();
@@ -144,9 +144,9 @@ public class EventServiceInstance {
     private synchronized void triggerLogPolling() {
         if (nextPollingDate != null) {
             pollingFromDate = nextPollingDate;
-            for (DelayedPollerInstance instance : delayedPollerInstances) {
-                instance.registerLastLive(pollingFromDate);
-            }
+//            for (DelayedPollerInstance instance : delayedPollerInstances) {
+//                instance.registerLastLive(pollingFromDate);
+//            }
             nextPollingDate = null;
         }
         if (log.isDebugEnabled()) {
@@ -183,9 +183,9 @@ public class EventServiceInstance {
             } else {
                 from = 0;
                 pollingFromDate = lastPolledEventDate;
-                for (DelayedPollerInstance instance : delayedPollerInstances) {
-                    instance.registerLastLive(pollingFromDate);
-                }
+//                for (DelayedPollerInstance instance : delayedPollerInstances) {
+//                    instance.registerLastLive(pollingFromDate);
+//                }
             }
 
             // If the event batch is full then don't wait before polling again
