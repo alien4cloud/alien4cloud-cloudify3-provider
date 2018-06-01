@@ -12,10 +12,12 @@ import java.util.Set;
  */
 @Setter
 @Getter
-public class AbstractPoller {
+public abstract class AbstractPoller {
 
     private EventClient eventClient;
 
     private EventDispatcher eventDispatcher;
+
+    public abstract void start();
 
 }

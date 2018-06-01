@@ -11,6 +11,6 @@ import java.util.Date;
 public class EventReference {
 
     public final String id;
-    public final Date timestamp;
+    public final Long timestamp;
 
 }
