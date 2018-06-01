@@ -14,4 +14,8 @@ public class AbstractCachedEventPoller extends AbstractPoller {
 
     private Set<EventReference> eventCache;
 
+    @Override
+    public void start() {
+
+    }
 }

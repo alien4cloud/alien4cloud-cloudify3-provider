@@ -1,9 +1,9 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
-import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
-
 import java.time.Duration;
-import java.util.Date;
+import java.time.Instant;
+
+import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 
 /**
  * An event poller is responsible to re-request events using a given interval but in the future.
@@ -20,7 +20,7 @@ public class DelayedPoller extends AbstractCachedEventPoller {
      */
     private Duration delay;
 
-    public void schedule(Date fromDate, Date toDate) {
+    public void schedule(Instant fromDate, Instant toDate) {
         // TODO: trigger a query for delayed concerns
     }
 
