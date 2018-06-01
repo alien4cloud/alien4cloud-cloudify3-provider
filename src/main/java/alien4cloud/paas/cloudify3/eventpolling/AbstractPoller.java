@@ -14,27 +14,32 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
- * Created by xdegenne on 01/06/2018.
+ * A poller is responsible of polling an epoch in batch mode.
  */
 @Setter
 @Getter
 public abstract class AbstractPoller {
 
+    /**
+     * Max size of the batch of events to retrieve for each REST request.
+     */
     protected static final int BATCH_SIZE = 100;
+
     private EventClient eventClient;
 
     private EventDispatcher eventDispatcher;
     private Set<EventReference> eventCache;
 
     public abstract void start();
+    public abstract void shutdown();
 
-    private String url;
+    protected final String url;
 
     public AbstractPoller(String url) {
         this.url = url;
     }
 
-    protected void pollEpoch(String url, Instant fromDate, Instant toDate)
+    protected void pollEpoch(Instant fromDate, Instant toDate)
             throws ExecutionException, InterruptedException {
         int offset = 0;
         while (true) {
@@ -61,7 +66,7 @@ public abstract class AbstractPoller {
 
             // Dispatch the events
             events.removeIf(e -> !whiteList.contains(e.getId()));
-            getEventDispatcher().dispatch(Date.from(fromDate), events.toArray(new Event[0]), "live stream");
+            getEventDispatcher().dispatch(Date.from(fromDate), events.toArray(new Event[0]), "Live stream for <" + url + ">");
 
             // Increment the offset
             if (events.size() < BATCH_SIZE) {
@@ -71,6 +76,5 @@ public abstract class AbstractPoller {
                 offset += BATCH_SIZE;
             }
         }
-
     }
 }

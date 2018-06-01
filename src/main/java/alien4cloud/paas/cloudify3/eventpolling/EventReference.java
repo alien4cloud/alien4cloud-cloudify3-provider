@@ -2,10 +2,8 @@ package alien4cloud.paas.cloudify3.eventpolling;
 
 import lombok.AllArgsConstructor;
 
-import java.util.Date;
-
 /**
- * Created by xdegenne on 01/06/2018.
+ * Minimal stuff to ease caching and deduplication.
  */
 @AllArgsConstructor
 public class EventReference {

@@ -1,12 +1,9 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 
 /**
  * An event poller is responsible to re-request events using a given interval but in the future.
@@ -31,7 +28,7 @@ public class DelayedPoller extends AbstractPoller {
     public void schedule(Instant fromDate, Instant toDate) {
         scheduler.schedule(() -> {
             try {
-                pollEpoch("", fromDate, toDate);
+                pollEpoch(fromDate, toDate);
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -40,6 +37,11 @@ public class DelayedPoller extends AbstractPoller {
 
     @Override
     public void start() {
+        // Nothing to do here. The polls will be scheduled.
+    }
 
+    @Override
+    public void shutdown() {
+        // Nothing to shutdown here (the scheduler is managed elsewhere).
     }
 }

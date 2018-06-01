@@ -1,7 +1,7 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 /**
- * Created by xdegenne on 01/06/2018.
+ * This poller is responsible of polling events that have been missed when the system was down.
  */
 public class StartupPoller extends AbstractPoller {
 
@@ -13,6 +13,10 @@ public class StartupPoller extends AbstractPoller {
     public void start() {
         // TODO: get the last event timestamp from A4C ES
 //        this.pollEpoch(lastEventTimestamp, now);
+    }
+
+    @Override
+    public void shutdown() {
     }
 
 }

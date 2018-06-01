@@ -2,40 +2,46 @@ package alien4cloud.paas.cloudify3.eventpolling;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import javax.xml.bind.DatatypeConverter;
 
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.ListenableFuture;
-
-import alien4cloud.paas.cloudify3.model.Event;
 
 /**
- * Created by xdegenne on 01/06/2018.
+ * The live poller will start a single long running thead that will:
+ * <ul>
+ *     <li>Get the event stream at most each POLL_PERIOD seconds.</li>
+ *     <li>Trigger schedule of it's delayed pollers to do the same in the future.</li>
+ * </ul>
  */
 public class LivePoller extends AbstractPoller {
 
+    /**
+     * The {fromDate} of the event request.
+     */
 	private Instant fromDate;
+
+    /**
+     * The {toDate} of the event request.
+     */
 	private Instant toDate;
-    private static final Duration INTERVAL = Duration.ofSeconds(10);
+
+    /**
+     * Ideally, if event frequency is not too hight, an event request will be executed each POLL_PERIOD secondes.
+     */
+    private static final Duration POLL_PERIOD = Duration.ofSeconds(10);
 	private static final int TIMEOUT = 5;
+
+    /**
+     * We definitely use one single thread for this poller.
+     */
     private ExecutorService executorService = Executors.newSingleThreadExecutor();
 
 	public LivePoller(String url) {
         super(url);
     }
-
-
 
     private List<DelayedPoller> delayedPollers = Lists.newArrayList();
 
@@ -55,16 +61,20 @@ public class LivePoller extends AbstractPoller {
 		}
 	}
 
+    /**
+     * This non blocking operation will start a long running thread that will get live event stream.
+     */
     @Override
     public void start() {
-        this.fromDate = Instant.now().minus(INTERVAL);
-        this.toDate = fromDate.plus(INTERVAL);
+        this.fromDate = Instant.now().minus(POLL_PERIOD);
+        this.toDate = fromDate.plus(POLL_PERIOD);
 
         executorService.submit(() -> {
+            // Start the long live thread
             while (true) {
                 // Start the epoch polling
                 try {
-                    pollEpoch(getUrl(), fromDate, toDate);
+                    pollEpoch(fromDate, toDate);
                     triggerDelayedPollers(fromDate, toDate);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -72,8 +82,8 @@ public class LivePoller extends AbstractPoller {
                 }
 
                 // Move to next epoch
-                fromDate = fromDate.plus(INTERVAL);
-                toDate = toDate.plus(INTERVAL);
+                fromDate = fromDate.plus(POLL_PERIOD);
+                toDate = toDate.plus(POLL_PERIOD);
                 Instant now = Instant.now();
                 if (toDate.isAfter(now)) {
                     try {
@@ -85,6 +95,9 @@ public class LivePoller extends AbstractPoller {
 
             }
         });
+    }
+
+    public void shutdown() {
         executorService.shutdown();
         try {
             executorService.awaitTermination(TIMEOUT, TimeUnit.MINUTES);
