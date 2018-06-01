@@ -94,7 +94,7 @@ public class DeploymentService extends RuntimeService {
             @Override
             public void onSuccess(Deployment result) {
                 log.info("Successfully created the deployment {}, begin to poll for status", alienDeployment.getDeploymentPaaSId());
-                statusService.scheduleRefreshStatus(alienDeployment.getDeploymentPaaSId());
+                statusService.registerDeployment(alienDeployment.getDeploymentPaaSId());
             }
 
             @Override

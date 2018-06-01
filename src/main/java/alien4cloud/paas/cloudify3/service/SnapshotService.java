@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -36,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
  */
-@org.springframework.stereotype.Service("cloudify-snapshot-service")
+//@org.springframework.stereotype.Service("cloudify-snapshot-service")
 @Slf4j
 public class SnapshotService {
 
@@ -67,11 +68,21 @@ public class SnapshotService {
     @Autowired
     private ApplicationEventPublisher bus;
 
+    public void init() {
+        int statusPollDelay = cloudConfigurationHolder.getConfiguration().getDelayBetweenInProgressDeploymentStatusPolling();
+        scheduler.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                snapshotCloudify();
+            }
+        }, statusPollDelay, statusPollDelay, TimeUnit.SECONDS);
+    }
+
     /**
      * Snapshots the state of cfy for other services.
      */
     public void snapshotCloudify() {
-        log.info("Snapshoting cfy");
+        log.debug("Snapshoting cfy");
 
         Callable<CloudifySnapshot> task = new Callable<CloudifySnapshot>() {
             @Override

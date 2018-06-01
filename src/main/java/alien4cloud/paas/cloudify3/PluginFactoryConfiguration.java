@@ -37,8 +37,8 @@ public class PluginFactoryConfiguration {
     /** A static final index to identify pools in case of multiple instances. */
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
-    @Inject
-    private PluginConfigurationHolder pluginConfigurationHolder;
+//    @Inject
+//    private PluginConfigurationHolder pluginConfigurationHolder;
 
     @Bean(name = "artifact-registry-service")
     public ArtifactRegistryService artifactRegistryService() {
@@ -74,8 +74,8 @@ public class PluginFactoryConfiguration {
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
-        threadPoolTaskExecutor.setCorePoolSize(pluginConfigurationHolder.getPluginConfiguration().getCloudifyAsyncThreadpoolCoreSize());
-        threadPoolTaskExecutor.setMaxPoolSize(pluginConfigurationHolder.getPluginConfiguration().getCloudifyAsyncThreadpoolMaxSize());
+        threadPoolTaskExecutor.setCorePoolSize(30);
+        threadPoolTaskExecutor.setMaxPoolSize(50);
         threadPoolTaskExecutor.setKeepAliveSeconds(10);
         threadPoolTaskExecutor.initialize();
         return threadPoolTaskExecutor;
@@ -127,7 +127,7 @@ public class PluginFactoryConfiguration {
 
     @Bean(name = "cloudify-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("cloudify-scheduler", 2);
+        return new SchedulerServiceFactoryBean("cloudify-scheduler", 4);
     }
 
     // Dedicated delayed pollers stuffs: EventClient, RequestFactory, Thread pools.
@@ -177,8 +177,8 @@ public class PluginFactoryConfiguration {
     public ThreadPoolTaskExecutor threadPoolTaskExecutorDelayed(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("delayed-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
-        threadPoolTaskExecutor.setCorePoolSize(pluginConfigurationHolder.getPluginConfiguration().getDelayedAsyncThreadpoolCoreSize());
-        threadPoolTaskExecutor.setMaxPoolSize(pluginConfigurationHolder.getPluginConfiguration().getDelayedAsyncThreadpoolMaxSize());
+        threadPoolTaskExecutor.setCorePoolSize(2);
+        threadPoolTaskExecutor.setMaxPoolSize(2);
         threadPoolTaskExecutor.setKeepAliveSeconds(10);
         threadPoolTaskExecutor.initialize();
         return threadPoolTaskExecutor;
