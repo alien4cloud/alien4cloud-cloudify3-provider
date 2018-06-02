@@ -1,10 +1,9 @@
 package alien4cloud.paas.cloudify3.service;
 
-import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.paas.IPaaSCallback;
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
-import alien4cloud.paas.cloudify3.event.CloudifySnapshotReceived;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
 import alien4cloud.paas.cloudify3.model.*;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
@@ -37,8 +36,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 
 /**
  * Handle all deployment status request
@@ -89,11 +88,23 @@ public class StatusService {
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     @EventListener
-    public void cloudifySnapshotReceived(CloudifySnapshotReceived event) {
-        log.info("Cloudify Snapshot received");
+    public void cloudifySnapshotReceived(CloudifyManagerSnapshoted event) {
+        log.debug("Cloudify Snapshot received");
         CloudifySnapshot snp = event.getCloudifySnapshot();
         this.cloudifySnapshot = event.getCloudifySnapshot();
         this.reconciliate();
+    }
+
+    @EventListener
+    public void cloudifyManagerUnreachable(CloudifyManagerUnreachable event) {
+        // we are not able to get a snapshot from the manager, let's set all status to unknown
+        log.debug("All deployement status is now considered as UNKNOWN (Not able to get snapshot)");
+        try {
+            cacheLock.writeLock().lock();
+            registeredDeployments.stream().forEach(deploymentPaaSId -> statusCache.put(deploymentPaaSId, DeploymentStatus.UNKNOWN));
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
     }
 
     private void reconciliate() {
@@ -460,6 +471,9 @@ public class StatusService {
      */
     private void doRegisterDeploymentStatus(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
         DeploymentStatus deploymentStatus = getStatusFromCache(deploymentPaaSId);
+        if (deploymentStatus == null) {
+            return;
+        }
         if (!newDeploymentStatus.equals(deploymentStatus)) {
             // Only register event if it makes changes to the cache
             if (DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {

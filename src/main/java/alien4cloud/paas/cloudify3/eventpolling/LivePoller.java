@@ -127,7 +127,6 @@ public class LivePoller extends AbstractPoller {
                 } else if (log.isDebugEnabled()) {
                     log.debug("[{}] No sleep between epoch polling. An higth number of occurrences of this log can means that the system is too busy to poll events in real time");
                 }
-
             }
         });
     }
@@ -137,11 +136,6 @@ public class LivePoller extends AbstractPoller {
         // shutdown delayed pollers
         delayedPollers.stream().forEach(delayedPoller -> delayedPoller.shutdown());
         // shutdown long running thread
-        executorService.shutdown();
-        try {
-            executorService.awaitTermination(TIMEOUT, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        executorService.shutdownNow();
     }
 }

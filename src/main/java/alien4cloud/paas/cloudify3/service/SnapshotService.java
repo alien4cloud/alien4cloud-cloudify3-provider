@@ -1,7 +1,8 @@
 package alien4cloud.paas.cloudify3.service;
 
 import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
-import alien4cloud.paas.cloudify3.event.CloudifySnapshotReceived;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
 import alien4cloud.paas.cloudify3.model.Deployment;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
@@ -95,12 +96,13 @@ public class SnapshotService {
         Futures.addCallback(future, new FutureCallback<CloudifySnapshot>() {
             @Override
             public void onSuccess(CloudifySnapshot result) {
-                bus.publishEvent(new CloudifySnapshotReceived(this, result));
+                bus.publishEvent(new CloudifyManagerSnapshoted(this, result));
             }
 
             @Override
             public void onFailure(Throwable t) {
-                log.error("Not able to snapshot Cloudify", t);
+                log.warn("Not able to snapshot cfy ({})", t.getMessage());
+                bus.publishEvent(new CloudifyManagerUnreachable(this));
             }
         });
     }
