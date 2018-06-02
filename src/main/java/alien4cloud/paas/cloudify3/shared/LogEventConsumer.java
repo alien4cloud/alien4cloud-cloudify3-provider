@@ -69,8 +69,8 @@ public class LogEventConsumer implements IEventConsumer {
     private PaaSDeploymentLog[] toLogs(CloudifyEvent[] events) {
         if (events != null) {
             List<PaaSDeploymentLog> logs = new ArrayList<>(events.length);
-            for (int i = 0; i < events.length; i++) {
-                PaaSDeploymentLog log = toLog(events[i]);
+            for (CloudifyEvent event : events) {
+                PaaSDeploymentLog log = toLog(event);
                 if (log != null) {
                     logs.add(log);
                 }

@@ -5,18 +5,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import alien4cloud.paas.cloudify3.util.DateUtil;
-import com.google.common.collect.Lists;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+
+import com.google.common.collect.Lists;
+
+import alien4cloud.paas.cloudify3.util.DateUtil;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The live poller will start a single long running thread that will:
@@ -39,7 +37,7 @@ public class LivePoller extends AbstractPoller {
 	private Instant toDate;
 
     /**
-     * Ideally, if event frequency is not too higth, an event request will be executed each POLL_PERIOD secondes.
+     * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
      */
     private static final Duration POLL_PERIOD = Duration.ofSeconds(10);
 
@@ -77,7 +75,7 @@ public class LivePoller extends AbstractPoller {
     @Override
     public void setUrl(String url) {
         super.setUrl(url);
-        delayedPollers.stream().forEach(delayedPoller -> delayedPoller.setUrl(url));
+        delayedPollers.forEach(delayedPoller -> delayedPoller.setUrl(url));
     }
 
     /**
@@ -86,8 +84,8 @@ public class LivePoller extends AbstractPoller {
 	 * @param from
 	 * @param to
 	 */
-	public void triggerDelayedPollers(Instant from, Instant to) {
-        delayedPollers.stream().forEach(delayedPoller -> delayedPoller.schedule(from, to));
+    private void triggerDelayedPollers(Instant from, Instant to) {
+        delayedPollers.forEach(delayedPoller -> delayedPoller.schedule(from, to));
 	}
 
     /**
@@ -102,7 +100,6 @@ public class LivePoller extends AbstractPoller {
             while (true) {
                 // Start the epoch polling
 
-                // we want a "sliding window" so we request before the last toDate
                 if (log.isDebugEnabled()) {
                     log.debug("[{}] Beginning of live event polling, starting from {}", getPollerNature(), DateUtil.logDate(fromDate));
                 }
@@ -131,7 +128,7 @@ public class LivePoller extends AbstractPoller {
                         e.printStackTrace();
                     }
                 } else if (log.isDebugEnabled()) {
-                    log.debug("[{}] No sleep between epoch polling. An higth number of occurrences of this log can means that the system is too busy to poll events in real time");
+                    log.debug("[{}] No sleep between epoch polling. A large number of coming events forces the system to poll events in real time.");
                 }
             }
         });
@@ -140,7 +137,7 @@ public class LivePoller extends AbstractPoller {
     @PreDestroy
     public void shutdown() {
         // shutdown delayed pollers
-        delayedPollers.stream().forEach(delayedPoller -> delayedPoller.shutdown());
+        delayedPollers.forEach(DelayedPoller::shutdown);
         // shutdown long running thread
         executorService.shutdownNow();
     }

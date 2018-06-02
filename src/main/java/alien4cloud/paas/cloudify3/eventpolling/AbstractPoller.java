@@ -1,21 +1,20 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
 import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.shared.EventClient;
 import alien4cloud.paas.cloudify3.shared.EventDispatcher;
 import alien4cloud.paas.cloudify3.util.DateUtil;
-import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import javax.xml.bind.DatatypeConverter;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 /**
  * A poller is responsible of polling all events of an epoch (a date interval) in batch mode.
@@ -48,7 +47,7 @@ public abstract class AbstractPoller {
         while (true) {
 
             if (log.isDebugEnabled()) {
-                log.debug("[{}] About to poll epoch beetwen {} and {} offset {} with a batch size {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
+                log.debug("[{}] About to poll epoch between {} and {} offset {} with a batch size {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
             }
 
             ListenableFuture<Event[]> future = getEventClient()

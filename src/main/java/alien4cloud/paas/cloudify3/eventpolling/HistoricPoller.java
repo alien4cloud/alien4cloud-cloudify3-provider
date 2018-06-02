@@ -1,9 +1,5 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-
 /**
  * This poller is responsible of polling events that have been missed when the system was down.
  */
