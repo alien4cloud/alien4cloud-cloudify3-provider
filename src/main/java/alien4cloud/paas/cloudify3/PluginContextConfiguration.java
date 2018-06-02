@@ -14,7 +14,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @Configuration
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3" }, excludeFilters = {
         @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.shared\\..*"),
-        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.PluginFactoryConfiguration")})
+        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.eventpolling\\..*"),
+        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.PluginFactoryConfiguration"),
+        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.CloudifyManagerCtxConfig")})
 @ImportResource("classpath:cloudify3-plugin-properties-config.xml")
 public class PluginContextConfiguration {
 }

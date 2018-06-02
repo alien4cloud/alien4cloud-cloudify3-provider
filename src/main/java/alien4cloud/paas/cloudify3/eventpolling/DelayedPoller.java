@@ -1,28 +1,35 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
+import lombok.Setter;
+
 import java.time.Instant;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * An event poller is responsible to re-request events using a given interval but in the future.
+ * An delayed poller is responsible off re-requesting events in the future.
  */
+@Setter
 public class DelayedPoller extends AbstractPoller {
 
     /**
-     * This scheduler MUST only be used to schedule
+     * Used to schedule polls in the given delayInSeconds.
      */
     private ScheduledExecutorService scheduler;
 
     /**
-     * The delay this poller will wait until executing the query.
+     * The delayInSeconds this poller will wait until executing the query.
      */
-    private long delay;
+    private long delayInSeconds;
 
-    public DelayedPoller(String url, long delay) {
-        super(url);
-        this.delay = delay;
+    public DelayedPoller(long delayInSeconds) {
+        this.delayInSeconds = delayInSeconds;
+    }
+
+    @Override
+    public String getPollerNature() {
+        return delayInSeconds + "s delayed stream";
     }
 
     public void schedule(Instant fromDate, Instant toDate) {
@@ -32,7 +39,7 @@ public class DelayedPoller extends AbstractPoller {
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
-        }, delay, TimeUnit.SECONDS);
+        }, delayInSeconds, TimeUnit.SECONDS);
     }
 
     @Override

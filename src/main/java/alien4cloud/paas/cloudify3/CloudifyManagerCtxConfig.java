@@ -1,21 +1,30 @@
 package alien4cloud.paas.cloudify3;
 
+import alien4cloud.paas.cloudify3.CloudifyOrchestratorFactory;
 import alien4cloud.paas.cloudify3.error.CloudifyResponseErrorHandler;
+import alien4cloud.paas.cloudify3.eventpolling.DelayedPoller;
+import alien4cloud.paas.cloudify3.eventpolling.EventCache;
+import alien4cloud.paas.cloudify3.eventpolling.HistoricPoller;
+import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.AsyncClientHttpRequestLogger;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
 import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
 import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 import alien4cloud.paas.cloudify3.shared.EventClient;
+import alien4cloud.paas.cloudify3.shared.EventDispatcher;
 import alien4cloud.paas.cloudify3.shared.PluginConfigurationHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.*;
+import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
@@ -29,21 +38,24 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * The configuration for the cfy manager dedicated child context.
+ * For each instance of manager url, we'll instanciate a manager context.
+ */
 @Configuration
-@ComponentScan(basePackages = { "alien4cloud.paas.cloudify3.shared" })
+@ComponentScan(basePackages = { "alien4cloud.paas.cloudify3.eventpolling" })
 @Slf4j
-public class PluginFactoryConfiguration {
+public class CloudifyManagerCtxConfig {
+
+    @Deprecated
+    // TODO: handle this config
+    private static final String URL = "toBeDefined";
 
     /** A static final index to identify pools in case of multiple instances. */
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
     @Inject
     private PluginConfigurationHolder pluginConfigurationHolder;
-
-    @Bean(name = "artifact-registry-service")
-    public ArtifactRegistryService artifactRegistryService() {
-        return new ArtifactRegistryService();
-    }
 
     @Bean(name = "cloudify-orchestrator")
     public CloudifyOrchestratorFactory cloudifyOrchestratorFactory() {
@@ -55,33 +67,89 @@ public class PluginFactoryConfiguration {
         return new OrchestratorDeploymentPropertiesService();
     }
 
-    @Bean(name = "shared-authentication-interceptor")
-    public AuthenticationInterceptor authenticationInterceptor() {
-        // just a bean to satisfy EventClient requirement
-        // and to avoid scan of alien4cloud.paas.cloudify3 rather than alien4cloud.paas.cloudify3.shared
-        return new AuthenticationInterceptor();
+    @Bean(name = "event-dispatcher")
+    public EventDispatcher eventDispatcher() {
+        return new EventDispatcher();
     }
 
-//    @Bean(name = "live-event-client")
-//    public EventClient liveEventClient() {
-//        // Object mapper configuration
-//        EventClient eventClient = new EventClient();
-//        eventClient.setSpecificRestTemplate(asyncRestTemplate());
-//        return eventClient;
+    @Bean(name = "event-cache")
+    public EventCache eventCache() {
+        return new EventCache();
+    }
+
+//    @Bean(name = "shared-authentication-interceptor")
+//    public AuthenticationInterceptor authenticationInterceptor() {
+//        // just a bean to satisfy EventClient requirement
+//        // and to avoid scan of alien4cloud.paas.cloudify3 rather than alien4cloud.paas.cloudify3.shared
+//        return new AuthenticationInterceptor();
 //    }
 
-    @Bean(name= "cloudify-async-thread-pool")
+    @Bean(name = "event-client")
+    public EventClient liveEventClient() {
+        // Object mapper configuration
+        EventClient eventClient = new EventClient();
+        eventClient.setSpecificRestTemplate(asyncRestTemplate());
+        return eventClient;
+    }
+
+    @Bean(name = "event-live-poller")
+    @SneakyThrows
+    public LivePoller livePoller() throws Exception {
+        LivePoller livePoller = new LivePoller();
+        livePoller.setEventCache(eventCache());
+        livePoller.setEventClient(liveEventClient());
+        livePoller.setEventDispatcher(eventDispatcher());
+
+        ListeningScheduledExecutorService executorService = schedulerServiceFactoryBean().getObject();
+
+        // Instanciate and set delayed pollers
+        DelayedPoller delayed30sPoller = new DelayedPoller(30);
+        delayed30sPoller.setEventCache(eventCache());
+        delayed30sPoller.setEventClient(liveEventClient());
+        delayed30sPoller.setEventDispatcher(eventDispatcher());
+        delayed30sPoller.setScheduler(executorService);
+        livePoller.addDelayedPoller(delayed30sPoller);
+
+        DelayedPoller delayed5mnPoller = new DelayedPoller(60 * 5);
+        delayed5mnPoller.setEventCache(eventCache());
+        delayed5mnPoller.setEventClient(liveEventClient());
+        delayed5mnPoller.setEventDispatcher(eventDispatcher());
+        delayed5mnPoller.setScheduler(executorService);
+        livePoller.addDelayedPoller(delayed5mnPoller);
+
+        return livePoller;
+    }
+
+    @Bean(name = "event-historic-poller")
+    public HistoricPoller historicPoller() {
+        HistoricPoller historicPoller = new HistoricPoller();
+        historicPoller.setEventCache(eventCache());
+        historicPoller.setEventClient(liveEventClient());
+        historicPoller.setEventDispatcher(eventDispatcher());
+        return historicPoller;
+    }
+
+    /**
+     * The thead pool for handling REST responses from events endpoint.
+     * This thread pool doesn't need to be configurable since we know exactly how many thread we need:
+     * <ul>
+     *     <li>1 thread for live stream poller REST handling.</li>
+     *     <li>2 threads for delayed event stream and historical event stream, REST handling.</li>
+     * </ul>
+     * @return
+     */
+    @Bean(name= "event-async-thread-pool")
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
-        threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
-        threadPoolTaskExecutor.setCorePoolSize(pluginConfigurationHolder.getPluginConfiguration().getCloudifyAsyncThreadpoolCoreSize());
-        threadPoolTaskExecutor.setMaxPoolSize(pluginConfigurationHolder.getPluginConfiguration().getCloudifyAsyncThreadpoolMaxSize());
+        threadPoolTaskExecutor.setThreadNamePrefix("event-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
+        threadPoolTaskExecutor.setCorePoolSize(3);
+        threadPoolTaskExecutor.setMaxPoolSize(3);
         threadPoolTaskExecutor.setKeepAliveSeconds(10);
         threadPoolTaskExecutor.initialize();
         return threadPoolTaskExecutor;
     }
 
-    @Bean(name = "cloudify-rest-template")
+    @Bean(name = "event-rest-template")
     public RestTemplate restTemplate() {
         // Object mapper configuration
         ObjectMapper objectMapper = new ObjectMapper();
@@ -102,20 +170,17 @@ public class PluginFactoryConfiguration {
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
         syncRestTemplate.setRequestFactory(simpleClientHttpRequestFactory());
-//        if (log.isTraceEnabled()) {
-//            syncRestTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(simpleClientHttpRequestFactory()));
-//        }
         return syncRestTemplate;
     }
 
-    @Bean(name = "cloudify-async-http-request-factory")
+    @Bean(name = "event-async-http-request-factory")
     public SimpleClientHttpRequestFactory simpleClientHttpRequestFactory() {
         SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
         simpleClientHttpRequestFactory.setTaskExecutor(threadPoolTaskExecutor());
         return simpleClientHttpRequestFactory;
     }
 
-    @Bean(name = "cloudify-async-rest-template")
+    @Bean(name = "event-async-rest-template")
     public AsyncRestTemplate asyncRestTemplate() {
         AsyncRestTemplate asyncRestTemplate = new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
         if (log.isTraceEnabled()) {
@@ -125,9 +190,9 @@ public class PluginFactoryConfiguration {
         return asyncRestTemplate;
     }
 
-    @Bean(name = "cloudify-scheduler")
+    @Bean(name = "event-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("cloudify-scheduler", 2);
+        return new SchedulerServiceFactoryBean("event-scheduler", 1);
     }
 
 }

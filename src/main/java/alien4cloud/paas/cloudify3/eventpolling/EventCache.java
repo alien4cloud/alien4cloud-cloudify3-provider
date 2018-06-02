@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.eventpolling;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
@@ -11,7 +12,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Just a cache that stores event id for deduplication.
  * TODO: a TTL to avoid heap leak
  */
-public abstract class EventCache implements Set<EventReference> {
+public class EventCache {
 
     private Set<String> ids = Sets.newHashSet();
 

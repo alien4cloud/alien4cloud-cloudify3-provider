@@ -1,9 +1,15 @@
 package alien4cloud.paas.cloudify3.shared;
 
+import alien4cloud.paas.cloudify3.CloudifyManagerCtxConfig;
+import alien4cloud.paas.cloudify3.eventpolling.HistoricPoller;
+import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
+import alien4cloud.utils.ClassLoaderUtil;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
@@ -12,74 +18,76 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * This instance is responsible to manage events services per cloudify url rather than per orchestrator instance.
+ * This instance is responsible to manage events polling mecanism per cloudify url rather than per orchestrator instance.
  */
 @Slf4j
 @Service
 public class EventServiceMultiplexer {
 
-    /**
-     * The event client for live stream.
-     */
-//    @Resource(name = "live-event-client")
-//    private EventClient logEventClient;
-
-    /**
-     * The event client for delayed pollers.
-     */
-    @Resource(name = "delayed-event-client")
-    private EventClient delayedEventClient;
-
-    @Resource(name = "cloudify-scheduler")
-    private ListeningScheduledExecutorService scheduler;
-
-    /** This scheduler should only be used for delayed instances. */
-    @Resource(name = "delayed-scheduler")
-    private ListeningScheduledExecutorService delayedScheduler;
+    @Resource
+    private ApplicationContext mainContext;
 
     @Resource
     private PluginConfigurationHolder pluginConfigurationHolder;
 
-    /** Map of event services by manager url. */
-    private Map<String, EventServiceInstance> eventServices = Maps.newHashMap();
+    /** manager url -> manager dedicated context */
+    private Map<String, AnnotationConfigApplicationContext> managerContexts = Maps.newHashMap();
 
     // When a new one registers with a previous date then we have to re-poll older events but not dispatch events to listener that already processed them...
 
     public synchronized void register(final String managerUrl, final String username, final String password, String consumerId, IEventConsumer eventConsumer) {
-        // Register a new authentication interceptor for the manager (this will not be taken in account if one is already registered).
-        AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
-        interceptor.setUserName(username);
-        interceptor.setPassword(password);
-//        logEventClient.registerAuthenticationManager(managerUrl, interceptor);
-        delayedEventClient.registerAuthenticationManager(managerUrl, interceptor);
 
-        EventServiceInstance logEventServiceInstance = eventServices.get(managerUrl);
-        if (logEventServiceInstance == null) {
-            log.info("Creating a new event listener for cloudify manager with url {}", managerUrl);
-            logEventServiceInstance = newEventServiceInstance(managerUrl);
-            eventServices.put(managerUrl, logEventServiceInstance);
+        AnnotationConfigApplicationContext managerContext = managerContexts.get(managerUrl);
+        if (managerContext == null) {
+            managerContext = startContext(managerUrl, username, password);
+            managerContexts.put(managerUrl, managerContext);
         }
-        log.info("Register consumer {} for event listener on manager {}", consumerId, managerUrl);
-        logEventServiceInstance.register(consumerId, eventConsumer);
+        EventDispatcher eventDispatcher = (EventDispatcher) managerContext.getBean("event-dispatcher");
+        eventDispatcher.register(consumerId, eventConsumer);
+    }
+
+    private AnnotationConfigApplicationContext startContext(String managerUrl, final String username, final String password) {
+        AnnotationConfigApplicationContext managerContext = new AnnotationConfigApplicationContext();
+        managerContext.setParent(mainContext);
+        managerContext.setClassLoader(mainContext.getClassLoader());
+        ClassLoaderUtil.runWithContextClassLoader(mainContext.getClassLoader(), () -> {
+            managerContext.register(CloudifyManagerCtxConfig.class);
+            managerContext.refresh();
+        });
+        log.info("Created new Cloudify manager context {} for factory {}, managing cfy manager @{}", managerContext.getId(), mainContext.getId(), managerUrl);
+
+        // setup the authentication interceptor so the client can authenticate to the cfy manager
+        AuthenticationInterceptor authenticationInterceptor = new AuthenticationInterceptor();
+        authenticationInterceptor.setUserName(username);
+        authenticationInterceptor.setPassword(password);
+        EventClient eventClient = (EventClient) managerContext.getBean("event-client");
+        eventClient.setAuthenticationInterceptor(authenticationInterceptor);
+
+        LivePoller livePoller = (LivePoller) managerContext.getBean("event-live-poller");
+        livePoller.setUrl(managerUrl);
+        livePoller.start();
+        HistoricPoller historicPoller = (HistoricPoller) managerContext.getBean("event-historic-poller");
+        historicPoller.start();
+
+        return managerContext;
     }
 
     public synchronized void unRegister(final String managerUrl, String consumerId) {
-        EventServiceInstance eventServiceInstance = eventServices.get(managerUrl);
-        if (eventServiceInstance == null) {
+        AnnotationConfigApplicationContext managerContext = managerContexts.get(managerUrl);
+        if (managerContext == null) {
             log.info("Un-register consumer {} for manager {}: Manager was not registered.", consumerId, managerUrl);
             return;
         }
 
         log.info("Un-register consumer {} for manager {}.", consumerId, managerUrl);
-        Set<String> remaining = eventServiceInstance.unRegister(consumerId);
+        EventDispatcher eventDispatcher = (EventDispatcher) managerContext.getBean("event-dispatcher");
+
+        Set<String> remaining = eventDispatcher.unRegister(consumerId);
         if (hasRemaningConsumers(remaining)) {
             log.info("No more consumers for manager {}.", consumerId, managerUrl);
-            eventServiceInstance.preDestroy();
+            managerContext.destroy();
+            // TODO remove from map
         }
-    }
-
-    protected EventServiceInstance newEventServiceInstance(final String managerUrl) {
-        return new EventServiceInstance(managerUrl, delayedEventClient, delayedScheduler, delayedEventClient, delayedScheduler, pluginConfigurationHolder);
     }
 
     protected boolean hasRemaningConsumers(Set<String> remainingConsumerIds) {
@@ -87,9 +95,7 @@ public class EventServiceMultiplexer {
     }
 
     @PreDestroy
-    public synchronized void stopAllPollings() {
-        for (EventServiceInstance eventServiceInstance : eventServices.values()) {
-            eventServiceInstance.preDestroy();
-        }
+    public synchronized void shutdown() {
+        managerContexts.forEach((s, ctx) -> ctx.destroy());
     }
 }

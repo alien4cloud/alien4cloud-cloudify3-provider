@@ -11,8 +11,9 @@ import java.util.function.Consumer;
 /**
  * Created by xdegenne on 28/05/2018.
  */
-@Component
+//@Component
 @Slf4j
+@Deprecated
 public class ThreadPoolConfigurationHolder implements Consumer<PluginConfiguration> {
 
     @Resource
