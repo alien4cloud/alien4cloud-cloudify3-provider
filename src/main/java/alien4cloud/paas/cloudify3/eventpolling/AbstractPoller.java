@@ -65,24 +65,14 @@ public abstract class AbstractPoller {
                 break;
             }
 
-            List<EventReference> refs = events.stream().map(e -> new EventReference(e.getId(),
-                    DatatypeConverter.parseDateTime(e.getTimestamp()).getTimeInMillis())).collect(Collectors.toList());
-
-            // The list of id added into cache
-            Set<String> whiteList = refs.stream().map(r -> {
-                if (getEventCache().add(r)) {
-                    return r.id;
-                } else {
-                    return null;
-                }
-            }).filter(Objects::nonNull).collect(Collectors.toSet());
+            // deduplicate using cache
+            Event[] newEvents = getEventCache().addAll(events);
 
             if (log.isTraceEnabled()) {
-                log.trace("[{}] After deduplication, {}/{} events will be dispatched", getPollerNature(), whiteList.size(), events.size());
+                log.trace("[{}] After deduplication, {}/{} events will be dispatched", getPollerNature(), newEvents.length, events.size());
             }
             // Dispatch the events
-            events.removeIf(e -> !whiteList.contains(e.getId()));
-            getEventDispatcher().dispatch(events.toArray(new Event[0]), getPollerNature());
+            getEventDispatcher().dispatch(newEvents, getPollerNature());
 
             // Increment the offset
             if (events.size() < BATCH_SIZE) {

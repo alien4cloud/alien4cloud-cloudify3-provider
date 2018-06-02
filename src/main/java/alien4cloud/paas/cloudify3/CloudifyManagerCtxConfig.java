@@ -47,10 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class CloudifyManagerCtxConfig {
 
-    @Deprecated
-    // TODO: handle this config
-    private static final String URL = "toBeDefined";
-
     /** A static final index to identify pools in case of multiple instances. */
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
@@ -73,8 +69,11 @@ public class CloudifyManagerCtxConfig {
     }
 
     @Bean(name = "event-cache")
+    @SneakyThrows
     public EventCache eventCache() {
-        return new EventCache();
+        EventCache eventCache = new EventCache();
+        eventCache.setScheduler(schedulerServiceFactoryBean().getObject());
+        return eventCache;
     }
 
 //    @Bean(name = "shared-authentication-interceptor")

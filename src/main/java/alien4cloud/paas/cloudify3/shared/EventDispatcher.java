@@ -59,7 +59,9 @@ public class EventDispatcher {
         // Dispatch events to the targeted consumers
         for (Entry<String, List<CloudifyEvent>> eventsPerConsumer : eventsPerConsumers.entrySet()) {
             List<CloudifyEvent> consumerEvents = eventsPerConsumer.getValue();
-            log.debug("[{}]: Dispatching {} events to {}", logPrefix, consumerEvents.size(), eventsPerConsumer.getKey());
+            if (log.isDebugEnabled()) {
+                log.debug("[{}]: Dispatching {} events to {}", logPrefix, consumerEvents.size(), eventsPerConsumer.getKey());
+            }
             this.eventConsumers.get(eventsPerConsumer.getKey()).accept(consumerEvents.toArray(new CloudifyEvent[consumerEvents.size()]));
         }
     }

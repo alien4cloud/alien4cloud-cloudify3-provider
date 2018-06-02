@@ -6,7 +6,6 @@ import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.utils.ClassLoaderUtil;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
