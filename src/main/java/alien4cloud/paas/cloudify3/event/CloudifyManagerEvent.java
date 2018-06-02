@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
 /**
- * Created by xdegenne on 02/06/2018.
+ * An event related to cfy manager instance.
  */
 @Getter
 public abstract class CloudifyManagerEvent extends ApplicationEvent {

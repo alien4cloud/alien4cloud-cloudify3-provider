@@ -33,7 +33,7 @@ public class EventCache {
     /**
      * The duration we keep events in the cache.
      */
-    private static final Duration TTL = Duration.ofHours(2);
+    private static final Duration TTL = Duration.ofMinutes(30);
 
     /**
      * The TTL will be checked each TTL_PERIOD mn
@@ -57,13 +57,15 @@ public class EventCache {
         try {
             // any event oldiest than this age will be removed;
             long threshold = Instant.now().minus(TTL).toEpochMilli();
-            log.debug("Manage TTL, all event oldiest that {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
+            if (log.isDebugEnabled()) {
+                log.debug("Manage TTL, all event oldiest that {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
+            }
             int removedEventCount = 0;
             HorodatedEvents leastElement = queue.peek();
             while(leastElement != null) {
                 if (leastElement.timestamp < threshold) {
                     if (log.isTraceEnabled()) {
-                        log.trace("Event with id {} is removed from the cache since {} < {}", DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
+                        log.trace("Event with id {} is removed from the cache since {} < {}", leastElement.id, DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
                     }
                     ids.remove(queue.poll().id);
                     removedEventCount++;
@@ -71,8 +73,8 @@ public class EventCache {
                 } else {
                     break;
                 }
-                log.debug("{} events have been removed from the cache (TTL expired), cache size is now {}", removedEventCount, ids.size());
             }
+            log.debug("{} events have been removed from the cache (TTL expired), cache size is now {}", removedEventCount, ids.size());
         } finally {
             lock.writeLock().unlock();
         }
@@ -98,7 +100,7 @@ public class EventCache {
             List<Event> result = events.stream().filter(
                     event -> insertedEventIds.contains(event.getId())
             ).collect(Collectors.toList());
-            if (log.isTraceEnabled()) {
+            if (log.isTraceEnabled() && result.size() > 0) {
                 log.trace("{} events added to the cache, cache size is now {}", result.size(), ids.size());
             }
             return result.toArray(new Event[0]);

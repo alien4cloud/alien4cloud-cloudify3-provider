@@ -42,7 +42,11 @@ public class LivePoller extends AbstractPoller {
      * Ideally, if event frequency is not too higth, an event request will be executed each POLL_PERIOD secondes.
      */
     private static final Duration POLL_PERIOD = Duration.ofSeconds(10);
-	private static final int TIMEOUT = 5;
+
+    /**
+     * The interval that will be requested, should be > POLL_PERIOD to avoid event misses.
+     */
+    private static final Duration POLL_INTERVAL = Duration.ofSeconds(20);
 
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
@@ -52,7 +56,7 @@ public class LivePoller extends AbstractPoller {
     private ExecutorService executorService;
 
     public LivePoller() {
-        // initialize the 1 size thread pool
+        // initialize the 1 size thread pool, never change this if your are not sure about what your are doing !
         BasicThreadFactory factory = new BasicThreadFactory.Builder()
                 .namingPattern("event-live-polling-" + POOL_ID.incrementAndGet() + "-%d")
                 .build();
@@ -90,15 +94,17 @@ public class LivePoller extends AbstractPoller {
      * This non blocking operation will start a long running thread that will get live event stream.
      */
     public void start() {
-        this.fromDate = Instant.now().minus(POLL_PERIOD);
-        this.toDate = fromDate.plus(POLL_PERIOD);
+        this.toDate = Instant.now();
+        this.fromDate = toDate.minus(POLL_INTERVAL);
 
         executorService.submit(() -> {
             // Start the long live thread
             while (true) {
                 // Start the epoch polling
+
+                // we want a "sliding window" so we request before the last toDate
                 if (log.isDebugEnabled()) {
-                    log.debug("[{}] Beginning of live event polling, starting from {}", getPollerNature(), DateUtil.logDate(this.fromDate));
+                    log.debug("[{}] Beginning of live event polling, starting from {}", getPollerNature(), DateUtil.logDate(fromDate));
                 }
                 try {
                     pollEpoch(fromDate, toDate);
