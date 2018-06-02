@@ -30,6 +30,9 @@ public class EventServiceMultiplexer {
     @Resource
     private PluginConfigurationHolder pluginConfigurationHolder;
 
+    @Resource
+    private LogEventConsumer logEventConsumer;
+
     /** manager url -> manager dedicated context */
     private Map<String, AnnotationConfigApplicationContext> managerContexts = Maps.newHashMap();
 
@@ -44,6 +47,7 @@ public class EventServiceMultiplexer {
         }
         EventDispatcher eventDispatcher = (EventDispatcher) managerContext.getBean("event-dispatcher");
         eventDispatcher.register(consumerId, eventConsumer);
+        eventDispatcher.register(LogEventConsumer.LOG_EVENT_CONSUMER_ID, logEventConsumer);
     }
 
     private AnnotationConfigApplicationContext startContext(String managerUrl, final String username, final String password) {

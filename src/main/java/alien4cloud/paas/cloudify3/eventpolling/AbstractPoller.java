@@ -48,7 +48,7 @@ public abstract class AbstractPoller {
         while (true) {
 
             if (log.isDebugEnabled()) {
-                log.debug("[{}] About to poll epoch beetwen {} and {} with a batch size {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), BATCH_SIZE);
+                log.debug("[{}] About to poll epoch beetwen {} and {} offset {} with a batch size {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
             }
 
             ListenableFuture<Event[]> future = getEventClient()
