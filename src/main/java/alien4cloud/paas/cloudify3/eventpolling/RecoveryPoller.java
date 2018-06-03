@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.dao.IGenericSearchDAO;
+import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +25,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
-    private static final Period MAX_HISTORY_PERIOD = Period.ofMonths(1);
+    private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
 
     @Override
     public String getPollerNature() {
@@ -45,14 +46,18 @@ public class RecoveryPoller extends AbstractPoller {
      */
     @Override
     public void start() {
-        scheduler.execute(() -> {
-            logInfo("Starting past event recovery");
+        scheduler.submit(() -> {
+            logInfo("Starting recovery polling");
             // poll events until now (the live poller will take in charge the live event stream).
             Instant toDate = Instant.now();
 
             PaaSDeploymentLog lastEvent = null;
             try {
+                logDebug("Searching for last event stored in the system");
                 lastEvent = alienMonitorDao.buildQuery(PaaSDeploymentLog.class).prepareSearch().setFieldSort("timestamp", true).find();
+                if (log.isDebugEnabled()) {
+                    logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil.logDate(lastEvent.getTimestamp()));
+                }
             } catch (Exception e) {
                 log.warn("Not able to find last known event timestamp ({})", e.getMessage());
             }
@@ -60,10 +65,10 @@ public class RecoveryPoller extends AbstractPoller {
             logInfo("Will poll historical epoch {} -> {}", fromDate, toDate);
             try {
                 pollEpoch(fromDate, toDate);
-                logInfo("Historic polling terminated ^^ took {}s", toDate.until(Instant.now(), ChronoUnit.SECONDS));
+                logInfo("Recovery polling terminated ^^ took {}s", toDate.until(Instant.now(), ChronoUnit.SECONDS));
             } catch (ExecutionException | InterruptedException e) {
-                // TODO: manage this exception
-                e.printStackTrace();
+                // TODO: handle correctly this exception
+                log.error("TODO: handle correctly this exception", e);
             }
         });
     }

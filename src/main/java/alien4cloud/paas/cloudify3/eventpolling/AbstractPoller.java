@@ -129,18 +129,18 @@ public abstract class AbstractPoller {
     // FIXME : better implem with one method !!!
     protected void logTrace(String msg, Object... vars) {
         if (log.isTraceEnabled()) {
-            log.trace("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+            log.trace("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
         }
     }
 
     protected void logDebug(String msg, Object... vars) {
         if (log.isDebugEnabled()) {
-            log.debug("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+            log.debug("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
         }
     }
 
     protected void logInfo(String msg, Object... vars) {
-        log.info("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        log.info("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
     }
     // FIXME : better implem with one method !!!
 }

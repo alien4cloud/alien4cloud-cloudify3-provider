@@ -68,7 +68,7 @@ public class EventServiceMultiplexer {
 
         LivePoller livePoller = (LivePoller) managerContext.getBean("event-live-poller");
         livePoller.setUrl(managerUrl);
-        RecoveryPoller recoveryPoller = (RecoveryPoller) managerContext.getBean("event-historic-poller");
+        RecoveryPoller recoveryPoller = (RecoveryPoller) managerContext.getBean("event-recovery-poller");
         recoveryPoller.setUrl(managerUrl);
         // start the historical ...
         recoveryPoller.start();

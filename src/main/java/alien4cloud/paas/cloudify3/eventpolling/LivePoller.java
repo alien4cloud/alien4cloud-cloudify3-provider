@@ -100,14 +100,14 @@ public class LivePoller extends AbstractPoller {
                 // Start the epoch polling
 
                 if (log.isDebugEnabled()) {
-                    log.debug("[{}] Beginning of live event polling, starting from {}", getPollerNature(), DateUtil.logDate(fromDate));
+                    logDebug("Beginning of live event polling, starting from {}", DateUtil.logDate(fromDate));
                 }
                 try {
                     pollEpoch(fromDate, toDate);
                     triggerDelayedPollers(fromDate, toDate);
                 } catch (Exception e) {
-                    e.printStackTrace();
                     // TODO: handle correctly this exception
+                    log.error("TODO: handle correctly this exception", e);
                     return;
                 }
 
@@ -119,15 +119,15 @@ public class LivePoller extends AbstractPoller {
                     try {
                         long sleepTime = (toDate.getEpochSecond() - now.getEpochSecond()) * 1000;
                         if (log.isDebugEnabled()) {
-                            log.debug("[{}] Sleeping {} ms before polling next epoch", getPollerNature(), sleepTime);
+                            logDebug("Sleeping {} ms before polling next epoch", sleepTime);
                         }
                         Thread.sleep(sleepTime);
                     } catch (InterruptedException e) {
                         // TODO: handle correctly this exception
-                        e.printStackTrace();
+                        log.error("TODO: handle correctly this exception", e);
                     }
                 } else if (log.isDebugEnabled()) {
-                    log.debug("[{}] No sleep between epoch polling. A large number of coming events forces the system to poll events in real time.");
+                    logDebug("No sleep between epoch polling. A large number of coming events forces the system to poll events in real time.");
                 }
             }
         });

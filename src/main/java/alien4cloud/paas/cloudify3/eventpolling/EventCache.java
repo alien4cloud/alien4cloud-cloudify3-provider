@@ -6,6 +6,8 @@ import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -60,12 +62,12 @@ public class EventCache {
     private void manageTtl() {
         lock.writeLock().lock();
         try {
+            long startTime = Instant.now().toEpochMilli();
             if (log.isDebugEnabled(LAST_EVENT_DISPATCHED_MARKER)) {
                 if (_lastEventTimestamp > 0) {
-                    Date lastEventDate = new Date(_lastEventTimestamp);
-                    long ageInHour = lastEventDate.toInstant().until(Instant.now(), ChronoUnit.HOURS);
-                    long ageInMinute = lastEventDate.toInstant().until(Instant.now(), ChronoUnit.MINUTES);
-                    log.debug("The last event referenced in the system was from {} it's age is {} hours ({} minutes)", DateUtil.logDate(lastEventDate), ageInHour, ageInMinute);
+                    long ageInMillis = Instant.now().toEpochMilli() - _lastEventTimestamp;
+                    String age = DurationFormatUtils.formatDuration(ageInMillis, "H:mm:ss");
+                    log.debug("The last event referenced in the system was from {} it's age is {}", DateUtil.logDate(new Date(_lastEventTimestamp)), age);
                 } else {
                     log.debug("No event has been yet referenced in the system.");
                 }
@@ -73,7 +75,7 @@ public class EventCache {
             // any event oldiest than this age will be removed;
             long threshold = Instant.now().minus(TTL).toEpochMilli();
             if (log.isDebugEnabled()) {
-                log.debug("Manage TTL, all event oldiest that {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
+                log.debug("Manage TTL, all event oldiest than {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
             }
             int removedEventCount = 0;
             HorodatedEvents leastElement = queue.peek();
@@ -90,7 +92,10 @@ public class EventCache {
                     break;
                 }
             }
-            log.debug("{} events have been removed from the cache (TTL expired), cache size is now {}", removedEventCount, ids.size());
+            if (log.isDebugEnabled()) {
+                String duration = DurationFormatUtils.formatDuration(Instant.now().toEpochMilli() - startTime, "H:mm:ss.SSS");
+                log.debug("{} events have been removed from the cache (TTL expired), cache size is now {} (took )", removedEventCount, duration);
+            }
         } finally {
             lock.writeLock().unlock();
         }

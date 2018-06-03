@@ -406,7 +406,8 @@ public class StatusService {
                                     instanceInformation.getAttributes().put("endpoint_port", endpointPort);
                                     instanceInformation.getAttributes().put("endpoint_ip", masterIP);
                                 } catch (IOException e) {
-                                    e.printStackTrace();
+                                    // TODO: handle correctly this exception
+                                    log.error("TODO: handle correctly this exception", e);
                                 }
                             }
                         }

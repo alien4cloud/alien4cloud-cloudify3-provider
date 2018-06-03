@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.concurrent.ExecutionException;
@@ -12,6 +13,7 @@ import java.util.concurrent.TimeUnit;
  * An delayed poller is responsible off re-requesting events in the future.
  */
 @Setter
+@Slf4j
 public class DelayedPoller extends AbstractPoller {
 
     /**
@@ -44,8 +46,8 @@ public class DelayedPoller extends AbstractPoller {
             try {
                 pollEpoch(fromDate, toDate);
             } catch (ExecutionException | InterruptedException e) {
-                // TODO: manage this exception
-                e.printStackTrace();
+                // TODO: handle correctly this exception
+                log.error("TODO: handle correctly this exception", e);
             }
         }, delayInSeconds, TimeUnit.SECONDS);
     }
