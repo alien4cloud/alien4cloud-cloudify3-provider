@@ -88,7 +88,9 @@ public class LivePoller extends AbstractPoller {
     /**
      * This non blocking operation will start a long running thread that will get live event stream.
      */
+    @Override
     public void start() {
+
         this.toDate = Instant.now();
         this.fromDate = toDate.minus(POLL_INTERVAL);
 
@@ -133,8 +135,6 @@ public class LivePoller extends AbstractPoller {
 
     @PreDestroy
     public void shutdown() {
-        // shutdown delayed pollers
-        delayedPollers.forEach(DelayedPoller::shutdown);
         // shutdown long running thread
         executorService.shutdownNow();
     }

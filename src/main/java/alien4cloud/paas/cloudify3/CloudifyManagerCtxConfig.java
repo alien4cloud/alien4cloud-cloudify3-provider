@@ -1,15 +1,11 @@
 package alien4cloud.paas.cloudify3;
 
-import alien4cloud.paas.cloudify3.CloudifyOrchestratorFactory;
 import alien4cloud.paas.cloudify3.error.CloudifyResponseErrorHandler;
 import alien4cloud.paas.cloudify3.eventpolling.DelayedPoller;
 import alien4cloud.paas.cloudify3.eventpolling.EventCache;
-import alien4cloud.paas.cloudify3.eventpolling.HistoricPoller;
+import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
 import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.AsyncClientHttpRequestLogger;
-import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
-import alien4cloud.paas.cloudify3.service.ArtifactRegistryService;
-import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesService;
 import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 import alien4cloud.paas.cloudify3.shared.EventClient;
 import alien4cloud.paas.cloudify3.shared.EventDispatcher;
@@ -103,13 +99,15 @@ public class CloudifyManagerCtxConfig {
         return livePoller;
     }
 
-    @Bean(name = "event-historic-poller")
-    public HistoricPoller historicPoller() {
-        HistoricPoller historicPoller = new HistoricPoller();
-        historicPoller.setEventCache(eventCache());
-        historicPoller.setEventClient(liveEventClient());
-        historicPoller.setEventDispatcher(eventDispatcher());
-        return historicPoller;
+    @Bean(name = "event-recovery-poller")
+    @SneakyThrows
+    public RecoveryPoller recoveryPoller() {
+        RecoveryPoller recoveryPoller = new RecoveryPoller();
+        recoveryPoller.setEventCache(eventCache());
+        recoveryPoller.setEventClient(liveEventClient());
+        recoveryPoller.setEventDispatcher(eventDispatcher());
+        recoveryPoller.setScheduler(schedulerServiceFactoryBean().getObject());
+        return recoveryPoller;
     }
 
     /**
@@ -179,13 +177,13 @@ public class CloudifyManagerCtxConfig {
      * <ul>
      *     <li>The {@link EventCache} to manage TTL</li>
      *     <li>The 2 delayed pollers to schedule delayed epoch polling (blocking)</li>
-     *     <li>The {@link HistoricPoller} to submit the history epoch polling (blocking and potencially long run !)</li>
+     *     <li>The {@link RecoveryPoller} to submit the recovery epoch polling (blocking and potencially long run !)</li>
      * </ul>
      * @return
      */
     @Bean(name = "event-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("event-scheduler", 3);
+        return new SchedulerServiceFactoryBean("event-scheduler", 2);
     }
 
 }

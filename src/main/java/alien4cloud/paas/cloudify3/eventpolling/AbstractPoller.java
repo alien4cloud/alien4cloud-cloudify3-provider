@@ -8,6 +8,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Marker;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -44,13 +45,12 @@ public abstract class AbstractPoller {
      */
     private EventCache eventCache;
 
-    public abstract void start();
-    public abstract void shutdown();
-
     /**
      * @return a description of the poller.
      */
     public abstract String getPollerNature();
+
+    public abstract void start();
 
     protected String url;
 
@@ -59,7 +59,7 @@ public abstract class AbstractPoller {
      * <p/>
      * This is a blocking operation. In a near future, we'll maybe make it multithreaded but this must be studied seriously.
      * <p/>
-     * Having few blocking thread (4 with : live stream, 2 delayed stream and historical stream) is not an issue when it permit to
+     * Having few blocking thread (4 with : live stream, 2 delayed stream and recovery stream) is not an issue when it permit to
      * preserve the health of the whole system.
      *
      * @param fromDate
@@ -75,26 +75,29 @@ public abstract class AbstractPoller {
         // the number of batches necessary to poll the whole epoch
         int _batchCount = 0;
 
+        long _eventPolledCount = 0;
+        long _eventDispatchedCount = 0;
+
         // just a debug information, never use it in logic !
         Instant _startEpochPollingDate = null;
         if (log.isDebugEnabled()) {
             _startEpochPollingDate = Instant.now();
-            log.debug("[{}] About to poll epoch {} -> {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
+            logDebug("About to poll epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
         }
 
         while (true) {
 
-            if (log.isDebugEnabled()) {
-                log.debug("[{}] About to poll epoch {} -> {} offset: {}, batch size: {}", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
-            }
+            logDebug("About to poll epoch {} -> {} offset: {}, batch size: {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
 
+            _batchCount++;
             ListenableFuture<Event[]> future = getEventClient()
                     .asyncGetBatch(url, Date.from(fromDate), Date.from(toDate), offset, BATCH_SIZE);
             // Get the events
             List<Event> events = Arrays.asList(future.get());
 
+            _eventPolledCount += events.size();
             if (log.isDebugEnabled()) {
-                log.debug("[{}] {} polled events", getPollerNature(), events.size());
+                logDebug("{} polled events", events.size());
             }
 
             // No events have been received for this epoch batch, the epoch polling is finished
@@ -104,11 +107,9 @@ public abstract class AbstractPoller {
 
             // deduplicate using cache
             Event[] newEvents = getEventCache().addAll(events);
+            _eventDispatchedCount += newEvents.length;
             // newEvents are the events that are effectively been considered (not already polled)
-
-            if (log.isTraceEnabled()) {
-                log.trace("[{}] After deduplication, {}/{} events will be dispatched", getPollerNature(), newEvents.length, events.size());
-            }
+            logTrace("After deduplication, {}/{} events will be dispatched", newEvents.length, events.size());
             // Dispatch the events
             getEventDispatcher().dispatch(newEvents, getPollerNature());
 
@@ -118,16 +119,28 @@ public abstract class AbstractPoller {
                 break;
             } else {
                 offset += BATCH_SIZE;
-                _batchCount++;
-                if (log.isTraceEnabled()) {
-                    log.trace("[{}] Event size reached batch size, increase offset to {} and continue polling", getPollerNature(), offset);
-                }
+                logTrace("Event size reached batch size, increase offset to {} and continue polling", offset);
             }
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("[{}] End of epoch polling {} -> {}, {} batches, took {} ms", getPollerNature(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), _batchCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
-        }
-
+        logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), _eventPolledCount, _batchCount, _eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
     }
+
+    // FIXME : better implem with one method !!!
+    protected void logTrace(String msg, Object... vars) {
+        if (log.isTraceEnabled()) {
+            log.trace("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        }
+    }
+
+    protected void logDebug(String msg, Object... vars) {
+        if (log.isDebugEnabled()) {
+            log.debug("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        }
+    }
+
+    protected void logInfo(String msg, Object... vars) {
+        log.info("[ " + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+    }
+    // FIXME : better implem with one method !!!
 }

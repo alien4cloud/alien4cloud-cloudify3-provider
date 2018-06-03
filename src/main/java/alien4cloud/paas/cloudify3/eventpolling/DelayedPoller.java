@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
+import alien4cloud.paas.cloudify3.util.DateUtil;
 import lombok.Setter;
 
 import java.time.Instant;
@@ -32,7 +33,13 @@ public class DelayedPoller extends AbstractPoller {
         return delayInSeconds + "s delayed stream";
     }
 
+    @Override
+    public void start() {
+        // Nothing to do here, polls will be started using schedule().
+    }
+
     public void schedule(Instant fromDate, Instant toDate) {
+        logDebug("Scheduling a polling for epoch {} -> {} in {} seconds", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), delayInSeconds);
         scheduler.schedule(() -> {
             try {
                 pollEpoch(fromDate, toDate);
@@ -43,13 +50,4 @@ public class DelayedPoller extends AbstractPoller {
         }, delayInSeconds, TimeUnit.SECONDS);
     }
 
-    @Override
-    public void start() {
-        // Nothing to do here. The polls will be scheduled.
-    }
-
-    @Override
-    public void shutdown() {
-        // Nothing to shutdown here (the scheduler is managed elsewhere).
-    }
 }

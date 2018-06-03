@@ -1,7 +1,7 @@
 package alien4cloud.paas.cloudify3.shared;
 
 import alien4cloud.paas.cloudify3.CloudifyManagerCtxConfig;
-import alien4cloud.paas.cloudify3.eventpolling.HistoricPoller;
+import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
 import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
 import alien4cloud.utils.ClassLoaderUtil;
@@ -68,9 +68,13 @@ public class EventServiceMultiplexer {
 
         LivePoller livePoller = (LivePoller) managerContext.getBean("event-live-poller");
         livePoller.setUrl(managerUrl);
+        RecoveryPoller recoveryPoller = (RecoveryPoller) managerContext.getBean("event-historic-poller");
+        recoveryPoller.setUrl(managerUrl);
+        // start the historical ...
+        recoveryPoller.start();
+        // ... then the live
+        // even if we are asynchronous, I prefer to be sure that the historic poller will get a thread before delayed.
         livePoller.start();
-        HistoricPoller historicPoller = (HistoricPoller) managerContext.getBean("event-historic-poller");
-        historicPoller.start();
 
         return managerContext;
     }

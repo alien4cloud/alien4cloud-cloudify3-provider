@@ -6,17 +6,19 @@ import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.xml.bind.DatatypeConverter;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Just a cache that stores event id for deduplication.
@@ -46,15 +48,28 @@ public class EventCache {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
+    private static long _lastEventTimestamp;
+    private static final Marker LAST_EVENT_DISPATCHED_MARKER = MarkerFactory.getMarker(EventCache.class.getName() + "_lastEventTimestamp");
+
     @PostConstruct
     public void init() {
-        log.info("TTL will be checked each {} min removing events older than {} hours", TTL_PERIOD.toMinutes(), TTL.toHours());
+        log.info("TTL will be checked each {} min removing events older than {} min", TTL_PERIOD.toMinutes(), TTL.toMinutes());
         scheduler.scheduleAtFixedRate(() -> manageTtl(), TTL_PERIOD.toMinutes(), TTL_PERIOD.toMinutes(), TimeUnit.MINUTES);
     }
 
     private void manageTtl() {
         lock.writeLock().lock();
         try {
+            if (log.isDebugEnabled(LAST_EVENT_DISPATCHED_MARKER)) {
+                if (_lastEventTimestamp > 0) {
+                    Date lastEventDate = new Date(_lastEventTimestamp);
+                    long ageInHour = lastEventDate.toInstant().until(Instant.now(), ChronoUnit.HOURS);
+                    long ageInMinute = lastEventDate.toInstant().until(Instant.now(), ChronoUnit.MINUTES);
+                    log.debug("The last event referenced in the system was from {} it's age is {} hours ({} minutes)", DateUtil.logDate(lastEventDate), ageInHour, ageInMinute);
+                } else {
+                    log.debug("No event has been yet referenced in the system.");
+                }
+            }
             // any event oldiest than this age will be removed;
             long threshold = Instant.now().minus(TTL).toEpochMilli();
             if (log.isDebugEnabled()) {
@@ -94,9 +109,15 @@ public class EventCache {
             events.stream().filter(
                     event -> !ids.contains(event.getId())
             ).forEach(event -> {
-                queue.add(new HorodatedEvents(event));
-                ids.add(event.getId());
-                insertedEventIds.add(event.getId());
+                HorodatedEvents he = new HorodatedEvents(event);
+                queue.add(he);
+                ids.add(he.id);
+                insertedEventIds.add(he.id);
+                if (log.isDebugEnabled(LAST_EVENT_DISPATCHED_MARKER)) {
+                    if (_lastEventTimestamp == 0 || he.timestamp > _lastEventTimestamp) {
+                        _lastEventTimestamp = he.timestamp;
+                    }
+                }
             });
             List<Event> result = events.stream().filter(
                     event -> insertedEventIds.contains(event.getId())
