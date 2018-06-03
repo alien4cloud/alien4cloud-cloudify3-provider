@@ -132,7 +132,7 @@ public class StatusService {
                     status = doGetStatus(executions);
                 }
             }
-            registerDeploymentStatus(passDeploymentId, status);
+            registerDeploymentStatus(passDeploymentId, (status == null) ? DeploymentStatus.UNKNOWN : status);
         }
         log.debug("Reconciliation finished");
     }
@@ -471,9 +471,6 @@ public class StatusService {
      */
     private void doRegisterDeploymentStatus(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
         DeploymentStatus deploymentStatus = getStatusFromCache(deploymentPaaSId);
-        if (deploymentStatus == null) {
-            return;
-        }
         if (!newDeploymentStatus.equals(deploymentStatus)) {
             // Only register event if it makes changes to the cache
             if (DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {

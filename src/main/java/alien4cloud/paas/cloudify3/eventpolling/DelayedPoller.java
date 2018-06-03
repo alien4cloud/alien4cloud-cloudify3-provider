@@ -37,6 +37,7 @@ public class DelayedPoller extends AbstractPoller {
             try {
                 pollEpoch(fromDate, toDate);
             } catch (ExecutionException | InterruptedException e) {
+                // TODO: manage this exception
                 e.printStackTrace();
             }
         }, delayInSeconds, TimeUnit.SECONDS);

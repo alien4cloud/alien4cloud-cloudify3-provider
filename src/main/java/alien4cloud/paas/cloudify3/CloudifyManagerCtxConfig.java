@@ -53,16 +53,6 @@ public class CloudifyManagerCtxConfig {
     @Inject
     private PluginConfigurationHolder pluginConfigurationHolder;
 
-    @Bean(name = "cloudify-orchestrator")
-    public CloudifyOrchestratorFactory cloudifyOrchestratorFactory() {
-        return new CloudifyOrchestratorFactory();
-    }
-
-    @Bean(name = "deployment-properties-service")
-    public OrchestratorDeploymentPropertiesService deploymentPropertiesService() {
-        return new OrchestratorDeploymentPropertiesService();
-    }
-
     @Bean(name = "event-dispatcher")
     public EventDispatcher eventDispatcher() {
         return new EventDispatcher();
@@ -75,13 +65,6 @@ public class CloudifyManagerCtxConfig {
         eventCache.setScheduler(schedulerServiceFactoryBean().getObject());
         return eventCache;
     }
-
-//    @Bean(name = "shared-authentication-interceptor")
-//    public AuthenticationInterceptor authenticationInterceptor() {
-//        // just a bean to satisfy EventClient requirement
-//        // and to avoid scan of alien4cloud.paas.cloudify3 rather than alien4cloud.paas.cloudify3.shared
-//        return new AuthenticationInterceptor();
-//    }
 
     @Bean(name = "event-client")
     public EventClient liveEventClient() {
@@ -101,6 +84,7 @@ public class CloudifyManagerCtxConfig {
 
         ListeningScheduledExecutorService executorService = schedulerServiceFactoryBean().getObject();
 
+        // TODO: make this configurable, we should be able to configure delayed pollers per cfy manager.
         // Instanciate and set delayed pollers
         DelayedPoller delayed30sPoller = new DelayedPoller(30);
         delayed30sPoller.setEventCache(eventCache());
@@ -129,6 +113,7 @@ public class CloudifyManagerCtxConfig {
     }
 
     /**
+     * FIXME: when this thread is really used ? Does the fact that polls are blocking means this thread pool is not used ?
      * The thead pool for handling REST responses from events endpoint.
      * This thread pool doesn't need to be configurable since we know exactly how many thread we need:
      * <ul>
@@ -141,7 +126,7 @@ public class CloudifyManagerCtxConfig {
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("event-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
-        threadPoolTaskExecutor.setCorePoolSize(3);
+        threadPoolTaskExecutor.setCorePoolSize(2);
         threadPoolTaskExecutor.setMaxPoolSize(3);
         threadPoolTaskExecutor.setKeepAliveSeconds(10);
         threadPoolTaskExecutor.initialize();
@@ -189,9 +174,18 @@ public class CloudifyManagerCtxConfig {
         return asyncRestTemplate;
     }
 
+    /**
+     * Used by:
+     * <ul>
+     *     <li>The {@link EventCache} to manage TTL</li>
+     *     <li>The 2 delayed pollers to schedule delayed epoch polling (blocking)</li>
+     *     <li>The {@link HistoricPoller} to submit the history epoch polling (blocking and potencially long run !)</li>
+     * </ul>
+     * @return
+     */
     @Bean(name = "event-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("event-scheduler", 1);
+        return new SchedulerServiceFactoryBean("event-scheduler", 3);
     }
 
 }

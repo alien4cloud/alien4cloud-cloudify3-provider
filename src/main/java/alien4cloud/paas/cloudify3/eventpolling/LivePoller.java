@@ -1,20 +1,17 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
+import alien4cloud.paas.cloudify3.util.DateUtil;
+import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+
+import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.PreDestroy;
-
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-
-import com.google.common.collect.Lists;
-
-import alien4cloud.paas.cloudify3.util.DateUtil;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * The live poller will start a single long running thread that will:
