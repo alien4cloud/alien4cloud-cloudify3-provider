@@ -36,7 +36,7 @@ public class EventCache {
     private static final Duration TTL = Duration.ofMinutes(30);
 
     /**
-     * The TTL will be checked each TTL_PERIOD mn
+     * The TTL will be checked each TTL_PERIOD min
      */
     private static final Duration TTL_PERIOD = Duration.ofMinutes(5);
 
@@ -65,12 +65,13 @@ public class EventCache {
             while(leastElement != null) {
                 if (leastElement.timestamp < threshold) {
                     if (log.isTraceEnabled()) {
-                        log.trace("Event with id {} is removed from the cache since {} < {}", leastElement.id, DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
+                        log.trace("Event #{} is removed from the cache since {} < {}", leastElement.id, DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
                     }
                     ids.remove(queue.poll().id);
                     removedEventCount++;
                     leastElement = queue.peek();
                 } else {
+                    // no event can be oldiest than the leastElement, we keep the remaining events.
                     break;
                 }
             }

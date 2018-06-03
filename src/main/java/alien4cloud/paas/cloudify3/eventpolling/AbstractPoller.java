@@ -29,14 +29,24 @@ public abstract class AbstractPoller {
      */
     protected static final int BATCH_SIZE = 100;
 
+    /**
+     * The event client used to REST request cfy.
+     */
     private EventClient eventClient;
 
     private EventDispatcher eventDispatcher;
 
+    /**
+     * The cache used to perform de-duplication.
+     */
     private EventCache eventCache;
 
     public abstract void start();
     public abstract void shutdown();
+
+    /**
+     * @return a description of the poller.
+     */
     public abstract String getPollerNature();
 
     protected String url;
