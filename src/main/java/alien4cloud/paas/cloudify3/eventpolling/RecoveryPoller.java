@@ -1,10 +1,13 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.dao.IGenericSearchDAO;
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -25,7 +28,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
-    private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
+    private static final Period MAX_HISTORY_PERIOD = Period.ofMonths(1);
 
     @Override
     public String getPollerNature() {
@@ -51,21 +54,32 @@ public class RecoveryPoller extends AbstractPoller {
             // poll events until now (the live poller will take in charge the live event stream).
             Instant toDate = Instant.now();
 
-            PaaSDeploymentLog lastEvent = null;
+            CloudifyEvent lastEvent = null;
             try {
                 logDebug("Searching for last event stored in the system");
-                lastEvent = alienMonitorDao.buildQuery(PaaSDeploymentLog.class).prepareSearch().setFieldSort("timestamp", true).find();
+                lastEvent = alienMonitorDao.buildQuery(CloudifyEvent.class).prepareSearch().setFieldSort("timestamp", true).find();
                 if (log.isDebugEnabled()) {
-                    logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil.logDate(lastEvent.getTimestamp()));
+                    logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil.logDate(lastEvent.getTimestamp().getTime()));
+                }
+                if (lastEvent != null) {
+                    // we don't want this event to be re-polled
+                    getEventCache().blackList(lastEvent.getEvent().getId());
                 }
             } catch (Exception e) {
                 log.warn("Not able to find last known event timestamp ({})", e.getMessage());
             }
-            final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant();
-            logInfo("Will poll historical epoch {} -> {}", fromDate, toDate);
+            Instant _fromDate = null;
+            if (lastEvent == null) {
+                _fromDate = Instant.now().minus(MAX_HISTORY_PERIOD);
+            } else {
+                _fromDate = lastEvent.getTimestamp().toInstant();
+            }
+            final Instant fromDate = _fromDate;
+            logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
             try {
                 pollEpoch(fromDate, toDate);
-                logInfo("Recovery polling terminated ^^ took {}s", toDate.until(Instant.now(), ChronoUnit.SECONDS));
+                String duration = DurationFormatUtils.formatDurationHMS(toDate.until(Instant.now(), ChronoUnit.MILLIS));
+                logInfo("Recovery polling terminated ^^ took {}", duration);
             } catch (ExecutionException | InterruptedException e) {
                 // TODO: handle correctly this exception
                 log.error("TODO: handle correctly this exception", e);

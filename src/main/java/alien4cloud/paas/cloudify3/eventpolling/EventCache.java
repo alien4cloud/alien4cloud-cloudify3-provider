@@ -102,6 +102,18 @@ public class EventCache {
     }
 
     /**
+     * Artificially mark this event as received so it will not be accepted anymore (even if it is re-polled).
+     */
+    public void blackList(String eventId) {
+        lock.writeLock().lock();
+        try {
+            ids.add(eventId);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /**
      * Add the events to the cache if not exist.
      *
      * @param events
