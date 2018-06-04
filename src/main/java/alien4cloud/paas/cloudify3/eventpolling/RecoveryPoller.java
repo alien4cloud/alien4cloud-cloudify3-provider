@@ -28,7 +28,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
-    private static final Period MAX_HISTORY_PERIOD = Period.ofMonths(1);
+    private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
 
     @Override
     public String getPollerNature() {
@@ -54,27 +54,21 @@ public class RecoveryPoller extends AbstractPoller {
             // poll events until now (the live poller will take in charge the live event stream).
             Instant toDate = Instant.now();
 
-            CloudifyEvent lastEvent = null;
+            PaaSDeploymentLog lastEvent = null;
             try {
                 logDebug("Searching for last event stored in the system");
-                lastEvent = alienMonitorDao.buildQuery(CloudifyEvent.class).prepareSearch().setFieldSort("timestamp", true).find();
+                lastEvent = alienMonitorDao.buildQuery(PaaSDeploymentLog.class).prepareSearch().setFieldSort("timestamp", true).find();
                 if (log.isDebugEnabled()) {
-                    logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil.logDate(lastEvent.getTimestamp().getTime()));
+                    logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil.logDate(lastEvent.getTimestamp()));
                 }
                 if (lastEvent != null) {
                     // we don't want this event to be re-polled
-                    getEventCache().blackList(lastEvent.getEvent().getId());
+                    getEventCache().blackList(lastEvent.getId());
                 }
             } catch (Exception e) {
                 log.warn("Not able to find last known event timestamp ({})", e.getMessage());
             }
-            Instant _fromDate = null;
-            if (lastEvent == null) {
-                _fromDate = Instant.now().minus(MAX_HISTORY_PERIOD);
-            } else {
-                _fromDate = lastEvent.getTimestamp().toInstant();
-            }
-            final Instant fromDate = _fromDate;
+            final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant();
             logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
             try {
                 pollEpoch(fromDate, toDate);
