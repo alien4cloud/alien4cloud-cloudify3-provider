@@ -123,7 +123,9 @@ public abstract class AbstractPoller {
             }
         }
 
-        logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), _eventPolledCount, _batchCount, _eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
+        if (log.isDebugEnabled()) {
+            logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), _eventPolledCount, _batchCount, _eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
+        }
     }
 
     // FIXME : better implem with one method !!!

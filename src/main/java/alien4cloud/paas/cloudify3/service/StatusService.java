@@ -90,7 +90,6 @@ public class StatusService {
     @EventListener
     public void cloudifySnapshotReceived(CloudifyManagerSnapshoted event) {
         log.debug("Cloudify Snapshot received");
-        CloudifySnapshot snp = event.getCloudifySnapshot();
         this.cloudifySnapshot = event.getCloudifySnapshot();
         this.reconciliate();
     }
@@ -115,24 +114,29 @@ public class StatusService {
             return;
         }
         log.debug("Reconciliate A4C & CFY worlds");
-        for (String passDeploymentId : registeredDeployments) {
-            Deployment deployment = cloudifySnapshot.getDeployments().get(passDeploymentId);
-            DeploymentStatus knownStatus = getStatusFromCache(passDeploymentId);
-            DeploymentStatus status = null;
+        try {
+            cacheLock.writeLock().lock();
+            for (String passDeploymentId : registeredDeployments) {
+                Deployment deployment = cloudifySnapshot.getDeployments().get(passDeploymentId);
+                DeploymentStatus knownStatus = getStatusFromCache(passDeploymentId);
+                DeploymentStatus status = null;
 
-            if (deployment == null && DeploymentStatus.INIT_DEPLOYMENT != knownStatus) {
-                // if the deployment can not be found in the cfy deployment list it has undeployed
-                // except for INIT_DEPLOYMENT (in this stage, the deployment can not exists yet in cfy)
-                status = DeploymentStatus.UNDEPLOYED;
-            } else {
-                List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
-                Execution[] executions = new Execution[]{};
-                if (executionList != null) {
-                    executions = executionList.toArray(executions);
-                    status = doGetStatus(executions);
+                if (deployment == null && DeploymentStatus.INIT_DEPLOYMENT != knownStatus & DeploymentStatus.UNKNOWN != knownStatus) {
+                    // if the deployment can not be found in the cfy deployment list it has undeployed
+                    // except for INIT_DEPLOYMENT (in this stage, the deployment can not exists yet in cfy)
+                    status = DeploymentStatus.UNDEPLOYED;
+                } else {
+                    List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
+                    Execution[] executions = new Execution[]{};
+                    if (executionList != null) {
+                        executions = executionList.toArray(executions);
+                        status = doGetStatus(executions);
+                    }
                 }
+                registerDeploymentStatus(passDeploymentId, (status == null) ? DeploymentStatus.UNKNOWN : status);
             }
-            registerDeploymentStatus(passDeploymentId, (status == null) ? DeploymentStatus.UNKNOWN : status);
+        } finally {
+            cacheLock.writeLock().unlock();
         }
         log.debug("Reconciliation finished");
     }
@@ -448,8 +452,13 @@ public class StatusService {
      * @param deploymentPaaSId the deployment id
      */
     public void registerDeployment(String deploymentPaaSId) {
-        registeredDeployments.add(deploymentPaaSId);
-        registerDeploymentStatus(deploymentPaaSId, DeploymentStatus.INIT_DEPLOYMENT);
+        try {
+            cacheLock.writeLock().lock();
+            registeredDeployments.add(deploymentPaaSId);
+            registerDeploymentStatus(deploymentPaaSId, DeploymentStatus.INIT_DEPLOYMENT);
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
     }
 
     /**
