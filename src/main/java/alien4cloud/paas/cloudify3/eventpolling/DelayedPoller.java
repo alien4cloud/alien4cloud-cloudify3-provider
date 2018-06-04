@@ -45,9 +45,10 @@ public class DelayedPoller extends AbstractPoller {
         scheduler.schedule(() -> {
             try {
                 pollEpoch(fromDate, toDate);
-            } catch (ExecutionException | InterruptedException e) {
-                // TODO: handle correctly this exception
-                log.error("TODO: handle correctly this exception", e);
+            } catch (PollingException e) {
+                // TODO: manage disaster recovery
+                logError("Giving up polling after several retries", e);
+                return;
             }
         }, delayInSeconds, TimeUnit.SECONDS);
     }

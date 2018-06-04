@@ -28,7 +28,6 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
-    // FIXME : why can't I set this in months ?
     private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
 
     @Override
@@ -75,9 +74,10 @@ public class RecoveryPoller extends AbstractPoller {
                 pollEpoch(fromDate, toDate);
                 String duration = DurationFormatUtils.formatDurationHMS(toDate.until(Instant.now(), ChronoUnit.MILLIS));
                 logInfo("Recovery polling terminated ^^ took {}", duration);
-            } catch (ExecutionException | InterruptedException e) {
-                // TODO: handle correctly this exception
-                log.error("TODO: handle correctly this exception", e);
+            } catch (PollingException e) {
+                // TODO: manage disaster recovery
+                logError("Giving up polling after several retries", e);
+                return;
             }
         });
     }

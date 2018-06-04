@@ -105,9 +105,9 @@ public class LivePoller extends AbstractPoller {
                 try {
                     pollEpoch(fromDate, toDate);
                     triggerDelayedPollers(fromDate, toDate);
-                } catch (Exception e) {
-                    // TODO: handle correctly this exception
-                    log.error("TODO: handle correctly this exception", e);
+                } catch (PollingException e) {
+                    // TODO: manage disaster recovery
+                    logError("Giving up polling after several retries", e);
                     return;
                 }
 

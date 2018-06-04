@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Marker;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -32,6 +33,10 @@ public abstract class AbstractPoller {
      * Max size of the events batch to poll for each REST request.
      */
     protected static final int BATCH_SIZE = 100;
+
+
+    protected static final int MAX_RETRY_COUNT = 5;
+    protected static final Duration RETRY_DELAY_IN_SECOND = Duration.ofSeconds(10);
 
     /**
      * The event client used to REST request cfy.
@@ -67,13 +72,14 @@ public abstract class AbstractPoller {
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    protected void pollEpoch(Instant fromDate, Instant toDate)
-            throws ExecutionException, InterruptedException {
+    protected void pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
 
         // this is the batch offset to poll
         int offset = 0;
         // the number of batches necessary to poll the whole epoch
         int _batchCount = 0;
+        // .....
+        int retryCount = 0;
 
         long _eventPolledCount = 0;
         long _eventDispatchedCount = 0;
@@ -92,8 +98,30 @@ public abstract class AbstractPoller {
             _batchCount++;
             ListenableFuture<Event[]> future = getEventClient()
                     .asyncGetBatch(url, Date.from(fromDate), Date.from(toDate), offset, BATCH_SIZE);
+
             // Get the events
-            List<Event> events = Arrays.asList(future.get());
+            List<Event> events = null;
+            try {
+                events = Arrays.asList(future.get());
+                retryCount = 0;
+            } catch (Exception e) {
+                // an exception occurred while polling epoch
+                if (retryCount >= MAX_RETRY_COUNT) {
+                    logWarn("An error occured while polling period ({}), have retried {} times, giving up", e.getMessage(), retryCount);
+                    String msg = String.format("[%s @%s] An error occurred while polling period %s -> %s, have already retried %d times", getPollerNature(), getUrl(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), retryCount);
+                    throw new PollingException(msg, e);
+                }
+                try {
+                    if (log.isDebugEnabled()) {
+                        logDebug("An error occured while polling period ({}), retrying in {}s", e.getMessage(), RETRY_DELAY_IN_SECOND.getSeconds());
+                    }
+                    Thread.sleep(RETRY_DELAY_IN_SECOND.toMillis());
+                    retryCount++;
+                    continue;
+                } catch (InterruptedException e1) {
+                    // Nothing to do here
+                }
+            }
 
             _eventPolledCount += events.size();
             if (log.isDebugEnabled()) {
@@ -143,6 +171,14 @@ public abstract class AbstractPoller {
 
     protected void logInfo(String msg, Object... vars) {
         log.info("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+    }
+
+    protected void logWarn(String msg, Object... vars) {
+        log.warn("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+    }
+
+    protected void logError(String msg, Object... vars) {
+        log.error("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
     }
     // FIXME : better implem with one method !!!
 }
