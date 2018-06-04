@@ -28,6 +28,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
+    // FIXME : why can't I set this in months ?
     private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
 
     @Override
