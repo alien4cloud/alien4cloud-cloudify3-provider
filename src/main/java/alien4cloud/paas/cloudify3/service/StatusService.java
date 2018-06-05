@@ -44,6 +44,7 @@ import java.util.function.Consumer;
  */
 @Component("cloudify-status-service")
 @Slf4j
+// TODO: use a state machine instead of this ugly code
 public class StatusService {
 
     /**
@@ -60,6 +61,11 @@ public class StatusService {
      * An image of the cfy status (deployments and executions).
      */
     private CloudifySnapshot cloudifySnapshot;
+
+    /**
+     * We are in startup stage, we should consider cfy status as absolute verity.
+     */
+    private boolean inStartupStage = true;
 
     private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
 
@@ -108,9 +114,17 @@ public class StatusService {
 
     private void reconciliate() {
         if (this.cloudifySnapshot == null) {
+            // no snapshot received from cfy, nothing to do here
+            if (log.isTraceEnabled()) {
+                log.trace("A4C - CFY reconciliation : no snapshot received yet, do nothing");
+            }
             return;
         }
         if (registeredDeployments.isEmpty()) {
+            // no registered deployments, nothing to do
+            if (log.isTraceEnabled()) {
+                log.trace("A4C - CFY reconciliation : no registered deployments, do nothing");
+            }
             return;
         }
         log.debug("Reconciliate A4C & CFY worlds");
@@ -118,22 +132,74 @@ public class StatusService {
             cacheLock.writeLock().lock();
             for (String passDeploymentId : registeredDeployments) {
                 Deployment deployment = cloudifySnapshot.getDeployments().get(passDeploymentId);
-                DeploymentStatus knownStatus = getStatusFromCache(passDeploymentId);
+                DeploymentStatus knownStatus = statusCache.get(passDeploymentId);
                 DeploymentStatus status = null;
 
-                if (deployment == null && DeploymentStatus.INIT_DEPLOYMENT != knownStatus & DeploymentStatus.UNKNOWN != knownStatus) {
-                    // if the deployment can not be found in the cfy deployment list it has undeployed
-                    // except for INIT_DEPLOYMENT (in this stage, the deployment can not exists yet in cfy)
-                    status = DeploymentStatus.UNDEPLOYED;
+                if (log.isTraceEnabled()) {
+                    log.trace("Deployment <{}> reconciliation : knownStatus=<{}>, inStartupStage=<{}>", passDeploymentId, knownStatus, inStartupStage);
+                }
+                if (deployment == null) {
+                    if (inStartupStage) {
+                        status = DeploymentStatus.UNDEPLOYED;
+                    } else {
+                        if (knownStatus == null) {
+                            status = DeploymentStatus.UNDEPLOYED;
+                        } else {
+                            switch (knownStatus) {
+                                case INIT_DEPLOYMENT:
+                                    // deployment not known by cfy (blueprint upload in progress)
+                                    status = DeploymentStatus.INIT_DEPLOYMENT;
+                                    break;
+                                case UNDEPLOYMENT_IN_PROGRESS:
+                                case UNDEPLOYED:
+                                    // deployment not known by cfy (blueprint upload in progress)
+                                    status = DeploymentStatus.UNDEPLOYED;
+                                    break;
+                                case UNKNOWN:
+                                    status = DeploymentStatus.UNKNOWN;
+                                    break;
+                                default:
+                                    status = DeploymentStatus.UNDEPLOYED;
+                            }
+                        }
+                    }
+
                 } else {
                     List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
                     Execution[] executions = new Execution[]{};
                     if (executionList != null) {
                         executions = executionList.toArray(executions);
                         status = doGetStatus(executions);
+                        if (log.isTraceEnabled()) {
+                            log.trace("Deployment <{}> reconciliation : the status guessed upon executions is <{}>", passDeploymentId, status);
+                        }
+                        if (!inStartupStage) {
+                            if (knownStatus != null) {
+                                // if we are not in startup stage, we must consider transient states
+                                if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
+                                    // the update has been launched but the update wf is not yet started by cfy
+                                    // TODO: use a state machine instead of this ugly code
+                                    status = DeploymentStatus.UPDATE_IN_PROGRESS;
+                                } else if (status == DeploymentStatus.UPDATED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
+                                    status = DeploymentStatus.UPDATED;
+                                } else if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS) {
+                                    status = DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+                                }
+                            } else {
+                                status = DeploymentStatus.UNDEPLOYED;
+                            }
+                        }
                     }
                 }
-                registerDeploymentStatus(passDeploymentId, (status == null) ? DeploymentStatus.UNKNOWN : status);
+                if (log.isTraceEnabled()) {
+                    log.trace("Deployment <{}> reconciliation : about to set status to <{}>", passDeploymentId, status);
+                }
+                doRegisterDeploymentStatus(passDeploymentId, (status == null) ? DeploymentStatus.UNKNOWN : status);
+            }
+            if (inStartupStage) {
+                // we was in startup stage, this was the first snapshot we have received.
+                // now, real life can begin, with user interactions
+                inStartupStage = false;
             }
         } finally {
             cacheLock.writeLock().unlock();
@@ -156,7 +222,9 @@ public class StatusService {
             if (throwable instanceof HttpClientErrorException) {
                 if (((HttpClientErrorException) throwable).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
                     // Only return undeployed for an application if we received a 404 which means it was deleted
-                    log.info("Application " + deploymentPaaSId + " is not found on cloudify");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Application " + deploymentPaaSId + " is not found on cloudify");
+                    }
                     return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
                 }
             }
@@ -172,8 +240,8 @@ public class StatusService {
         Execution lastExecution = null;
         // Get the last install or uninstall execution, to check for status
         for (Execution execution : executions) {
-            if (log.isDebugEnabled()) {
-                log.debug("Deployment {} has execution {} created at {} for workflow {} in status {}", execution.getDeploymentId(), execution.getId(),
+            if (log.isTraceEnabled()) {
+                log.trace("Deployment {} has execution {} created at {} for workflow {} in status {}", execution.getDeploymentId(), execution.getId(),
                         execution.getCreatedAt(), execution.getWorkflowId(), execution.getStatus());
             }
             Set<String> relevantExecutionsForStatus = Sets.newHashSet(Workflow.INSTALL, Workflow.DELETE_DEPLOYMENT_ENVIRONMENT,
@@ -198,62 +266,63 @@ public class StatusService {
             // Only consider changing state when an execution has been finished or in failure
             // Execution in cancel or starting will return null to not impact on the application state as they are intermediary state
             switch (lastExecution.getWorkflowId()) {
-            case Workflow.CREATE_DEPLOYMENT_ENVIRONMENT:
-                if (ExecutionStatus.isInProgress(lastExecution.getStatus()) || ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
-                    return DeploymentStatus.INIT_DEPLOYMENT;
-                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
-                    return DeploymentStatus.FAILURE;
-                } else {
+                case Workflow.CREATE_DEPLOYMENT_ENVIRONMENT:
+                    if (ExecutionStatus.isInProgress(lastExecution.getStatus()) || ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                        return DeploymentStatus.INIT_DEPLOYMENT;
+                    } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                        return DeploymentStatus.FAILURE;
+                    } else {
+                        return DeploymentStatus.UNKNOWN;
+                    }
+                case Workflow.INSTALL:
+                    if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
+                        return DeploymentStatus.DEPLOYMENT_IN_PROGRESS;
+                    } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                        return DeploymentStatus.DEPLOYED;
+                    } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                        return DeploymentStatus.FAILURE;
+                    } else {
+                        return DeploymentStatus.UNKNOWN;
+                    }
+                case Workflow.UNINSTALL:
+                    if (ExecutionStatus.isInProgress(lastExecution.getStatus()) || ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                        //FIXME: the undeployment should be terminated (DELETED) by a4C if last exec is UNINSTALL
+                        return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+                    } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                        return DeploymentStatus.FAILURE;
+                    } else {
+                        return DeploymentStatus.UNKNOWN;
+                    }
+                case Workflow.DELETE_DEPLOYMENT_ENVIRONMENT:
+                    if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
+                        return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+                    } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                        return DeploymentStatus.UNDEPLOYED;
+                    } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                        return DeploymentStatus.FAILURE;
+                    } else {
+                        return DeploymentStatus.UNKNOWN;
+                    }
+                case Workflow.UPDATE_DEPLOYMENT:
+                case Workflow.POST_UPDATE_DEPLOYMENT:
+                    if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
+                        return DeploymentStatus.UPDATE_IN_PROGRESS;
+                    } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
+                        return DeploymentStatus.UPDATED;
+                    } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
+                        return DeploymentStatus.UPDATE_FAILURE;
+                    } else {
+                        return DeploymentStatus.UNKNOWN;
+                    }
+                default:
                     return DeploymentStatus.UNKNOWN;
-                }
-            case Workflow.INSTALL:
-                if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
-                    return DeploymentStatus.DEPLOYMENT_IN_PROGRESS;
-                } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
-                    return DeploymentStatus.DEPLOYED;
-                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
-                    return DeploymentStatus.FAILURE;
-                } else {
-                    return DeploymentStatus.UNKNOWN;
-                }
-            case Workflow.UNINSTALL:
-                if (ExecutionStatus.isInProgress(lastExecution.getStatus()) || ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
-                    return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
-                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
-                    return DeploymentStatus.FAILURE;
-                } else {
-                    return DeploymentStatus.UNKNOWN;
-                }
-            case Workflow.DELETE_DEPLOYMENT_ENVIRONMENT:
-                if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
-                    return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
-                } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
-                    return DeploymentStatus.UNDEPLOYED;
-                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
-                    return DeploymentStatus.FAILURE;
-                } else {
-                    return DeploymentStatus.UNKNOWN;
-                }
-            case Workflow.UPDATE_DEPLOYMENT:
-            case Workflow.POST_UPDATE_DEPLOYMENT:
-                if (ExecutionStatus.isInProgress(lastExecution.getStatus())) {
-                    return DeploymentStatus.UPDATE_IN_PROGRESS;
-                } else if (ExecutionStatus.isTerminatedSuccessfully(lastExecution.getStatus())) {
-                    return DeploymentStatus.UPDATED;
-                } else if (ExecutionStatus.isTerminatedWithFailure(lastExecution.getStatus())) {
-                    return DeploymentStatus.UPDATE_FAILURE;
-                } else {
-                    return DeploymentStatus.UNKNOWN;
-                }
-            default:
-                return DeploymentStatus.UNKNOWN;
             }
         }
     }
 
     /**
      * Get status from local in-memory cache.
-     * 
+     *
      * @param deploymentPaaSId the deployment id
      * @return status of the deployment uniquely from the in memory cache
      */
@@ -273,7 +342,7 @@ public class StatusService {
     /**
      * Get fresh status, only INIT_DEPLOYMENT will be sent back from cache, else retrieve the status from cloudify.
      * This is called to secure deploy and undeploy, to be sure that we have the most fresh status and not the one from cache
-     * 
+     *
      * @param deploymentPaaSId id of the deployment to check
      * @return the deployment status
      */
@@ -294,7 +363,7 @@ public class StatusService {
 
     /**
      * Get the status from cloudify by querying the manager. If the deployment not found in the cache then will begin to monitor it.
-     * 
+     *
      * @param deploymentPaaSId the deployment id
      * @return status retrieved from cloudify
      */
@@ -303,7 +372,7 @@ public class StatusService {
         try {
             deploymentStatus = asyncGetStatus(deploymentPaaSId).get();
         } catch (Exception e) {
-            log.error("Failed to get status of application " + deploymentPaaSId, e);
+            log.warn("Failed to get status of application {}, message was: {}", deploymentPaaSId, e.getMessage());
             deploymentStatus = DeploymentStatus.UNKNOWN;
         }
         registerDeploymentStatus(deploymentPaaSId, deploymentStatus);
@@ -312,9 +381,9 @@ public class StatusService {
 
     /**
      * Get the status of the application from cache.
-     * 
+     *
      * @param deploymentPaaSId the deployment id
-     * @param callback the callback when the status is ready
+     * @param callback         the callback when the status is ready
      */
     public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback) {
         cacheLock.readLock().lock();
@@ -327,11 +396,11 @@ public class StatusService {
     }
 
     public void getInstancesInformation(final PaaSTopologyDeploymentContext deploymentContext,
-            final IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
+                                        final IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
         try {
             cacheLock.readLock().lock();
             if (!statusCache.containsKey(deploymentContext.getDeploymentPaaSId())) {
-                callback.onSuccess(Maps.<String, Map<String, InstanceInformation>> newHashMap());
+                callback.onSuccess(Maps.<String, Map<String, InstanceInformation>>newHashMap());
                 return;
             }
         } finally {
@@ -380,7 +449,7 @@ public class StatusService {
                     try {
                         runtimeProperties = MapUtil.toString(instance.getRuntimeProperties());
                     } catch (JsonProcessingException e) {
-                        log.error("Unable to stringify runtime properties", e);
+                        log.warn("Unable to stringify runtime properties: {}", e.getMessage());
                     }
                     instanceInformation.setRuntimeProperties(runtimeProperties);
 
@@ -411,7 +480,7 @@ public class StatusService {
                                     instanceInformation.getAttributes().put("endpoint_ip", masterIP);
                                 } catch (IOException e) {
                                     // TODO: handle correctly this exception
-                                    log.error("TODO: handle correctly this exception", e);
+                                    log.warn("TODO: handle correctly this exception: {}", e.getMessage());
                                 }
                             }
                         }
@@ -448,7 +517,7 @@ public class StatusService {
 
     /**
      * Register for the first time a deployment with a status to the cache
-     * 
+     *
      * @param deploymentPaaSId the deployment id
      */
     public void registerDeployment(String deploymentPaaSId) {
@@ -464,7 +533,7 @@ public class StatusService {
     /**
      * Register a new deployment status of an existing deployment.
      *
-     * @param deploymentPaaSId the deployment id
+     * @param deploymentPaaSId    the deployment id
      * @param newDeploymentStatus the new deployment status
      */
     public void registerDeploymentStatus(String deploymentPaaSId, DeploymentStatus newDeploymentStatus) {
@@ -483,18 +552,25 @@ public class StatusService {
         DeploymentStatus deploymentStatus = getStatusFromCache(deploymentPaaSId);
         if (!newDeploymentStatus.equals(deploymentStatus)) {
             // Only register event if it makes changes to the cache
+
             if (DeploymentStatus.UNDEPLOYED.equals(newDeploymentStatus)) {
                 if (DeploymentStatus.INIT_DEPLOYMENT != deploymentStatus) {
                     // Application has been removed, don't need to monitor it anymore
                     statusCache.remove(deploymentPaaSId);
 //                    registeredDeployments.remove(deploymentPaaSId);
-                    log.info("Application [" + deploymentPaaSId + "] has been undeployed");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Application [" + deploymentPaaSId + "] has been undeployed");
+                    }
                 } else {
                     // a deployment in INIT_DEPLOYMENT must come to state DEPLOYMENT_IN_PROGRESS
-                    log.info("Concurrent access to deployment [" + deploymentPaaSId + "], ignore transition from INIT_DEPLOYMENT to UNDEPLOYED");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Concurrent access to deployment [" + deploymentPaaSId + "], ignore transition from INIT_DEPLOYMENT to UNDEPLOYED");
+                    }
                 }
             } else {
-                log.info("Application [" + deploymentPaaSId + "] passed from status " + deploymentStatus + " to " + newDeploymentStatus);
+                if (log.isDebugEnabled()) {
+                    log.debug("Application [" + deploymentPaaSId + "] passed from status " + deploymentStatus + " to " + newDeploymentStatus);
+                }
                 // Deployment status has changed
                 statusCache.put(deploymentPaaSId, newDeploymentStatus);
             }

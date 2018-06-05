@@ -10,6 +10,7 @@ import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
 import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -64,14 +65,14 @@ public class SnapshotService {
     private ApplicationEventPublisher bus;
 
     public void init() {
-        int statusPollDelay = cloudConfigurationHolder.getConfiguration().getDelayBetweenInProgressDeploymentStatusPolling();
-        log.info("Will snapshot cfy each {} seconds", statusPollDelay);
+        long snapshotPollPeriod = SyspropConfig.getLong(SyspropConfig.SNAPSHOT_POLLPERIOD_IN_SECONDS, 2);
+        log.info("Will snapshot cfy each {} seconds", snapshotPollPeriod);
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 snapshotCloudify();
             }
-        }, statusPollDelay, statusPollDelay, TimeUnit.SECONDS);
+        }, 0, snapshotPollPeriod, TimeUnit.SECONDS);
     }
 
     /**
