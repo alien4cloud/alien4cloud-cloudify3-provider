@@ -1,22 +1,18 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.dao.IGenericSearchDAO;
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
 import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.Instant;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This poller is responsible of polling events that have been missed when the system was down.
@@ -28,7 +24,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This is the max recovery period we will use if no event is found in the system.
      */
-    private static final Period MAX_HISTORY_PERIOD = Period.ofDays(1);
+    private static final Period MAX_HISTORY_PERIOD = Period.ofDays(SyspropConfig.getInt(SyspropConfig.RECOVERYPOLLER_MAX_HISTORY_PERIOD_IN_DAYS, 10));
 
     @Override
     public String getPollerNature() {
@@ -63,12 +59,14 @@ public class RecoveryPoller extends AbstractPoller {
                 }
                 if (lastEvent != null) {
                     // we don't want this event to be re-polled
-                    getEventCache().blackList(lastEvent.getId());
+                    // FIXME: useless since the id stored in ES is autogerated and will not match the eventId from cfy
+//                    getEventCache().blackList(lastEvent.getId());
                 }
             } catch (Exception e) {
                 log.warn("Not able to find last known event timestamp ({})", e.getMessage());
             }
-            final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant();
+            // add 1 ms to the last event received to avoid repolling it
+            final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant().plus(1, ChronoUnit.MILLIS);
             logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
             try {
                 pollEpoch(fromDate, toDate);

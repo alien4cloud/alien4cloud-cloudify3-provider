@@ -2,11 +2,11 @@ package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -15,7 +15,6 @@ import javax.annotation.PostConstruct;
 import javax.xml.bind.DatatypeConverter;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -37,12 +36,12 @@ public class EventCache {
     /**
      * The duration we keep events in the cache.
      */
-    private static final Duration TTL = Duration.ofMinutes(30);
+    private static final Duration TTL = Duration.ofMinutes(SyspropConfig.getInt(SyspropConfig.EVENTCACHE_TTL_IN_MINUTES, 30));
 
     /**
-     * The TTL will be checked each TTL_PERIOD min
+     * The TTL will be checked each EVICTION_PERIOD min
      */
-    private static final Duration TTL_PERIOD = Duration.ofMinutes(5);
+    private static final Duration EVICTION_PERIOD = Duration.ofMinutes(SyspropConfig.getInt(SyspropConfig.EVENTCACHE_EVICTION_PERIOD_IN_MINUTES, 5));
 
     private final Set<String> ids = Sets.newHashSet();
 
@@ -55,8 +54,8 @@ public class EventCache {
 
     @PostConstruct
     public void init() {
-        log.info("TTL will be checked each {} min removing events older than {} min", TTL_PERIOD.toMinutes(), TTL.toMinutes());
-        scheduler.scheduleAtFixedRate(() -> manageTtl(), TTL_PERIOD.toMinutes(), TTL_PERIOD.toMinutes(), TimeUnit.MINUTES);
+        log.info("TTL will be checked each {} min removing events older than {} min", EVICTION_PERIOD.toMinutes(), TTL.toMinutes());
+        scheduler.scheduleAtFixedRate(() -> manageTtl(), EVICTION_PERIOD.toMinutes(), EVICTION_PERIOD.toMinutes(), TimeUnit.MINUTES);
     }
 
     private void manageTtl() {
@@ -94,7 +93,7 @@ public class EventCache {
             }
             if (log.isDebugEnabled()) {
                 String duration = DurationFormatUtils.formatDuration(Instant.now().toEpochMilli() - startTime, "H:mm:ss.SSS");
-                log.debug("{} events have been removed from the cache (TTL expired), cache size is now {} (took )", removedEventCount, duration);
+                log.debug("{} events have been removed from the cache (TTL expired), cache size is now {} (took {})", removedEventCount, ids.size(), duration);
             }
         } finally {
             lock.writeLock().unlock();

@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -36,12 +37,12 @@ public class LivePoller extends AbstractPoller {
     /**
      * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
      */
-    private static final Duration POLL_PERIOD = Duration.ofSeconds(10);
+    private static final Duration POLL_PERIOD = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_PERIOD_IN_SECONDS, 10));
 
     /**
-     * The interval that will be requested, should be > POLL_PERIOD to avoid event misses.
+     * The interval that will be requested, should be > POLL_PERIOD && < POLL_PERIOD * 2 to avoid event misses.
      */
-    private static final Duration POLL_INTERVAL = Duration.ofSeconds(20);
+    private static final Duration POLL_INTERVAL = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_INTERVAL_IN_SECONDS, 15));
 
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 

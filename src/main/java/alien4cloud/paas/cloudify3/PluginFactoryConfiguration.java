@@ -8,6 +8,7 @@ import alien4cloud.paas.cloudify3.service.OrchestratorDeploymentPropertiesServic
 import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 import alien4cloud.paas.cloudify3.shared.EventClient;
 import alien4cloud.paas.cloudify3.shared.PluginConfigurationHolder;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.collect.Lists;
@@ -74,9 +75,9 @@ public class PluginFactoryConfiguration {
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
-        threadPoolTaskExecutor.setCorePoolSize(30);
-        threadPoolTaskExecutor.setMaxPoolSize(50);
-        threadPoolTaskExecutor.setKeepAliveSeconds(10);
+        threadPoolTaskExecutor.setCorePoolSize(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_ASYNC_CORE_SIZE, 30));
+        threadPoolTaskExecutor.setMaxPoolSize(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_ASYNC_MAX_SIZE, 50));
+        threadPoolTaskExecutor.setKeepAliveSeconds(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_ASYNC_KEEPALIVESECONDS, 10));
         threadPoolTaskExecutor.initialize();
         return threadPoolTaskExecutor;
     }
@@ -127,7 +128,7 @@ public class PluginFactoryConfiguration {
 
     @Bean(name = "cloudify-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
-        return new SchedulerServiceFactoryBean("cloudify-scheduler", 4);
+        return new SchedulerServiceFactoryBean("cloudify-scheduler", SyspropConfig.getInt(SyspropConfig.CLOUDIFY_SCHEDULER_CORE_SIZE, 4));
     }
 
 }

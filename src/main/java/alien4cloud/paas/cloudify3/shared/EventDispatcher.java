@@ -44,6 +44,11 @@ public class EventDispatcher {
 
         // Prepare batch of events per consumers
         for (Event event : events) {
+
+            if (log.isTraceEnabled()) {
+                log.trace("Dispatch event : {}, ", event.toString());
+            }
+
             java.util.Calendar eventTimeStamp = DatatypeConverter.parseDateTime(event.getTimestamp());
 
             CloudifyEvent cloudifyEvent = new CloudifyEvent();
