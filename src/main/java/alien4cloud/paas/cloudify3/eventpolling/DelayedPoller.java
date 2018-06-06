@@ -1,13 +1,12 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
+import java.time.Instant;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
-import java.time.Instant;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * An delayed poller is responsible off re-requesting events in the future.
@@ -48,7 +47,8 @@ public class DelayedPoller extends AbstractPoller {
             } catch (PollingException e) {
                 // TODO: manage disaster recovery
                 logError("Giving up polling after several retries", e);
-                return;
+            } catch (Exception e) {
+                log.error("Fatal error occurred: ", e);
             }
         }, delayInSeconds, TimeUnit.SECONDS);
     }

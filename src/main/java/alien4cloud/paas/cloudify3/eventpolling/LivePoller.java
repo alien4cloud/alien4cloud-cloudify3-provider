@@ -1,18 +1,21 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
-import alien4cloud.paas.cloudify3.util.DateUtil;
-import alien4cloud.paas.cloudify3.util.SyspropConfig;
-import com.google.common.collect.Lists;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-
-import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.PreDestroy;
+
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+
+import com.google.common.collect.Lists;
+
+import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The live poller will start a single long running thread that will:
@@ -96,42 +99,48 @@ public class LivePoller extends AbstractPoller {
         this.fromDate = toDate.minus(POLL_INTERVAL);
 
         executorService.submit(() -> {
-            // Start the long live thread
-            while (true) {
-                // Start the epoch polling
-
-                if (log.isDebugEnabled()) {
-                    logDebug("Beginning of live event polling, starting from {}", DateUtil.logDate(fromDate));
-                }
-                try {
-                    pollEpoch(fromDate, toDate);
-                    triggerDelayedPollers(fromDate, toDate);
-                } catch (PollingException e) {
-                    // TODO: manage disaster recovery
-                    logError("Giving up polling after several retries", e);
-                    return;
-                }
-
-                // Move to next epoch
-                fromDate = fromDate.plus(POLL_PERIOD);
-                toDate = toDate.plus(POLL_PERIOD);
-                Instant now = Instant.now();
-                if (toDate.isAfter(now)) {
-                    try {
-                        long sleepTime = (toDate.getEpochSecond() - now.getEpochSecond()) * 1000;
-                        if (log.isDebugEnabled()) {
-                            logDebug("Sleeping {} ms before polling next epoch", sleepTime);
-                        }
-                        Thread.sleep(sleepTime);
-                    } catch (InterruptedException e) {
-                        // TODO: handle correctly this exception
-                        log.error("TODO: handle correctly this exception", e);
-                    }
-                } else if (log.isDebugEnabled()) {
-                    logDebug("No sleep between epoch polling. A large number of coming events forces the system to poll events in real time.");
-                }
+            try {
+                livePoll();
+            } catch (Exception e) {
+                log.error("Fatal error occurred: ", e);
             }
         });
+    }
+
+    private void livePoll() {
+        // Start the long live thread
+        while (true) {
+            if (log.isDebugEnabled()) {
+                logDebug("Beginning of live event polling, starting from {}", DateUtil.logDate(fromDate));
+            }
+            try {
+                pollEpoch(fromDate, toDate);
+                triggerDelayedPollers(fromDate, toDate);
+            } catch (PollingException e) {
+                // TODO: manage disaster recovery
+                logError("Giving up polling after several retries", e);
+                return;
+            }
+
+            // Move to next epoch
+            fromDate = fromDate.plus(POLL_PERIOD);
+            toDate = toDate.plus(POLL_PERIOD);
+            Instant now = Instant.now();
+            if (toDate.isAfter(now)) {
+                try {
+                    long sleepTime = (toDate.getEpochSecond() - now.getEpochSecond()) * 1000;
+                    if (log.isDebugEnabled()) {
+                        logDebug("Sleeping {} ms before polling next epoch", sleepTime);
+                    }
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    // TODO: handle correctly this exception
+                    log.error("TODO: handle correctly this exception", e);
+                }
+            } else if (log.isDebugEnabled()) {
+                logDebug("No sleep between epoch polling. A large number of coming events forces the system to poll events in real time.");
+            }
+        }
     }
 
     @PreDestroy

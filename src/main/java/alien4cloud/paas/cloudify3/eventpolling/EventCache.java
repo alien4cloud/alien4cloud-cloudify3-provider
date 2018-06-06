@@ -1,25 +1,32 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.util.DateUtil;
-import alien4cloud.paas.cloudify3.util.SyspropConfig;
-import com.google.common.collect.Queues;
-import com.google.common.collect.Sets;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.time.DurationFormatUtils;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
-import javax.annotation.PostConstruct;
-import javax.xml.bind.DatatypeConverter;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+import javax.xml.bind.DatatypeConverter;
+
+import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
+import com.google.common.collect.Queues;
+import com.google.common.collect.Sets;
+
+import alien4cloud.paas.cloudify3.model.Event;
+import alien4cloud.paas.cloudify3.util.DateUtil;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Just a cache that stores event id for deduplication.
@@ -55,7 +62,13 @@ public class EventCache {
     @PostConstruct
     public void init() {
         log.info("TTL will be checked each {} min removing events older than {} min", EVICTION_PERIOD.toMinutes(), TTL.toMinutes());
-        scheduler.scheduleAtFixedRate(() -> manageTtl(), EVICTION_PERIOD.toMinutes(), EVICTION_PERIOD.toMinutes(), TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                manageTtl();
+            } catch (Exception e) {
+                log.error("Fatal error occurred: ", e);
+            }
+        }, EVICTION_PERIOD.toMinutes(), EVICTION_PERIOD.toMinutes(), TimeUnit.MINUTES);
     }
 
     private void manageTtl() {
