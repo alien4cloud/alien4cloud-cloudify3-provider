@@ -26,6 +26,8 @@ public class RecoveryPoller extends AbstractPoller {
      */
     private static final Period MAX_HISTORY_PERIOD = Period.ofDays(SyspropConfig.getInt(SyspropConfig.RECOVERYPOLLER_MAX_HISTORY_PERIOD_IN_DAYS, 10));
 
+    private static final boolean ACTIVATED = SyspropConfig.getBoolean(SyspropConfig.RECOVERYPOLLER_ACTIVATED, true);
+
     @Override
     public String getPollerNature() {
         return "Recovery stream";
@@ -45,6 +47,9 @@ public class RecoveryPoller extends AbstractPoller {
      */
     @Override
     public void start() {
+        if (!ACTIVATED) {
+            log.info("Recovery is desactivated");
+        }
         scheduler.submit(() -> {
             logInfo("Starting recovery polling");
             // poll events until now (the live poller will take in charge the live event stream).
