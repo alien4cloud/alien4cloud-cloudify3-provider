@@ -105,7 +105,6 @@ public abstract class RuntimeService {
             final ListenableFuture<Execution[]> futureExecutions = waitForDeploymentExecutionsFinish(deployment.getId(),
                     executionClient.asyncList(deployment.getId(), true));
             Function<Execution[], Deployment> adaptFunc = input -> {
-                log.info("All execution has finished for deployment {}", deployment.getId());
                 return deployment;
             };
             return Futures.transform(futureExecutions, adaptFunc);
