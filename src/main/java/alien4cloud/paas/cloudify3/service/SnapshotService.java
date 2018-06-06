@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.service;
 
 import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
 import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
 import alien4cloud.paas.cloudify3.model.Execution;
 import alien4cloud.paas.cloudify3.model.GetBackendExecutionsResult;
@@ -134,12 +135,12 @@ public class SnapshotService {
                     _executionCount += deploymentExecution.size();
                     deploymentExecution.add(execution);
                 }
-            } catch (InterruptedException e) {
-                // TODO: handle exception
-                log.error("", e);
-            } catch (ExecutionException e) {
-                // excpetion while querying TODO: handle
-                log.error("", e);
+            } catch (Exception e) {
+                log.warn("An exception occured while snapshoting cfy ({}), will be reattempted in next schedule", e.getMessage());
+                if (log.isDebugEnabled()) {
+                    log.debug("Exception was :", e);
+                }
+                bus.publishEvent(new CloudifyManagerUnreachable(this));
             }
         }
         if (executionsPerDeployment.size() == 0) {
