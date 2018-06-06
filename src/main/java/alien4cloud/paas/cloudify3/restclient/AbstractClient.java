@@ -70,6 +70,10 @@ public abstract class AbstractClient {
         return restTemplate.exchange(managerUrl, HttpMethod.GET, createHttpEntity(managerUrl), responseType, uriVariables);
     }
 
+    protected <T> ListenableFuture<ResponseEntity<T>> getForEntity(String managerUrl, Class<T> responseType, Map<String, Object> uriVariables) {
+        return restTemplate.exchange(managerUrl, HttpMethod.GET, createHttpEntity(managerUrl), responseType, uriVariables);
+    }
+
     protected ListenableFuture<?> delete(String managerUrl, Object... urlVariables) {
         return restTemplate.exchange(managerUrl, HttpMethod.DELETE, createHttpEntity(managerUrl), (Class<?>) null, urlVariables);
     }

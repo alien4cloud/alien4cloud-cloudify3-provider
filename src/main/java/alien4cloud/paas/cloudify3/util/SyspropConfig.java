@@ -23,7 +23,7 @@ public class SyspropConfig {
     public static final String RECOVERYPOLLER_MAX_HISTORY_PERIOD_IN_DAYS = "alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller.MAX_HISTORY_PERIOD_IN_DAYS";
     public static final String EVENTCACHE_TTL_IN_MINUTES = "alien4cloud.paas.cloudify3.eventpolling.EventCache.TTL_IN_MINUTES";
     public static final String EVENTCACHE_EVICTION_PERIOD_IN_MINUTES = "alien4cloud.paas.cloudify3.eventpolling.EventCache.EVICTION_PERIOD_IN_MINUTES";
-    public static final String SNAPSHOT_POLLPERIOD_IN_SECONDS = "alien4cloud.paas.cloudify3.service.SnapshotService.SNAPSHOT_POLLPERIOD_IN_SECOND";
+    public static final String SNAPSHOT_TRIGGER_PERIOD_IN_SECONDS = "alien4cloud.paas.cloudify3.service.SnapshotService.SNAPSHOT_POLLPERIOD_IN_SECOND";
 
     public static long getLong(String key, long defaultValue) {
         String value = System.getProperty(key);

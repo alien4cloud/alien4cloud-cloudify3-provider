@@ -1,34 +1,28 @@
 package alien4cloud.paas.cloudify3.service;
 
-import alien4cloud.paas.cloudify3.configuration.CloudConfigurationHolder;
 import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
-import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
-import alien4cloud.paas.cloudify3.model.Deployment;
+import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
 import alien4cloud.paas.cloudify3.model.Execution;
-import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
-import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
-import alien4cloud.paas.cloudify3.restclient.NodeClient;
-import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
+import alien4cloud.paas.cloudify3.model.GetBackendExecutionsResult;
+import alien4cloud.paas.cloudify3.restclient.*;
 import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
@@ -37,23 +31,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SnapshotService {
 
-    @Resource
-    private ExecutionClient executionClient;
+    /**
+     * Since the query to get execution is a GET, we need to query per batch to avoid HTTP 414 Request-URI Too Large errors.
+     */
+    private static final int BATCH_SIZE = 250;
 
     @Resource
-    private NodeInstanceClient nodeInstanceClient;
-
-    @Resource
-    private NodeClient nodeClient;
-
-    @Resource
-    private DeploymentClient deploymentClient;
-
-    @Resource
-    private CloudConfigurationHolder cloudConfigurationHolder;
-
-    @Resource
-    private RuntimePropertiesService runtimePropertiesService;
+    private ExecutionBackendClient executionBackendClient;
 
     @Resource(name = "cloudify-async-thread-pool")
     private ThreadPoolTaskExecutor restPool;
@@ -64,8 +48,11 @@ public class SnapshotService {
     @Autowired
     private ApplicationEventPublisher bus;
 
+    private final Set<String> registeredDeploymentIds = Sets.newHashSet();
+    private final ReentrantReadWriteLock registryLock = new ReentrantReadWriteLock();
+
     public void init() {
-        long snapshotPollPeriod = SyspropConfig.getLong(SyspropConfig.SNAPSHOT_POLLPERIOD_IN_SECONDS, 2);
+        long snapshotPollPeriod = SyspropConfig.getLong(SyspropConfig.SNAPSHOT_TRIGGER_PERIOD_IN_SECONDS, 5);
         log.info("Will snapshot cfy each {} seconds", snapshotPollPeriod);
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -75,37 +62,96 @@ public class SnapshotService {
         }, 0, snapshotPollPeriod, TimeUnit.SECONDS);
     }
 
+    @EventListener
+    public void registerDeployments(DeploymentRegisteredEvent e) {
+        registryLock.writeLock().lock();
+        try {
+            for (String deploymentId : e.getDeploymentIds()) {
+                registeredDeploymentIds.add(deploymentId);
+            }
+        } finally {
+            registryLock.writeLock().unlock();
+        }
+    }
+
     /**
      * Snapshots the state of cfy for other services.
      */
     public void snapshotCloudify() {
+
         log.debug("Snapshoting cfy");
 
-        Callable<CloudifySnapshot> task = new Callable<CloudifySnapshot>() {
-            @Override
-            public CloudifySnapshot call() throws Exception {
-                Map<String, Deployment> deployments = Arrays.stream(deploymentClient.asyncList().get()).collect(Collectors.toMap(d -> d.getId(), d -> d));
-                List<Execution> executions = Arrays.asList(executionClient.asyncList(true).get());
-                Set<String> ids = deployments.keySet();
-                Map<String, List<Execution>> map = executions.stream().filter(e -> ids.contains(e.getDeploymentId()))
-                        .collect(Collectors.groupingBy(Execution::getDeploymentId, Collectors.toList()));
-                return new CloudifySnapshot(deployments, map);
-            }
-        };
-        ListenableFuture<CloudifySnapshot> future = scheduler.submit(task);
+        String[] registeredDeploymentIdArray = null;
+        // acquire the lock just to read the Set
+        registryLock.readLock().lock();
+        try {
+            registeredDeploymentIdArray = registeredDeploymentIds.toArray(new String[0]);
+        } finally {
+            // we can now release the lock
+            registryLock.readLock().unlock();
+        }
 
-        Futures.addCallback(future, new FutureCallback<CloudifySnapshot>() {
-            @Override
-            public void onSuccess(CloudifySnapshot result) {
-                bus.publishEvent(new CloudifyManagerSnapshoted(this, result));
+        if (registeredDeploymentIdArray.length == 0) {
+            log.trace("No registered deployments to snapshot");
+            return;
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("About to query for executions concerning {} deployments", registeredDeploymentIdArray.length);
+        }
+
+        // now let's iterate to query per batch
+        // a map of deploymentId -> excutions
+        Map<String, List<Execution>> executionsPerDeployment = Maps.newHashMap();
+        int _executionCount = 0;
+
+        int lastIterationIdx = registeredDeploymentIds.size() / BATCH_SIZE;
+
+        for (int i=0; i <= lastIterationIdx; i++) {
+            int querySize = BATCH_SIZE;
+            if (i == lastIterationIdx) {
+                querySize = registeredDeploymentIds.size() % BATCH_SIZE;
+                if (querySize == 0) {
+                    // no more batch to fetch
+                    break;
+                }
             }
 
-            @Override
-            public void onFailure(Throwable t) {
-                log.warn("Not able to snapshot cfy ({})", t.getMessage());
-                bus.publishEvent(new CloudifyManagerUnreachable(this));
+            int offset = i * BATCH_SIZE;
+            String[] requestDeploymentIds = Arrays.copyOfRange(registeredDeploymentIdArray, offset, querySize);
+
+            if (log.isTraceEnabled()) {
+                log.trace("Querying for execution using deployment_id from {} size {} : {}", offset, querySize, requestDeploymentIds);
             }
-        });
+
+            try {
+                GetBackendExecutionsResult backendExecutionsResult = executionBackendClient.asyncList(requestDeploymentIds).get();
+                for (Execution execution : backendExecutionsResult.getItems()) {
+                    List<Execution> deploymentExecution = executionsPerDeployment.get(execution.getDeploymentId());
+                    if (deploymentExecution == null) {
+                        deploymentExecution = Lists.newArrayList();
+                        executionsPerDeployment.put(execution.getDeploymentId(), deploymentExecution);
+                    }
+                    _executionCount += deploymentExecution.size();
+                    deploymentExecution.add(execution);
+                }
+            } catch (InterruptedException e) {
+                // TODO: handle exception
+                log.error("", e);
+            } catch (ExecutionException e) {
+                // excpetion while querying TODO: handle
+                log.error("", e);
+            }
+        }
+        if (executionsPerDeployment.size() == 0) {
+            log.trace("No executions found on cfy");
+            // ???
+        } else {
+            if (log.isTraceEnabled()) {
+                log.trace("About to publish cfy snapshot containing {} excecutions / {} deployments", _executionCount, executionsPerDeployment.size());
+            }
+            CloudifySnapshot cloudifySnapshot = new CloudifySnapshot(executionsPerDeployment);
+            bus.publishEvent(new CloudifyManagerSnapshoted(this, cloudifySnapshot));
+        }
     }
 
 }

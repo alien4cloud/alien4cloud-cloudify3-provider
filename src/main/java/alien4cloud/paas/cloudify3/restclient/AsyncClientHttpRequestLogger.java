@@ -45,7 +45,9 @@ public class AsyncClientHttpRequestLogger implements AsyncClientHttpRequestInter
             public void onSuccess(ClientHttpResponse result) {
                 try {
                     log.trace("REST Response to [{}] : {} {} is {} - {} (took {} ms)", requestUUID, request.getMethod(), request.getURI(), result.getStatusCode(), result.getStatusText(), System.currentTimeMillis() - requestStartTime);
-//                    log.trace("REST Response body to [{}] : {}", requestUUID, IOUtils.toString(result.getBody(), "UTF-8"));
+//                    if (request.getURI().toString().contains("backend")) {
+//                        log.trace("REST Response body to [{}] : {}", requestUUID, IOUtils.toString(result.getBody(), "UTF-8"));
+//                    }
                 } catch (IOException e) {
                     // nothing to do here, we are in trace log context !
                 }

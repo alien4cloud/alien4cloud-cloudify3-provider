@@ -12,17 +12,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 /**
- * A cloudify snap: deployments, executions, etc ... all necessary stuff to sync a4c at startup ;)
+ * A cloudify snap: executions per deployments (all necessary stuff to sync a4c at startup ;)
  */
 @Getter
 @Setter
 @RequiredArgsConstructor
 @EqualsAndHashCode
 public class CloudifySnapshot {
-
-    @NonNull
-    // deployment.id -> deployment
-    public Map<String, Deployment> deployments;
 
     @NonNull
     // deployment.id -> execution

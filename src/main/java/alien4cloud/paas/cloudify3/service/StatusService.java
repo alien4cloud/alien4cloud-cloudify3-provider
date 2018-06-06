@@ -4,6 +4,7 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.cloudify3.configuration.MappingConfigurationHolder;
 import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
 import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
+import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
 import alien4cloud.paas.cloudify3.model.*;
 import alien4cloud.paas.cloudify3.restclient.DeploymentClient;
 import alien4cloud.paas.cloudify3.restclient.ExecutionClient;
@@ -25,6 +26,8 @@ import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -93,6 +96,9 @@ public class StatusService {
     @Resource(name = "cloudify-async-thread-pool")
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
+    @Autowired
+    private ApplicationEventPublisher bus;
+
     @EventListener
     public void cloudifySnapshotReceived(CloudifyManagerSnapshoted event) {
         log.debug("Cloudify Snapshot received");
@@ -131,14 +137,16 @@ public class StatusService {
         try {
             cacheLock.writeLock().lock();
             for (String passDeploymentId : registeredDeployments) {
-                Deployment deployment = cloudifySnapshot.getDeployments().get(passDeploymentId);
+                List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
                 DeploymentStatus knownStatus = statusCache.get(passDeploymentId);
                 DeploymentStatus status = null;
 
                 if (log.isTraceEnabled()) {
                     log.trace("Deployment <{}> reconciliation : knownStatus=<{}>, inStartupStage=<{}>", passDeploymentId, knownStatus, inStartupStage);
                 }
-                if (deployment == null) {
+                // FIXME : we can have some deployments without executions.
+                // In this specific case, the risk is that we consider a deployment as UNDEPLOYED whereas it exist ... (409 risk)
+                if (executionList == null) {
                     if (inStartupStage) {
                         status = DeploymentStatus.UNDEPLOYED;
                     } else {
@@ -163,31 +171,27 @@ public class StatusService {
                             }
                         }
                     }
-
                 } else {
-                    List<Execution> executionList = cloudifySnapshot.getExecutions().get(passDeploymentId);
                     Execution[] executions = new Execution[]{};
-                    if (executionList != null) {
-                        executions = executionList.toArray(executions);
-                        status = doGetStatus(executions);
-                        if (log.isTraceEnabled()) {
-                            log.trace("Deployment <{}> reconciliation : the status guessed upon executions is <{}>", passDeploymentId, status);
-                        }
-                        if (!inStartupStage) {
-                            if (knownStatus != null) {
-                                // if we are not in startup stage, we must consider transient states
-                                if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
-                                    // the update has been launched but the update wf is not yet started by cfy
-                                    // TODO: use a state machine instead of this ugly code
-                                    status = DeploymentStatus.UPDATE_IN_PROGRESS;
-                                } else if (status == DeploymentStatus.UPDATED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
-                                    status = DeploymentStatus.UPDATED;
-                                } else if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS) {
-                                    status = DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
-                                }
-                            } else {
-                                status = DeploymentStatus.UNDEPLOYED;
+                    executions = executionList.toArray(executions);
+                    status = doGetStatus(executions);
+                    if (log.isTraceEnabled()) {
+                        log.trace("Deployment <{}> reconciliation : the status guessed upon executions is <{}>", passDeploymentId, status);
+                    }
+                    if (!inStartupStage) {
+                        if (knownStatus != null) {
+                            // if we are not in startup stage, we must consider transient states
+                            if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
+                                // the update has been launched but the update wf is not yet started by cfy
+                                // TODO: use a state machine instead of this ugly code
+                                status = DeploymentStatus.UPDATE_IN_PROGRESS;
+                            } else if (status == DeploymentStatus.UPDATED && knownStatus == DeploymentStatus.UPDATE_IN_PROGRESS) {
+                                status = DeploymentStatus.UPDATED;
+                            } else if (status == DeploymentStatus.DEPLOYED && knownStatus == DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS) {
+                                status = DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
                             }
+                        } else {
+                            status = DeploymentStatus.UNDEPLOYED;
                         }
                     }
                 }
@@ -209,6 +213,7 @@ public class StatusService {
 
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
         this.registeredDeployments.addAll(activeDeploymentContexts.keySet());
+        bus.publishEvent(new DeploymentRegisteredEvent(this, activeDeploymentContexts.keySet().toArray(new String[0])));
     }
 
     private ListenableFuture<DeploymentStatus> asyncGetStatus(String deploymentPaaSId) {
@@ -521,6 +526,7 @@ public class StatusService {
      * @param deploymentPaaSId the deployment id
      */
     public void registerDeployment(String deploymentPaaSId) {
+        bus.publishEvent(new DeploymentRegisteredEvent(this, deploymentPaaSId));
         try {
             cacheLock.writeLock().lock();
             registeredDeployments.add(deploymentPaaSId);
