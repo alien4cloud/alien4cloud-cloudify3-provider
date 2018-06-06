@@ -31,11 +31,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
-@ComponentScan(basePackages = { "alien4cloud.paas.cloudify3.shared" })
+@ComponentScan(basePackages = {"alien4cloud.paas.cloudify3.shared"})
 @Slf4j
 public class PluginFactoryConfiguration {
 
-    /** A static final index to identify pools in case of multiple instances. */
+    /**
+     * A static final index to identify pools in case of multiple instances.
+     */
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
 //    @Inject
@@ -63,16 +65,8 @@ public class PluginFactoryConfiguration {
         return new AuthenticationInterceptor();
     }
 
-//    @Bean(name = "live-event-client")
-//    public EventClient liveEventClient() {
-//        // Object mapper configuration
-//        EventClient eventClient = new EventClient();
-//        eventClient.setSpecificRestTemplate(asyncRestTemplate());
-//        return eventClient;
-//    }
-
-    @Bean(name= "cloudify-async-thread-pool")
-    public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
+    @Bean(name = "cloudify-async-thread-pool")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("cloudify-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
         threadPoolTaskExecutor.setCorePoolSize(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_ASYNC_CORE_SIZE, 30));
@@ -119,10 +113,8 @@ public class PluginFactoryConfiguration {
     @Bean(name = "cloudify-async-rest-template")
     public AsyncRestTemplate asyncRestTemplate() {
         AsyncRestTemplate asyncRestTemplate = new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
-        if (log.isTraceEnabled()) {
-            List<AsyncClientHttpRequestInterceptor> interceptors = Lists.newArrayList(new AsyncClientHttpRequestLogger());
-            asyncRestTemplate.setInterceptors(interceptors);
-        }
+        List<AsyncClientHttpRequestInterceptor> interceptors = Lists.newArrayList(new AsyncClientHttpRequestLogger());
+        asyncRestTemplate.setInterceptors(interceptors);
         return asyncRestTemplate;
     }
 

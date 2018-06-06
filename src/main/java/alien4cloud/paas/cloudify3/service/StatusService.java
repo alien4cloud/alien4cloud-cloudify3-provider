@@ -12,7 +12,10 @@ import alien4cloud.paas.cloudify3.restclient.NodeClient;
 import alien4cloud.paas.cloudify3.restclient.NodeInstanceClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
 import alien4cloud.paas.cloudify3.util.DateUtil;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.InstanceInformation;
+import alien4cloud.paas.model.InstanceStatus;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.rest.utils.JsonUtil;
 import alien4cloud.utils.MapUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,7 +23,10 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.*;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
@@ -40,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Consumer;
 
 /**
  * Handle all deployment status request
