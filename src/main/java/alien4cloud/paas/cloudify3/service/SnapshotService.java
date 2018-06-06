@@ -1,34 +1,29 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.annotation.Resource;
-
+import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
+import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
+import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
+import alien4cloud.paas.cloudify3.model.Execution;
+import alien4cloud.paas.cloudify3.model.GetBackendExecutionsResult;
+import alien4cloud.paas.cloudify3.restclient.*;
+import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-
-import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
-import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
-import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
-import alien4cloud.paas.cloudify3.model.Execution;
-import alien4cloud.paas.cloudify3.model.GetBackendExecutionsResult;
-import alien4cloud.paas.cloudify3.restclient.ExecutionBackendClient;
-import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
-import alien4cloud.paas.cloudify3.util.SyspropConfig;
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.Resource;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
@@ -60,12 +55,14 @@ public class SnapshotService {
     public void init() {
         long snapshotPollPeriod = SyspropConfig.getLong(SyspropConfig.SNAPSHOT_TRIGGER_PERIOD_IN_SECONDS, 5);
         log.info("Will snapshot cfy each {} seconds", snapshotPollPeriod);
-
-        scheduler.scheduleAtFixedRate(() -> {
-            try {
-                snapshotCloudify();
-            } catch (Exception e) {
-                log.error("Fatal error occurred: ", e);
+        scheduler.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    snapshotCloudify();
+                } catch(Exception e) {
+                    log.error("Exception thrown while snapshoting", e);
+                }
             }
         }, 0, snapshotPollPeriod, TimeUnit.SECONDS);
     }
@@ -99,14 +96,12 @@ public class SnapshotService {
             registryLock.readLock().unlock();
         }
 
-        int deploymentIdsCount = registeredDeploymentIdArray.length;
-
-        if (deploymentIdsCount == 0) {
+        if (registeredDeploymentIdArray.length == 0) {
             log.trace("No registered deployments to snapshot");
             return;
         }
         if (log.isTraceEnabled()) {
-            log.trace("About to query for executions concerning {} deployments", deploymentIdsCount);
+            log.trace("About to query for executions concerning {} deployments", registeredDeploymentIdArray.length);
         }
 
         // now let's iterate to query per batch
@@ -114,12 +109,12 @@ public class SnapshotService {
         Map<String, List<Execution>> executionsPerDeployment = Maps.newHashMap();
         int _executionCount = 0;
 
-        int lastIterationIdx = deploymentIdsCount / BATCH_SIZE;
+        int lastIterationIdx = registeredDeploymentIds.size() / BATCH_SIZE;
 
         for (int i=0; i <= lastIterationIdx; i++) {
             int querySize = BATCH_SIZE;
             if (i == lastIterationIdx) {
-                querySize = deploymentIdsCount % BATCH_SIZE;
+                querySize = registeredDeploymentIds.size() % BATCH_SIZE;
                 if (querySize == 0) {
                     // no more batch to fetch
                     break;
