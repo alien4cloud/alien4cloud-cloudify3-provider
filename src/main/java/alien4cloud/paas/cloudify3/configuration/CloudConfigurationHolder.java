@@ -50,10 +50,8 @@ public class CloudConfigurationHolder {
                 authenticationInterceptor.setPassword(newConfiguration.getPassword());
                 sslContextManager.disableSSLVerification(configuration.getDisableSSLVerification() != null && configuration.getDisableSSLVerification());
                 Version version = versionClient.read();
-                Blueprint[] blueprints = blueprintClient.list();
-                int numberOfBlueprints = blueprints != null ? blueprints.length : 0;
                 log.info(
-                        "Configure PaaS provider for Cloudify version " + version.getVersion() + ", manager has " + numberOfBlueprints + " active deployments");
+                        "Configure PaaS provider for Cloudify version " + version.getVersion());
             }
         });
     }
