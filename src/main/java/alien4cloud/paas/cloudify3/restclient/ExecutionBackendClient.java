@@ -44,7 +44,7 @@ public class ExecutionBackendClient extends AbstractClient {
         }
         Map<String, String[]> parameters = Maps.newHashMapWithExpectedSize(deploymentIds.length + 1);
         Map<String, String> parameterValues = Maps.newHashMapWithExpectedSize(deploymentIds.length + 1);
-        parameters.put("_include", new String[]{"id,workflow_id,status,deployment_id"});
+        parameters.put("_include", new String[]{"id,workflow_id,status,deployment_id,created_at"});
         parameters.put("deployment_id", deploymentIds);
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);

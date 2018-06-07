@@ -18,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import javax.annotation.Resource;
 import java.util.Arrays;
@@ -142,14 +143,20 @@ public class SnapshotService {
                     deploymentExecution.add(execution);
                 }
             } catch (Exception e) {
-                log.warn("An exception occured while snapshoting cfy ({}), will be reattempted in next schedule", e.getMessage());
-                if (log.isDebugEnabled()) {
-                    log.debug("Exception was :", e);
+                if (requestDeploymentIds.length == 1 && e.getCause() instanceof HttpClientErrorException && ((HttpClientErrorException)e.getCause()).getRawStatusCode() == 404) {
+                    // in this particular case, we only have requested a single deployment_id and it was not found
+                    // it just means that the undeployment has been terminated
+                    log.trace("No executions found for deployment " + requestDeploymentIds[0]);
+                } else {
+                    log.warn("An exception occured while snapshoting cfy ({}), will be reattempted in next schedule", e.getMessage());
+                    if (log.isDebugEnabled()) {
+                        log.debug("Exception was :", e);
+                    }
+                    bus.publishEvent(new CloudifyManagerUnreachable(this));
+                    // very important to break here, if we fail on one of the queries we must stop the batch iteration
+                    // if we don't break, the risk is to publish an incomplete snapshot
+                    break;
                 }
-                bus.publishEvent(new CloudifyManagerUnreachable(this));
-                // very important to break here, if we fail on one of the queries we must stop the batch iteration
-                // if we don't break, the risk is to publish an incomplete snapshot
-                break;
             }
         }
         if (executionsPerDeployment.size() == 0) {
