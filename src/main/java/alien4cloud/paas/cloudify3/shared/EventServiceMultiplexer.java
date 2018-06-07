@@ -1,6 +1,7 @@
 package alien4cloud.paas.cloudify3.shared;
 
 import alien4cloud.paas.cloudify3.CloudifyManagerCtxConfig;
+import alien4cloud.paas.cloudify3.eventpolling.EventCache;
 import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
 import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
 import alien4cloud.paas.cloudify3.restclient.auth.AuthenticationInterceptor;
@@ -66,10 +67,15 @@ public class EventServiceMultiplexer {
         EventClient eventClient = (EventClient) managerContext.getBean("event-client");
         eventClient.setAuthenticationInterceptor(authenticationInterceptor);
 
+        EventCache eventCache = (EventCache) managerContext.getBean("event-cache");
+        eventCache.setUrl(managerUrl);
         LivePoller livePoller = (LivePoller) managerContext.getBean("event-live-poller");
         livePoller.setUrl(managerUrl);
         RecoveryPoller recoveryPoller = (RecoveryPoller) managerContext.getBean("event-recovery-poller");
         recoveryPoller.setUrl(managerUrl);
+
+        // start the event cache
+        eventCache.init();
         // start the historical ...
         recoveryPoller.start();
         // ... then the live

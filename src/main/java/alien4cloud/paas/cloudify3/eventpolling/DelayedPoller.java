@@ -3,6 +3,8 @@ package alien4cloud.paas.cloudify3.eventpolling;
 import java.time.Instant;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import lombok.Setter;
@@ -34,6 +36,9 @@ public class DelayedPoller extends AbstractPoller {
         return delayInSeconds + "s delayed stream";
     }
 
+    private AtomicLong _dispatchedEvent = new AtomicLong(0);
+    private AtomicLong _lastLoggedTime = new AtomicLong(0);
+
     @Override
     public void start() {
         // Nothing to do here, polls will be started using schedule().
@@ -43,7 +48,16 @@ public class DelayedPoller extends AbstractPoller {
         logDebug("Scheduling a polling for epoch {} -> {} in {} seconds", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), delayInSeconds);
         scheduler.schedule(() -> {
             try {
-                pollEpoch(fromDate, toDate);
+                PollResult result = pollEpoch(fromDate, toDate);
+                _dispatchedEvent.addAndGet(result.eventDispatchedCount);
+
+                // just to know if DelayedPoller is useless or not
+                long currentTime = System.currentTimeMillis();
+                if (currentTime > _lastLoggedTime.get() + 1000 * 60 * 60) {
+                    _lastLoggedTime.set(currentTime);
+                    // each hour log this information
+                    logInfo("{} events dispatched since system startup", _dispatchedEvent);
+                }
             } catch (PollingException e) {
                 // TODO: manage disaster recovery
                 logError("Giving up polling after several retries", e);

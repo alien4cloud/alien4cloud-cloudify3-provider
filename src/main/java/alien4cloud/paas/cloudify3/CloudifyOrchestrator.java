@@ -119,7 +119,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             return;
         }
         // Cloudify 3 will use recipe id to identify a blueprint and a deployment instead of deployment id
-        log.info("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+        log.debug("Deploying {} for alien deployment {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         eventService.registerDeployment(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeployment(deploymentContext.getDeploymentPaaSId());
 

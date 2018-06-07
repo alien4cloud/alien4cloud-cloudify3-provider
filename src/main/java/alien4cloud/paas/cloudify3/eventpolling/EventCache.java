@@ -35,6 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 @Setter
 public class EventCache {
 
+    private String url;
+
     /**
      * Used to manage TTL.
      */
@@ -57,11 +59,9 @@ public class EventCache {
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     private static long _lastEventTimestamp;
-    private static final Marker LAST_EVENT_DISPATCHED_MARKER = MarkerFactory.getMarker(EventCache.class.getName() + "_lastEventTimestamp");
 
-    @PostConstruct
     public void init() {
-        log.info("TTL will be checked each {} min removing events older than {} min", EVICTION_PERIOD.toMinutes(), TTL.toMinutes());
+        logInfo("TTL will be checked each {} min removing events older than {} min", EVICTION_PERIOD.toMinutes(), TTL.toMinutes());
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 manageTtl();
@@ -75,26 +75,27 @@ public class EventCache {
         lock.writeLock().lock();
         try {
             long startTime = Instant.now().toEpochMilli();
-            if (log.isDebugEnabled(LAST_EVENT_DISPATCHED_MARKER)) {
-                if (_lastEventTimestamp > 0) {
-                    long ageInMillis = Instant.now().toEpochMilli() - _lastEventTimestamp;
-                    String age = DurationFormatUtils.formatDuration(ageInMillis, "H:mm:ss");
-                    log.debug("The last event referenced in the system was from {} it's age is {}", DateUtil.logDate(new Date(_lastEventTimestamp)), age);
-                } else {
-                    log.debug("No event has been yet referenced in the system.");
+            if (_lastEventTimestamp > 0) {
+                long ageInMillis = System.currentTimeMillis() - _lastEventTimestamp;
+                String age = DurationFormatUtils.formatDuration(ageInMillis, "H:mm:ss");
+                logDebug("The last event referenced in the system was from {} it's age is {}", DateUtil.logDate(new Date(_lastEventTimestamp)), age);
+                if (ageInMillis > 1000 * 60 * 30) {
+                    logWarn("Long inactivity or Cfy logstash status suspicion ? The last event referenced in the system was from {} it's age is {}, more than 30 min ...", DateUtil.logDate(new Date(_lastEventTimestamp)), age);
                 }
+            } else {
+                logDebug("No event has been yet referenced in the system.");
             }
             // any event oldiest than this age will be removed;
             long threshold = Instant.now().minus(TTL).toEpochMilli();
             if (log.isDebugEnabled()) {
-                log.debug("Manage TTL, all event oldiest than {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
+                logDebug("Manage TTL, all event oldiest than {} will be removed from cache", DateUtil.logDate(new Date(threshold)));
             }
             int removedEventCount = 0;
             HorodatedEvents leastElement = queue.peek();
             while(leastElement != null) {
                 if (leastElement.timestamp < threshold) {
                     if (log.isTraceEnabled()) {
-                        log.trace("Event #{} is removed from the cache since {} < {}", leastElement.id, DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
+                        logTrace("Event #{} is removed from the cache since {} < {}", leastElement.id, DateUtil.logDate(new Date(leastElement.timestamp)), DateUtil.logDate(new Date(threshold)));
                     }
                     ids.remove(queue.poll().id);
                     removedEventCount++;
@@ -106,7 +107,7 @@ public class EventCache {
             }
             if (log.isDebugEnabled()) {
                 String duration = DurationFormatUtils.formatDuration(Instant.now().toEpochMilli() - startTime, "H:mm:ss.SSS");
-                log.debug("{} events have been removed from the cache (TTL expired), cache size is now {} (took {})", removedEventCount, ids.size(), duration);
+                logDebug("{} events have been removed from the cache (TTL expired), cache size is now {} (took {})", removedEventCount, ids.size(), duration);
             }
         } finally {
             lock.writeLock().unlock();
@@ -142,17 +143,15 @@ public class EventCache {
                 queue.add(he);
                 ids.add(he.id);
                 insertedEventIds.add(he.id);
-                if (log.isDebugEnabled(LAST_EVENT_DISPATCHED_MARKER)) {
-                    if (_lastEventTimestamp == 0 || he.timestamp > _lastEventTimestamp) {
-                        _lastEventTimestamp = he.timestamp;
-                    }
+                if (he.timestamp > _lastEventTimestamp) {
+                    _lastEventTimestamp = he.timestamp;
                 }
             });
             List<Event> result = events.stream().filter(
                     event -> insertedEventIds.contains(event.getId())
             ).collect(Collectors.toList());
             if (log.isTraceEnabled() && result.size() > 0) {
-                log.trace("{} events added to the cache, cache size is now {}", result.size(), ids.size());
+                logTrace("{} events added to the cache, cache size is now {}", result.size(), ids.size());
             }
             return result.toArray(new Event[0]);
         } finally {
@@ -175,4 +174,23 @@ public class EventCache {
         }
     }
 
+    protected void logTrace(String msg, Object... vars) {
+        if (log.isTraceEnabled()) {
+            log.trace("[@" + url +  "] " + msg, vars);
+        }
+    }
+
+    private void logDebug(String msg, Object... vars) {
+        if (log.isDebugEnabled()) {
+            log.debug("[@" + url +  "] " + msg, vars);
+        }
+    }
+
+    private void logInfo(String msg, Object... vars) {
+        log.info("[@" + url +  "] " + msg, vars);
+    }
+
+    private void logWarn(String msg, Object... vars) {
+        log.warn("[@" + url +  "] " + msg, vars);
+    }
 }

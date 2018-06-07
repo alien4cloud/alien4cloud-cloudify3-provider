@@ -9,19 +9,42 @@ import lombok.extern.slf4j.Slf4j;
 public class SyspropConfig {
 
     /**
-     * TODO: explain each config
+     * The number of threads used to schedule jobs (refresh status ...).
      */
     public static final String CLOUDIFY_SCHEDULER_CORE_SIZE = "alien4cloud.paas.cloudify3.cloudify-scheduler.coreSize";
+
+    /**
+     * Config of the thread pool used to handle events REST responses (except for event polling).
+     */
     public static final String CLOUDIFY_ASYNC_CORE_SIZE = "alien4cloud.paas.cloudify3.cloudify-async-thread-pool.coreSize";
     public static final String CLOUDIFY_ASYNC_MAX_SIZE = "alien4cloud.paas.cloudify3.cloudify-async-thread-pool.maxSize";
     public static final String CLOUDIFY_ASYNC_KEEPALIVESECONDS = "alien4cloud.paas.cloudify3.cloudify-async-thread-pool.keepAliveSeconds";
 
-
+    /**
+     * The number of thread used to schedule events polling.
+     */
     public static final String EVENT_SCHEDULER_CORE_SIZE = "alien4cloud.paas.cloudify3.event-scheduler.coreSize";
+
+    /**
+     * Config of the thread pool used to handle events REST responses. Since we guarantee than no more
+     * than a gran maximum of 4 threads will poll events at the same time in a synchronous way (recover, live, and 2 delayed)
+     * no need to increase this value.
+     */
     public static final String EVENT_ASYNC_CORE_SIZE = "alien4cloud.paas.cloudify3.event-async-thread-pool.coreSize";
     public static final String EVENT_ASYNC_MAX_SIZE = "alien4cloud.paas.cloudify3.event-async-thread-pool.maxSize";
     public static final String EVENT_ASYNC_KEEPALIVESECONDS = "alien4cloud.paas.cloudify3.event-async-thread-pool.keepAliveSeconds";
+
+    /**
+     * The maximum time period between each LivePoller request to poll events. Determines the minimum frequency of the polls.
+     * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
+     * Under heavy load, with a lot of events to poll, the thread will not sleep between each request, so the delay will be reduced
+     * between events requests to reduce event receive delay.
+     */
     public static final String LIVEPOLLER_POLL_PERIOD_IN_SECONDS = "alien4cloud.paas.cloudify3.eventpolling.LivePoller.POLL_PERIOD_IN_SECONDS";
+
+    /**
+     * The interval that will be requested by the LivePoller, should be > POLL_PERIOD && < POLL_PERIOD * 2 to avoid event misses.
+     */
     public static final String LIVEPOLLER_POLL_INTERVAL_IN_SECONDS = "alien4cloud.paas.cloudify3.eventpolling.LivePoller.POLL_INTERVAL_IN_SECONDS";
 
     /**
