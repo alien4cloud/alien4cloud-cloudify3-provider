@@ -62,8 +62,10 @@ public class RecoveryPoller extends AbstractPoller {
 
     private void recovery() {
         logInfo("Starting recovery polling");
-        // poll events until now (the live poller will take in charge the live event stream).
-        Instant toDate = Instant.now();
+        // poll events until :
+        // now
+        // + LivePoller.POLL_PERIOD (the live poller will take in charge the live event stream after sleeping the POLL_PERIOD).
+        Instant toDate = Instant.now().plus(LivePoller.POLL_PERIOD);
 
         PaaSDeploymentLog lastEvent = null;
         try {

@@ -40,10 +40,11 @@ public class LivePoller extends AbstractPoller {
     /**
      * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
      */
-    private static final Duration POLL_PERIOD = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_PERIOD_IN_SECONDS, 10));
+    protected static final Duration POLL_PERIOD = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_PERIOD_IN_SECONDS, 10));
 
     /**
      * The interval that will be requested, should be > POLL_PERIOD && < POLL_PERIOD * 2 to avoid event misses.
+     * Shouldn't be < POLL_PERIOD (for sure we'll miss events).
      */
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_INTERVAL_IN_SECONDS, 15));
 
@@ -95,11 +96,12 @@ public class LivePoller extends AbstractPoller {
     @Override
     public void start() {
 
-        this.toDate = Instant.now();
-        this.fromDate = toDate.minus(POLL_INTERVAL);
-
         executorService.submit(() -> {
             try {
+                // wait POLL_INTERVAL before starting live polling (avoid event duplication in case of quick restart)
+                Thread.sleep(POLL_INTERVAL.toMillis());
+                this.toDate = Instant.now();
+                this.fromDate = toDate.minus(POLL_INTERVAL);
                 livePoll();
             } catch (Exception e) {
                 log.error("Fatal error occurred: ", e);
