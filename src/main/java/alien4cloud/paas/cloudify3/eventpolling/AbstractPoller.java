@@ -69,20 +69,20 @@ public abstract class AbstractPoller {
      *
      * @param fromDate
      * @param toDate
-     * @throws ExecutionException
-     * @throws InterruptedException
+     * @throws PollingException
+     * @Returns the number of events dispatched
      */
-    protected void pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
+    protected PollResult pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
 
         // this is the batch offset to poll
         int offset = 0;
         // the number of batches necessary to poll the whole epoch
-        int _batchCount = 0;
+        int batchCount = 0;
         // .....
         int retryCount = 0;
 
-        long _eventPolledCount = 0;
-        long _eventDispatchedCount = 0;
+        long eventPolledCount = 0;
+        long eventDispatchedCount = 0;
 
         // just a debug information, never use it in logic !
         Instant _startEpochPollingDate = null;
@@ -95,7 +95,7 @@ public abstract class AbstractPoller {
 
             logDebug("About to poll epoch {} -> {} offset: {}, batch size: {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
 
-            _batchCount++;
+            batchCount++;
             ListenableFuture<Event[]> future = getEventClient()
                     .asyncGetBatch(url, Date.from(fromDate), Date.from(toDate), offset, BATCH_SIZE);
 
@@ -123,7 +123,7 @@ public abstract class AbstractPoller {
                 }
             }
 
-            _eventPolledCount += events.size();
+            eventPolledCount += events.size();
             if (log.isDebugEnabled()) {
                 logDebug("{} polled events", events.size());
             }
@@ -135,7 +135,7 @@ public abstract class AbstractPoller {
 
             // deduplicate using cache
             Event[] newEvents = getEventCache().addAll(events);
-            _eventDispatchedCount += newEvents.length;
+            eventDispatchedCount += newEvents.length;
             // newEvents are the events that are effectively been considered (not already polled)
             logTrace("After deduplication, {}/{} events will be dispatched", newEvents.length, events.size());
             // Dispatch the events
@@ -152,7 +152,19 @@ public abstract class AbstractPoller {
         }
 
         if (log.isDebugEnabled()) {
-            logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), _eventPolledCount, _batchCount, _eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
+            logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), eventPolledCount, batchCount, eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
+        }
+        return new PollResult(eventPolledCount, eventDispatchedCount, batchCount);
+    }
+
+    protected final class PollResult {
+        protected final long eventPolledCount;
+        protected final long eventDispatchedCount;
+        protected final long bactchCount;
+        public PollResult(long eventPolledCount, long eventDispatchedCount, long bactchCount) {
+            this.eventPolledCount = eventPolledCount;
+            this.eventDispatchedCount = eventDispatchedCount;
+            this.bactchCount = bactchCount;
         }
     }
 
