@@ -6,6 +6,7 @@ import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 import javax.annotation.Resource;
@@ -87,8 +88,9 @@ public class RecoveryPoller extends AbstractPoller {
         final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant().plus(1, ChronoUnit.MILLIS);
         logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
         try {
+            long _startTime = System.currentTimeMillis();
             PollResult pollResult = pollEpoch(fromDate, toDate);
-            String duration = DurationFormatUtils.formatDurationHMS(toDate.until(Instant.now(), ChronoUnit.MILLIS));
+            String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
             logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {}ms)", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
         } catch (PollingException e) {
             // TODO: manage disaster recovery
