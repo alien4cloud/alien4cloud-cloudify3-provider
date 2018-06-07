@@ -1,25 +1,5 @@
 package alien4cloud.paas.cloudify3.service;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.annotation.Resource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.stereotype.Service;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-
 import alien4cloud.paas.cloudify3.event.CloudifyManagerSnapshoted;
 import alien4cloud.paas.cloudify3.event.CloudifyManagerUnreachable;
 import alien4cloud.paas.cloudify3.event.DeploymentRegisteredEvent;
@@ -28,7 +8,24 @@ import alien4cloud.paas.cloudify3.model.GetBackendExecutionsResult;
 import alien4cloud.paas.cloudify3.restclient.ExecutionBackendClient;
 import alien4cloud.paas.cloudify3.service.model.CloudifySnapshot;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
@@ -40,7 +37,7 @@ public class SnapshotService {
     /**
      * Since the query to get execution is a GET, we need to query per batch to avoid HTTP 414 Request-URI Too Large errors.
      */
-    private static final int BATCH_SIZE = 250;
+    private static final int BATCH_SIZE = 100;
 
     @Resource
     private ExecutionBackendClient executionBackendClient;
@@ -105,8 +102,8 @@ public class SnapshotService {
             log.trace("No registered deployments to snapshot");
             return;
         }
-        if (log.isTraceEnabled()) {
-            log.trace("About to query for executions concerning {} deployments", deploymentIdsCount);
+        if (log.isDebugEnabled()) {
+            log.debug("About to query for executions concerning {} deployments", deploymentIdsCount);
         }
 
         // now let's iterate to query per batch
@@ -127,10 +124,10 @@ public class SnapshotService {
             }
 
             int offset = i * BATCH_SIZE;
-            String[] requestDeploymentIds = Arrays.copyOfRange(registeredDeploymentIdArray, offset, querySize);
+            String[] requestDeploymentIds = Arrays.copyOfRange(registeredDeploymentIdArray, offset, offset + querySize);
 
             if (log.isTraceEnabled()) {
-                log.trace("Querying for execution using deployment_id from {} size {} : {}", offset, querySize, requestDeploymentIds);
+                log.trace("Querying for execution using deployment_id from {} to {} : {}", offset, offset + querySize, requestDeploymentIds);
             }
 
             try {
@@ -150,17 +147,18 @@ public class SnapshotService {
                     log.debug("Exception was :", e);
                 }
                 bus.publishEvent(new CloudifyManagerUnreachable(this));
+                // very important to break here, if we fail on one of the queries we must stop the batch iteration
+                // if we don't break, the risk is to publish an incomplete snapshot
+                break;
             }
         }
         if (executionsPerDeployment.size() == 0) {
-            log.trace("No executions found on cfy");
-            // ???
+            log.debug("No executions found on cfy");
         } else {
-            if (log.isTraceEnabled()) {
-                log.trace("About to publish cfy snapshot containing {} excecutions / {} deployments", _executionCount, executionsPerDeployment.size());
+            if (log.isDebugEnabled()) {
+                log.debug("About to publish cfy snapshot containing {} excecutions / {} deployments", _executionCount, executionsPerDeployment.size());
             }
-            CloudifySnapshot cloudifySnapshot = new CloudifySnapshot(executionsPerDeployment);
-            bus.publishEvent(new CloudifyManagerSnapshoted(this, cloudifySnapshot));
+            bus.publishEvent(new CloudifyManagerSnapshoted(this, new CloudifySnapshot(executionsPerDeployment)));
         }
     }
 
