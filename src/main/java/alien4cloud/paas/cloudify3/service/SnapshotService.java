@@ -31,7 +31,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * In charge of snapshoting cfy status at startup, and feed a4c status in consequences.
  */
-@Service("cloudify-snapshot-service")
+//@Service("cloudify-snapshot-service")
 @Slf4j
 public class SnapshotService {
 

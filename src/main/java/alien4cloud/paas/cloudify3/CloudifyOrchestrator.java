@@ -63,8 +63,8 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     @Resource(name = "cloudify-deployment-builder-service")
     private CloudifyDeploymentBuilderService cloudifyDeploymentBuilderService;
 
-    @Resource(name = "cloudify-snapshot-service")
-    private SnapshotService snapshotService;
+//    @Resource(name = "cloudify-snapshot-service")
+//    private SnapshotService snapshotService;
 
     @Resource
     private ApplicationContext applicationContext;
@@ -188,7 +188,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         log.info("Initializing orchestrator");
-        snapshotService.init();
+//        snapshotService.init();
         if (activeDeployments == null) {
             return;
         } else {

@@ -73,8 +73,9 @@ public class DeploymentService extends RuntimeService {
         try {
             blueprintPath = blueprintService.generateBlueprint(alienDeployment);
         } catch (IOException e) {
-            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
-                    + alienDeployment.getDeploymentId(), e);
+            log.warn("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
+                    + alienDeployment.getDeploymentId() + " ({})", e.getMessage());
+            log.debug("Unable to generate the blueprint", e);
 
             statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
             return Futures.immediateFailedFuture(e);
@@ -93,8 +94,11 @@ public class DeploymentService extends RuntimeService {
         Futures.addCallback(creatingDeployment, new FutureCallback<Deployment>() {
             @Override
             public void onSuccess(Deployment result) {
-                log.info("Successfully created the deployment {}, begin to poll for status", alienDeployment.getDeploymentPaaSId());
-                statusService.registerDeployment(alienDeployment.getDeploymentPaaSId());
+                if (log.isDebugEnabled()) {
+                    log.debug("Successfully created the deployment {}, begin to poll for status", alienDeployment.getDeploymentPaaSId());
+                }
+                statusService.scheduleRefreshStatus(alienDeployment.getDeploymentPaaSId());
+//                statusService.registerDeployment(alienDeployment.getDeploymentPaaSId());
             }
 
             @Override
@@ -120,9 +124,10 @@ public class DeploymentService extends RuntimeService {
         try {
             blueprintPath = blueprintService.generateBlueprint(alienDeployment);
         } catch (IOException e) {
-            log.error("Unable to generate the blueprint for " + alienDeployment.getDeploymentPaaSId() + " with alien deployment id "
-                    + alienDeployment.getDeploymentId(), e);
-
+            log.warn("Unable to generate the blueprint for {} with alien deployment id {} ({})", alienDeployment.getDeploymentPaaSId(), alienDeployment.getDeploymentId(), e.getMessage());
+            if (log.isDebugEnabled()) {
+                log.debug("Unable to generate the blueprint", e);
+            }
             statusService.registerDeploymentStatus(alienDeployment.getDeploymentPaaSId(), DeploymentStatus.FAILURE);
             return Futures.immediateFailedFuture(e);
         }
@@ -180,12 +185,12 @@ public class DeploymentService extends RuntimeService {
 
         // check that the application is not already undeployed
         if (DeploymentStatus.UNDEPLOYED.equals(currentStatus) || DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS.equals(currentStatus)) {
-            log.info("Deployment " + deploymentContext.getDeploymentPaaSId() + " has already been undeployed");
+            log.debug("Deployment " + deploymentContext.getDeploymentPaaSId() + " has already been undeployed");
             return Futures.immediateFuture(null);
         }
 
         // start undeployment process and update alien status.
-        log.info("Undeploying recipe {} with alien's deployment id {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
+        log.debug("Undeploying recipe {} with alien's deployment id {}", deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
         statusService.registerDeploymentStatus(deploymentContext.getDeploymentPaaSId(), DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS);
 
         // Remove blueprint from the file system (alien) - we keep it for debuging perspective as long as deployment is up.
@@ -245,12 +250,15 @@ public class DeploymentService extends RuntimeService {
         Futures.addCallback(future, new FutureCallback() {
             @Override
             public void onSuccess(Object result) {
-                log.info(operationName + " of deployment {} with alien's deployment id {} has been executed asynchronously", deploymentPaaSId, deploymentId);
+                log.debug(operationName + " of deployment {} with alien's deployment id {} has been executed asynchronously", deploymentPaaSId, deploymentId);
             }
 
             @Override
             public void onFailure(Throwable t) {
-                log.error(operationName + " of deployment " + deploymentPaaSId + " with alien's deployment id " + deploymentId + " has failed", t);
+                log.warn(operationName + " of deployment " + deploymentPaaSId + " with alien's deployment id " + deploymentId + " has failed ({})", t.getMessage());
+                if (log.isDebugEnabled()) {
+                    log.warn(operationName + " of deployment " + deploymentPaaSId + " with alien's deployment id " + deploymentId + " has failed", t);
+                }
                 if (status != null) {
                     // User wants to send back an intermediary status before the real one then sends it
                     statusService.registerDeploymentStatus(deploymentPaaSId, status);

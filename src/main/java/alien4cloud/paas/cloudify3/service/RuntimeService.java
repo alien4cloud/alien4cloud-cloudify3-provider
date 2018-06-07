@@ -43,11 +43,11 @@ public abstract class RuntimeService {
     private ListenableFuture<Execution> internalWaitForExecutionFinish(final ListenableFuture<Execution> futureExecution) {
         AsyncFunction<Execution, Execution> waitFunc = execution -> {
             if (ExecutionStatus.isTerminatedSuccessfully(execution.getStatus()) || ExecutionStatus.isCancelled(execution.getStatus())) {
-                log.info("Execution {} for workflow {} has finished with status {}", execution.getId(), execution.getWorkflowId(), execution.getStatus());
+                log.debug("Execution {} for workflow {} has finished with status {}", execution.getId(), execution.getWorkflowId(), execution.getStatus());
                 return futureExecution;
             } else if (ExecutionStatus.isTerminatedWithFailure(execution.getStatus())) {
                 String errMessage = String.format("Execution %s for workflow %s fails with error:\n %s", execution.getId(), execution.getWorkflowId(), execution.getError());
-                log.info(errMessage);
+                log.debug(errMessage);
                 Map<String, String> errMap = ImmutableMap.of("executionId", execution.getId(), "workflowId", execution.getWorkflowId(), "error", execution.getError());
                 return Futures.immediateFailedFuture(new DeploymentRuntimeException(JsonUtil.toString(errMap)));
             } else {
@@ -150,10 +150,10 @@ public abstract class RuntimeService {
             for (Execution execution : executions) {
                 if (!ExecutionStatus.isTerminated(execution.getStatus())) {
                     if (!execution.getIsSystemWorkflow()) {
-                        log.info("Cancel running user workflow execution " + execution.getWorkflowId());
+                        log.debug("Cancel running user workflow execution " + execution.getWorkflowId());
                         abortExecutions.add(waitForExecutionFinish(executionClient.asyncCancel(execution.getId(), true)));
                     } else {
-                        log.info("Wait for system execution finished " + execution.getWorkflowId());
+                        log.debug("Wait for system execution finished " + execution.getWorkflowId());
                         abortExecutions.add(waitForExecutionFinish(Futures.immediateFuture(execution)));
                     }
                 }
