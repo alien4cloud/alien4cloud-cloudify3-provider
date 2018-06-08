@@ -66,7 +66,7 @@ public class RecoveryPoller extends AbstractPoller {
         // poll events until :
         // now
         // + LivePoller.POLL_PERIOD (the live poller will take in charge the live event stream after sleeping the POLL_PERIOD).
-        Instant toDate = Instant.now().plus(LivePoller.POLL_PERIOD);
+        Instant toDate = Instant.now().plus(LivePoller.POLL_INTERVAL);
 
         PaaSDeploymentLog lastEvent = null;
         try {
@@ -91,7 +91,7 @@ public class RecoveryPoller extends AbstractPoller {
             long _startTime = System.currentTimeMillis();
             PollResult pollResult = pollEpoch(fromDate, toDate);
             String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
-            logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {}ms)", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
+            logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
         } catch (PollingException e) {
             // TODO: manage disaster recovery
             logError("Giving up polling after several retries", e);

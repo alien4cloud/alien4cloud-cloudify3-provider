@@ -3,7 +3,7 @@ package alien4cloud.paas.cloudify3.util;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Created by xdegenne on 05/06/2018.
+ * Define name of system properties than can be used to override default settings.
  */
 @Slf4j
 public class SyspropConfig {

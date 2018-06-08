@@ -130,6 +130,7 @@ public abstract class AbstractPoller {
 
             // No events have been received for this epoch batch, the epoch polling is finished
             if (events.isEmpty()) {
+                logTrace("The last batch is empty, stop looping");
                 break;
             }
 

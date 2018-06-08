@@ -18,9 +18,11 @@ import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The live poller will start a single long running thread that will:
+ * LivePoller is responsible for getting the realtime events stream from Cfy.
+ * <p/>
+ * It will start a single long running thread that will:
  * <ul>
- *     <li>Get the event stream at at most each POLL_PERIOD seconds.</li>
+ *     <li>Get the event stream at at most each POLL_PERIOD seconds querying POLL_INTERVAL with a sliding window.</li>
  *     <li>Trigger schedule of it's delayed pollers to do the same in the future.</li>
  * </ul>
  */
@@ -40,13 +42,13 @@ public class LivePoller extends AbstractPoller {
     /**
      * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
      */
-    protected static final Duration POLL_PERIOD = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_PERIOD_IN_SECONDS, 10));
+    private static final Duration POLL_PERIOD = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_PERIOD_IN_SECONDS, 10));
 
     /**
      * The interval that will be requested, should be > POLL_PERIOD && < POLL_PERIOD * 2 to avoid event misses.
      * Shouldn't be < POLL_PERIOD (for sure we'll miss events).
      */
-    private static final Duration POLL_INTERVAL = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_INTERVAL_IN_SECONDS, 15));
+    protected static final Duration POLL_INTERVAL = Duration.ofSeconds(SyspropConfig.getInt(SyspropConfig.LIVEPOLLER_POLL_INTERVAL_IN_SECONDS, 15));
 
     private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
