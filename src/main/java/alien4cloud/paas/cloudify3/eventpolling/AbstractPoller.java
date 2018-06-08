@@ -113,7 +113,7 @@ public abstract class AbstractPoller {
 //                }
                 try {
                     if (log.isDebugEnabled()) {
-                        logDebug("An error occured while polling period ({}), retrying in {}s", e.getMessage(), RETRY_DELAY_IN_SECOND.getSeconds());
+                        logWarn("An error occured while polling period ({}) after {} retries, retrying in {}s", e.getMessage(), retryCount, RETRY_DELAY_IN_SECOND.getSeconds());
                     }
                     Thread.sleep(RETRY_DELAY_IN_SECOND.toMillis());
                     retryCount++;
