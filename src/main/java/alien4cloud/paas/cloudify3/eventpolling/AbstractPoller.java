@@ -35,7 +35,7 @@ public abstract class AbstractPoller {
     protected static final int BATCH_SIZE = 100;
 
 
-    protected static final int MAX_RETRY_COUNT = 5;
+//    protected static final int MAX_RETRY_COUNT = 5;
     protected static final Duration RETRY_DELAY_IN_SECOND = Duration.ofSeconds(10);
 
     /**
@@ -106,17 +106,18 @@ public abstract class AbstractPoller {
                 retryCount = 0;
             } catch (Exception e) {
                 // an exception occurred while polling epoch
-                if (retryCount >= MAX_RETRY_COUNT) {
-                    logWarn("An error occured while polling period ({}), have retried {} times, giving up", e.getMessage(), retryCount);
-                    String msg = String.format("[%s @%s] An error occurred while polling period %s -> %s, have already retried %d times", getPollerNature(), getUrl(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), retryCount);
-                    throw new PollingException(msg, e);
-                }
+//                if (retryCount >= MAX_RETRY_COUNT) {
+//                    logWarn("An error occured while polling period ({}), have retried {} times, giving up", e.getMessage(), retryCount);
+//                    String msg = String.format("[%s @%s] An error occurred while polling period %s -> %s, have already retried %d times", getPollerNature(), getUrl(), DateUtil.logDate(fromDate), DateUtil.logDate(toDate), retryCount);
+//                    throw new PollingException(msg, e);
+//                }
                 try {
                     if (log.isDebugEnabled()) {
                         logDebug("An error occured while polling period ({}), retrying in {}s", e.getMessage(), RETRY_DELAY_IN_SECOND.getSeconds());
                     }
                     Thread.sleep(RETRY_DELAY_IN_SECOND.toMillis());
                     retryCount++;
+                    // continue the loop, so continue to try request the same period until Cfy is up
                     continue;
                 } catch (InterruptedException e1) {
                     // Nothing to do here
