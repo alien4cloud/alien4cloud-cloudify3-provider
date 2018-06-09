@@ -44,7 +44,7 @@ import java.util.Map;
  */
 @Slf4j
 @RunWith(JUnit4.class)
-public class PassDeploymentLogTest {
+public class PassDeploymentLogComparator {
 
     private static final String A4C_ES_URL = "http://34.245.182.103:80";
 
@@ -54,7 +54,6 @@ public class PassDeploymentLogTest {
 
     private JestClient client;
 
-    @Before
     public void init() {
         HttpClientConfig httpClientConfig = new HttpClientConfig.Builder(A4C_ES_URL).build();
         JestClientFactory factory = new JestClientFactory();
@@ -76,8 +75,8 @@ public class PassDeploymentLogTest {
     @Test
     public void compareLogs() {
         init();
-        String leftDeploymentId = "586b7ed5-8a62-4627-8e2f-187f5a04fb39";
-        String rightDeploymentId = "1d21f524-9045-42a2-92ad-be115d3073ca";
+        String leftDeploymentId = "28a97b87-e9d0-44e6-a4f6-61acc094b3cb";
+        String rightDeploymentId = "913e7450-c6dd-4857-bb3f-060ee249503c";
 
         DeploymentLogs leftLogs = getLogPatterns(leftDeploymentId);
         DeploymentLogs rightLogs = getLogPatterns(rightDeploymentId);
@@ -86,7 +85,9 @@ public class PassDeploymentLogTest {
     }
 
     public boolean compareTwoLogFileByMap(DeploymentLogs left, DeploymentLogs right) {
-
+        log.info("=========================");
+        log.info("======  Compare Logs ====");
+        log.info("=========================");
         boolean result = true;
         for (Map.Entry<String, List<OrchestratorLog>> leftEntry : left.logsByPattern.entrySet()) {
             String pattern = leftEntry.getKey();
@@ -98,18 +99,32 @@ public class PassDeploymentLogTest {
                 if (leftList.size() != rightList.size()) {
                     result = false;
                     // the 2 lists have different size
-                    // TODO: log
                     log.info("<{}> found in both but different sizes: {} != {}", abreviation, leftList.size(), rightList.size());
-                    log.info("{} has:", left.deployment.archiveName);
+
                     List<OrchestratorLog> onlyInLeft = ListUtils.removeAll(leftList, rightList);
                     List<OrchestratorLog> onlyInRight = ListUtils.removeAll(rightList, leftList);
-                    onlyInLeft.stream().forEach(orchestratorLog -> {
-                        logLog(orchestratorLog);
-                    });
-                    log.info("{} has:", right.deployment.archiveName);
-                    onlyInRight.stream().forEach(orchestratorLog -> {
-                        logLog(orchestratorLog);
-                    });
+                    if (onlyInLeft.size() > 0) {
+                        log.info("{} has only:", left.deployment.archiveName);
+                        onlyInLeft.stream().forEach(orchestratorLog -> {
+                            logLog(orchestratorLog);
+                        });
+                    } else {
+                        log.info("{} has:", left.deployment.archiveName);
+                        leftList.stream().forEach(orchestratorLog -> {
+                            logLog(orchestratorLog);
+                        });
+                    }
+                    if (onlyInRight.size() > 0) {
+                        log.info("{} has only:", right.deployment.archiveName);
+                        onlyInRight.stream().forEach(orchestratorLog -> {
+                            logLog(orchestratorLog);
+                        });
+                    } else {
+                        log.info("{} has:", right.deployment.archiveName);
+                        rightList.stream().forEach(orchestratorLog -> {
+                            logLog(orchestratorLog);
+                        });
+                    }
                 } else {
 //                    log.info("<{}> found in both with same sizes: {}", abreviation, leftList.size());
                 }
@@ -135,6 +150,9 @@ public class PassDeploymentLogTest {
                 });
             }
         }
+        log.info("=========================");
+        log.info("======  {} ====", result ? "Match ;)" : "Do NOT Match :/");
+        log.info("=========================");
         return result;
     }
 
