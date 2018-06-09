@@ -1,17 +1,18 @@
-package alien4cloud.paas.cloudify3;
+package alien4cloud.paas.cloudify3.loganalyser;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import alien4cloud.dao.IGenericSearchDAO;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 
 import gherkin.deps.com.google.gson.Gson;
@@ -19,6 +20,10 @@ import gherkin.deps.com.google.gson.JsonArray;
 import gherkin.deps.com.google.gson.JsonElement;
 import gherkin.deps.com.google.gson.JsonObject;
 
+import javax.annotation.Resource;
+import javax.xml.bind.DatatypeConverter;
+
+@Slf4j
 public class LogAnalyser {
 
 	@Test
@@ -60,6 +65,8 @@ public class LogAnalyser {
 
 	}
 
+
+
 	private void rIterate(List<String> list1, List<String> list2, int i, int j) {
 		while (i < list1.size() && j < list2.size()) {
 			String content1 = list1.get(i);
@@ -87,10 +94,39 @@ public class LogAnalyser {
 		for (int i = 0; i < hits.size(); i++) {
 			JsonObject source = hits.get(i).getAsJsonObject().getAsJsonObject("_source");
 			String content = source.get("content").getAsString();
-			content = anonymize(content);
+			content = LogUtils.anonymize(content);
 			list.add(content);
 		}
 		return list;
+	}
+
+	private Map<String, List<LogEntry>> createLogEntryMap(Gson gson, String log) throws FileNotFoundException {
+		Map<String, List<LogEntry>> logsMap = Maps.newHashMap();
+
+		JsonObject jo = getJsonObject(gson, log);
+		JsonArray hits = jo.get("hits").getAsJsonObject().get("hits").getAsJsonArray();
+
+		List<String> list = new LinkedList<>();
+
+		for (int i = 0; i < hits.size(); i++) {
+			JsonObject source = hits.get(i).getAsJsonObject().getAsJsonObject("_source");
+			LogEntry le = createLogEntry(source);
+			List<LogEntry> les = logsMap.get(le.id);
+			if (les == null) {
+				les = Lists.newArrayList();
+				logsMap.put(le.id, les);
+			}
+			les.add(le);
+		}
+
+		return logsMap;
+	}
+
+	private LogEntry createLogEntry(JsonObject source) {
+		String content = source.get("content").getAsString();
+		String id = LogUtils.anonymize(content);
+		Calendar timestamp = DatatypeConverter.parseDateTime(source.get("timestamp").getAsString());
+		return new LogEntry(id, content, timestamp);
 	}
 
 	private JsonObject getJsonObject(Gson gson, String log) throws FileNotFoundException {
@@ -98,38 +134,15 @@ public class LogAnalyser {
 		return json.getAsJsonObject();
 	}
 
-	public static String anonymize(String sourceString) {
-		String result = replaceTextOfMatchGroup(sourceString, ".*'INSTANCE': '(\\w+)'.*", world -> "my_instance");
-		result = replaceTextOfMatchGroup(result, ".*/tmp/(\\w+)/.*", world -> "my_tmp");
-		result = replaceTextOfMatchGroup(result, ".*'INSTANCES': '(\\w+)'.*", world -> "instances");
-		result = replaceTextOfMatchGroup(result, ".*instance (\\w+).*", world -> "my_instance");
-		result = replaceTextOfMatchGroup(result, ".*'SOURCE_INSTANCES': '(.+)'.*", world -> "my_source_instances");
-		result = replaceTextOfMatchGroup(result, ".*'SOURCE_INSTANCE': '(\\w+)'.*", world -> "my_source_instance");
-		result = replaceTextOfMatchGroup(result, ".*'TARGET_INSTANCES': '(.+)'.*", world -> "my_target_instances");
-		result = replaceTextOfMatchGroup(result, ".*'TARGET_INSTANCE': '(\\w+)'.*", world -> "my_target_instance");
-		return result;
-	}
+	private class LogEntry {
+		private final String id;
+		private final String content;
+		private final Calendar timestamp;
 
-	public static String replaceTextOfMatchGroup(String sourceString, String regex,
-			Function<String, String> replaceStrategy) {
-		Pattern pattern = Pattern.compile(regex);
-		int groupToReplace = 1;
-		Stack<Integer> startPositions = new Stack<>();
-		Stack<Integer> endPositions = new Stack<>();
-		Matcher matcher = pattern.matcher(sourceString);
-
-		while (matcher.find()) {
-			startPositions.push(matcher.start(groupToReplace));
-			endPositions.push(matcher.end(groupToReplace));
+		public LogEntry(String id, String content, Calendar timestamp) {
+			this.id = id;
+			this.content = content;
+			this.timestamp = timestamp;
 		}
-		StringBuilder sb = new StringBuilder(sourceString);
-		while (!startPositions.isEmpty()) {
-			int start = startPositions.pop();
-			int end = endPositions.pop();
-			if (start >= 0 && end >= 0) {
-				sb.replace(start, end, replaceStrategy.apply(sourceString.substring(start, end)));
-			}
-		}
-		return sb.toString();
 	}
 }
