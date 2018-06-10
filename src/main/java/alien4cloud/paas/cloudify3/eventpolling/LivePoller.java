@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.PreDestroy;
 
+import alien4cloud.paas.cloudify3.event.LiverPollerStarted;
+import lombok.Setter;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import com.google.common.collect.Lists;
@@ -17,14 +19,16 @@ import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * LivePoller is responsible for getting the realtime events stream from Cfy.
  * <p/>
  * It will start a single long running thread that will:
  * <ul>
- *     <li>Get the event stream at at most each POLL_PERIOD seconds querying POLL_INTERVAL with a sliding window.</li>
- *     <li>Trigger schedule of it's delayed pollers to do the same in the future.</li>
+ * <li>Get the event stream at at most each POLL_PERIOD seconds querying POLL_INTERVAL with a sliding window.</li>
+ * <li>Trigger schedule of it's delayed pollers to do the same in the future.</li>
  * </ul>
  */
 @Slf4j
@@ -33,12 +37,12 @@ public class LivePoller extends AbstractPoller {
     /**
      * The {fromDate} of the event request.
      */
-	private Instant fromDate;
+    private Instant fromDate;
 
     /**
      * The {toDate} of the event request.
      */
-	private Instant toDate;
+    private Instant toDate;
 
     /**
      * Ideally, if event frequency is not too high, an event request will be executed each POLL_PERIOD seconds.
@@ -58,6 +62,9 @@ public class LivePoller extends AbstractPoller {
      */
     private ExecutorService executorService;
 
+    @Autowired
+    private ApplicationEventPublisher bus;
+
     public LivePoller() {
         // initialize the 1 size thread pool, never change this if your are not sure about what your are doing !
         BasicThreadFactory factory = new BasicThreadFactory.Builder()
@@ -73,9 +80,9 @@ public class LivePoller extends AbstractPoller {
 
     private List<DelayedPoller> delayedPollers = Lists.newArrayList();
 
-	public void addDelayedPoller(DelayedPoller delayedPoller) {
-		delayedPollers.add(delayedPoller);
-	}
+    public void addDelayedPoller(DelayedPoller delayedPoller) {
+        delayedPollers.add(delayedPoller);
+    }
 
     @Override
     protected Logger getLogger() {
@@ -89,25 +96,25 @@ public class LivePoller extends AbstractPoller {
     }
 
     /**
-	 * Trigger scheduling for delayed pollers, non blocking.
-	 *
-	 * @param from
-	 * @param to
-	 */
+     * Trigger scheduling for delayed pollers, non blocking.
+     *
+     * @param from
+     * @param to
+     */
     private void triggerDelayedPollers(Instant from, Instant to) {
         delayedPollers.forEach(delayedPoller -> delayedPoller.schedule(from, to));
-	}
+    }
 
     /**
      * This non blocking operation will start a long running thread that will get live event stream.
      */
     @Override
     public void start() {
-
         executorService.submit(() -> {
             try {
-                // wait POLL_INTERVAL before starting live polling (avoid event duplication in case of quick restart)
-                Thread.sleep(POLL_INTERVAL.toMillis());
+                // wait POLL_INTERVAL / 2 before starting live polling (avoid event duplication in case of quick restart)
+                logInfo("Sleeping before starting working ...", POLL_INTERVAL.toMillis() / 2);
+                Thread.sleep(POLL_INTERVAL.toMillis() / 2);
                 this.toDate = Instant.now();
                 this.fromDate = toDate.minus(POLL_INTERVAL);
                 livePoll();
@@ -118,10 +125,12 @@ public class LivePoller extends AbstractPoller {
     }
 
     private void livePoll() {
+        logInfo("Starting live polling now !");
+        bus.publishEvent(new LiverPollerStarted(this));
         // Start the long live thread
         while (true) {
             if (log.isDebugEnabled()) {
-                logDebug("Beginning of live event polling, starting from {}", DateUtil.logDate(fromDate));
+                logDebug("Beginning of live event polling, starting from {} to {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
             }
             try {
                 pollEpoch(fromDate, toDate);
@@ -131,7 +140,6 @@ public class LivePoller extends AbstractPoller {
                 logError("Giving up polling after several retries", e);
                 return;
             }
-
             // Move to next epoch
             fromDate = fromDate.plus(POLL_PERIOD);
             toDate = toDate.plus(POLL_PERIOD);

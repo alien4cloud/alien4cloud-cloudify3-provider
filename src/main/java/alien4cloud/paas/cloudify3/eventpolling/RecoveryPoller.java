@@ -3,6 +3,7 @@ package alien4cloud.paas.cloudify3.eventpolling;
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.dao.model.FacetedSearchResult;
 import alien4cloud.dao.model.GetMultipleDataResult;
+import alien4cloud.paas.cloudify3.event.LiverPollerStarted;
 import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
@@ -18,6 +19,8 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.RangeFilterBuilder;
 import org.slf4j.Logger;
+import org.springframework.context.event.*;
+import org.springframework.context.event.EventListener;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
@@ -27,6 +30,7 @@ import java.time.Period;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This poller is responsible of polling events that have been missed when the system was down.
@@ -63,7 +67,15 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * This cache is used to deduplicate revcovered events.
      */
-    private final Set<String> recoveryCache= Sets.newHashSet();
+    private final Set<String> recoveryCache = Sets.newHashSet();
+
+    private AtomicBoolean livepollerStarted = new AtomicBoolean(false);
+
+    @EventListener
+    public void signalLivePollerStarted(LiverPollerStarted liverPollerStarted) {
+        this.livepollerStarted.set(true);
+        logInfo("Live poller started polling. I will let him do its job now !");
+    }
 
     @Override
     protected Logger getLogger() {
@@ -127,33 +139,38 @@ public class RecoveryPoller extends AbstractPoller {
             prepareRecoveryCache(loadLocalLogs(Date.from(fromDate), Date.from(toDate)));
         }
 
-        logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
-        try {
-            long _startTime = System.currentTimeMillis();
-            PollResult pollResult = pollEpoch(fromDate, toDate, events -> {
-                List<Event> filteredEvents = Lists.newLinkedList();
-                events.stream().forEach(event -> {
-                    // filter the event using the recovery cache to avoid event duplication
-                    String key = buildRecoveryDeduplicatingKey(event);
-                    if (recoveryCache.contains(key)) {
-                        if (log.isTraceEnabled()) {
-                            logTrace("The event with timestamp {} and deploymentId {} is ignored since it exists in recovery cache with key : {}", event.getTimestamp(), event.getContext().getDeploymentId(), key);
+
+        int occurenceCount = 0;
+        while (!livepollerStarted.get()) {
+            occurenceCount++;
+            logInfo("Will poll historical epoch {} -> {}, occurence {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), occurenceCount);
+            try {
+                long _startTime = System.currentTimeMillis();
+                PollResult pollResult = pollEpoch(fromDate, toDate, events -> {
+                    List<Event> filteredEvents = Lists.newLinkedList();
+                    events.stream().forEach(event -> {
+                        // filter the event using the recovery cache to avoid event duplication
+                        String key = buildRecoveryDeduplicatingKey(event);
+                        if (recoveryCache.contains(key)) {
+                            if (log.isTraceEnabled()) {
+                                logTrace("The event with timestamp {} and deploymentId {} is ignored since it exists in recovery cache with key : {}", event.getTimestamp(), event.getContext().getDeploymentId(), key);
+                            }
+                        } else {
+                            filteredEvents.add(event);
                         }
-                    } else {
-                        filteredEvents.add(event);
+                    });
+                    if (log.isDebugEnabled()) {
+                        logDebug("After filtering using recovery cache, event size is now {}/{}", filteredEvents.size(), events.size());
                     }
+                    return filteredEvents;
                 });
-                if (log.isDebugEnabled()) {
-                    logDebug("After filtering using recovery cache, event size is now {}/{}", filteredEvents.size(), events.size());
-                }
-                return filteredEvents;
-            });
-            String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
-            logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
-        } catch (PollingException e) {
-            // TODO: manage disaster recovery
-            logError("Giving up polling after several retries", e);
-            return;
+                String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
+                logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
+            } catch (PollingException e) {
+                // TODO: manage disaster recovery
+                logError("Giving up polling after several retries", e);
+                return;
+            }
         }
     }
 
@@ -190,22 +207,22 @@ public class RecoveryPoller extends AbstractPoller {
     }
 
     private String buildRecoveryDeduplicatingKey(PaaSDeploymentLog log) {
-        return buildRecoveryDeduplicatingKey(log.getTimestamp(), log.getDeploymentPaaSId(), log.getExecutionId(), log.getType());
+        return buildRecoveryDeduplicatingKey(log.getTimestamp(), log.getDeploymentPaaSId(), log.getContent());
     }
+
     private String buildRecoveryDeduplicatingKey(Event event) {
         Date timeStamp = DatatypeConverter.parseDateTime(event.getTimestamp()).getTime();
-        return buildRecoveryDeduplicatingKey(timeStamp, event.getContext().getDeploymentId(), event.getContext().getExecutionId(), event.getEventType());
+        return buildRecoveryDeduplicatingKey(timeStamp, event.getContext().getDeploymentId(), event.getMessage().getText());
     }
 
     /**
      * FIXME: since we don't store the cfy event id in local DB we can't deduplicate on it
      * FIXME: we use a combination of timestamp & deploymentId to duplicate
      */
-    private String buildRecoveryDeduplicatingKey(Date timestamp, String deploymentId, String executionId, String type) {
+    private String buildRecoveryDeduplicatingKey(Date timestamp, String deploymentId, String content) {
         StringBuilder sb = new StringBuilder(deploymentId);
-        sb.append("#").append(executionId);
         sb.append("#").append(timestamp.getTime());
-        sb.append("#").append(type);
+        sb.append("#").append(content.hashCode());
         return sb.toString();
     }
 
