@@ -1,18 +1,31 @@
 package alien4cloud.paas.cloudify3.eventpolling;
 
 import alien4cloud.dao.IGenericSearchDAO;
+import alien4cloud.dao.model.FacetedSearchResult;
+import alien4cloud.dao.model.GetMultipleDataResult;
+import alien4cloud.paas.cloudify3.model.Event;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.rest.model.BasicSearchRequest;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.RangeFilterBuilder;
+import org.slf4j.Logger;
 
 import javax.annotation.Resource;
+import javax.xml.bind.DatatypeConverter;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
@@ -26,6 +39,11 @@ public class RecoveryPoller extends AbstractPoller {
      * This is the max recovery period we will use if no event is found in the system.
      */
     private static final Period MAX_HISTORY_PERIOD = Period.ofDays(SyspropConfig.getInt(SyspropConfig.RECOVERYPOLLER_MAX_HISTORY_PERIOD_IN_DAYS, 10));
+
+    /**
+     * This is the max recovery period we will use if no event is found in the system.
+     */
+    private static final Duration RECOVERY_INTERVAL = Duration.ofSeconds(SyspropConfig.getLong(SyspropConfig.RECOVERYPOLLER_RECOVERY_INTERVAL_IN_SECONDS, 300));
 
     private static final boolean ACTIVATED = SyspropConfig.getBoolean(SyspropConfig.RECOVERYPOLLER_ACTIVATED, true);
 
@@ -41,6 +59,16 @@ public class RecoveryPoller extends AbstractPoller {
      * Used to submit the recovery poll task.
      */
     private ScheduledExecutorService scheduler;
+
+    /**
+     * This cache is used to deduplicate revcovered events.
+     */
+    private final Set<String> recoveryCache= Sets.newHashSet();
+
+    @Override
+    protected Logger getLogger() {
+        return log;
+    }
 
     /**
      * Poll historical events since the last known event date (stored in the system A4C) to now.
@@ -76,6 +104,11 @@ public class RecoveryPoller extends AbstractPoller {
                 logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil
                         .logDate(lastEvent.getTimestamp()));
             }
+            // TODO: we should get the events in the interval lastEvent.getTimestamp().toInstant().minus(RECOVERY_INTERVAL)
+            // TODO: and feed the cache with them to avoid event duplication in recovery stage
+            // TODO: since we don't store the ID in ES, we should probably deduplicate events on other fields
+
+
 //            if (lastEvent != null) {
             // we don't want this event to be re-polled
             // FIXME: useless since the id stored in ES is autogerated and will not match the eventId from cfy
@@ -84,12 +117,37 @@ public class RecoveryPoller extends AbstractPoller {
         } catch (Exception e) {
             log.warn("Not able to find last known event timestamp ({})", e.getMessage());
         }
-        // add 1 ms to the last event received to avoid repolling it
-        final Instant fromDate = (lastEvent == null) ? Instant.now().minus(MAX_HISTORY_PERIOD) : lastEvent.getTimestamp().toInstant().plus(1, ChronoUnit.MILLIS);
+
+        Instant fromDate = null;
+        if (lastEvent == null) {
+            fromDate = Instant.now().minus(MAX_HISTORY_PERIOD);
+        } else {
+            fromDate = lastEvent.getTimestamp().toInstant().minus(RECOVERY_INTERVAL);
+            // we have a lastEvent, we build a recovery cache by requesting ES
+            prepareRecoveryCache(loadLocalLogs(Date.from(fromDate), Date.from(toDate)));
+        }
+
         logInfo("Will poll historical epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
         try {
             long _startTime = System.currentTimeMillis();
-            PollResult pollResult = pollEpoch(fromDate, toDate);
+            PollResult pollResult = pollEpoch(fromDate, toDate, events -> {
+                List<Event> filteredEvents = Lists.newLinkedList();
+                events.stream().forEach(event -> {
+                    // filter the event using the recovery cache to avoid event duplication
+                    String key = buildRecoveryDeduplicatingKey(event);
+                    if (recoveryCache.contains(key)) {
+                        if (log.isTraceEnabled()) {
+                            logTrace("The event with timestamp {} and deploymentId {} is ignored since it exists in recovery cache with key : {}", event.getTimestamp(), event.getContext().getDeploymentId(), key);
+                        }
+                    } else {
+                        filteredEvents.add(event);
+                    }
+                });
+                if (log.isDebugEnabled()) {
+                    logDebug("After filtering using recovery cache, event size is now {}/{}", filteredEvents.size(), events.size());
+                }
+                return filteredEvents;
+            });
             String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
             logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
         } catch (PollingException e) {
@@ -97,6 +155,58 @@ public class RecoveryPoller extends AbstractPoller {
             logError("Giving up polling after several retries", e);
             return;
         }
+    }
+
+    private PaaSDeploymentLog[] loadLocalLogs(Date from, Date to) {
+        if (log.isDebugEnabled()) {
+            logDebug("Query elasticseach for PaaSDeploymentLog between {} and {}", DateUtil.logDate(from), DateUtil.logDate(to));
+        }
+        RangeFilterBuilder dateRangeBuilder = FilterBuilders.rangeFilter("timestamp");
+        dateRangeBuilder = dateRangeBuilder.from(from).to(to);
+
+        Map<String, String[]> filters = Maps.newHashMap();
+        GetMultipleDataResult<PaaSDeploymentLog> result = alienMonitorDao.buildQuery(PaaSDeploymentLog.class).prepareSearch()
+                .setFilters(filters, dateRangeBuilder)
+                .search(0, Integer.MAX_VALUE);
+
+        if (log.isDebugEnabled()) {
+            logDebug("{} local logs fetch from database ({})", result.getTotalResults(), result.getData().length);
+        }
+        return result.getData();
+    }
+
+    /**
+     * Using the logs retrieved from local DB, prepare the recovery cache to de-duplicate events polled by recovery.
+     */
+    private void prepareRecoveryCache(PaaSDeploymentLog[] logs) {
+        Arrays.stream(logs).forEach(paaSDeploymentLog -> {
+            String key = buildRecoveryDeduplicatingKey(paaSDeploymentLog);
+            if (log.isTraceEnabled()) {
+                logTrace("The local paaSDeploymentLog with timestamp {} and deploymentPaaSId {} is added to the cache with key: {}", paaSDeploymentLog.getTimestamp().getTime(), paaSDeploymentLog.getDeploymentPaaSId(), key);
+            }
+            recoveryCache.add(key);
+        });
+        logDebug("Recovery cache initialized with {} entries", recoveryCache.size());
+    }
+
+    private String buildRecoveryDeduplicatingKey(PaaSDeploymentLog log) {
+        return buildRecoveryDeduplicatingKey(log.getTimestamp(), log.getDeploymentPaaSId(), log.getExecutionId(), log.getType());
+    }
+    private String buildRecoveryDeduplicatingKey(Event event) {
+        Date timeStamp = DatatypeConverter.parseDateTime(event.getTimestamp()).getTime();
+        return buildRecoveryDeduplicatingKey(timeStamp, event.getContext().getDeploymentId(), event.getContext().getExecutionId(), event.getEventType());
+    }
+
+    /**
+     * FIXME: since we don't store the cfy event id in local DB we can't deduplicate on it
+     * FIXME: we use a combination of timestamp & deploymentId to duplicate
+     */
+    private String buildRecoveryDeduplicatingKey(Date timestamp, String deploymentId, String executionId, String type) {
+        StringBuilder sb = new StringBuilder(deploymentId);
+        sb.append("#").append(executionId);
+        sb.append("#").append(timestamp.getTime());
+        sb.append("#").append(type);
+        return sb.toString();
     }
 
 }

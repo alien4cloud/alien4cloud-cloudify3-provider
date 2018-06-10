@@ -8,6 +8,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.time.Duration;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 /**
  * A poller is responsible of polling all events of an epoch (a date interval) in batch mode.
@@ -26,7 +28,6 @@ import java.util.concurrent.ExecutionException;
  */
 @Setter
 @Getter
-@Slf4j
 public abstract class AbstractPoller {
 
     /**
@@ -59,6 +60,12 @@ public abstract class AbstractPoller {
 
     protected String url;
 
+    protected PollResult pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
+        return this.pollEpoch(fromDate, toDate, null);
+    }
+
+    protected abstract Logger getLogger();
+
     /**
      * Poll the given epoch using the batch size, if necessary, iterate over offset to get the full event packet.
      * <p/>
@@ -72,7 +79,7 @@ public abstract class AbstractPoller {
      * @throws PollingException
      * @Returns the number of events dispatched
      */
-    protected PollResult pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
+    protected PollResult pollEpoch(Instant fromDate, Instant toDate, Function<List<Event>, List<Event>> eventFilter) throws PollingException {
 
         // this is the batch offset to poll
         int offset = 0;
@@ -85,9 +92,8 @@ public abstract class AbstractPoller {
         long eventDispatchedCount = 0;
 
         // just a debug information, never use it in logic !
-        Instant _startEpochPollingDate = null;
-        if (log.isDebugEnabled()) {
-            _startEpochPollingDate = Instant.now();
+        Instant _startEpochPollingDate = Instant.now();
+        if (getLogger().isDebugEnabled()) {
             logDebug("About to poll epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
         }
 
@@ -112,7 +118,7 @@ public abstract class AbstractPoller {
 //                    throw new PollingException(msg, e);
 //                }
                 try {
-                    if (log.isDebugEnabled()) {
+                    if (getLogger().isDebugEnabled()) {
                         logWarn("An error occured while polling period ({}) after {} retries, retrying in {}s", e.getMessage(), retryCount, RETRY_DELAY_IN_SECOND.getSeconds());
                     }
                     Thread.sleep(RETRY_DELAY_IN_SECOND.toMillis());
@@ -125,7 +131,7 @@ public abstract class AbstractPoller {
             }
 
             eventPolledCount += events.size();
-            if (log.isDebugEnabled()) {
+            if (getLogger().isDebugEnabled()) {
                 logDebug("{} polled events", events.size());
             }
 
@@ -136,7 +142,13 @@ public abstract class AbstractPoller {
             }
 
             // deduplicate using cache
-            Event[] newEvents = getEventCache().addAll(events);
+            Event[] newEvents = null;
+            if (eventFilter != null) {
+                // first filter then cache
+                newEvents = getEventCache().addAll(eventFilter.apply(events));
+            } else {
+                newEvents = getEventCache().addAll(events);
+            }
             eventDispatchedCount += newEvents.length;
             // newEvents are the events that are effectively been considered (not already polled)
             logTrace("After deduplication, {}/{} events will be dispatched", newEvents.length, events.size());
@@ -153,7 +165,7 @@ public abstract class AbstractPoller {
             }
         }
 
-        if (log.isDebugEnabled()) {
+        if (getLogger().isDebugEnabled()) {
             logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), eventPolledCount, batchCount, eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
         }
         return new PollResult(eventPolledCount, eventDispatchedCount, batchCount);
@@ -172,27 +184,27 @@ public abstract class AbstractPoller {
 
     // FIXME : better implem with one method !!!
     protected void logTrace(String msg, Object... vars) {
-        if (log.isTraceEnabled()) {
-            log.trace("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        if (getLogger().isTraceEnabled()) {
+            getLogger().trace("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
         }
     }
 
     protected void logDebug(String msg, Object... vars) {
-        if (log.isDebugEnabled()) {
-            log.debug("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        if (getLogger().isDebugEnabled()) {
+            getLogger().debug("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
         }
     }
 
     protected void logInfo(String msg, Object... vars) {
-        log.info("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        getLogger().info("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
     }
 
     protected void logWarn(String msg, Object... vars) {
-        log.warn("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        getLogger().warn("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
     }
 
     protected void logError(String msg, Object... vars) {
-        log.error("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
+        getLogger().error("[" + getPollerNature() + " @" + getUrl() +  "] " + msg, vars);
     }
     // FIXME : better implem with one method !!!
 }

@@ -55,6 +55,13 @@ public class SyspropConfig {
     public static final String RECOVERYPOLLER_MAX_HISTORY_PERIOD_IN_DAYS = "alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller.MAX_HISTORY_PERIOD_IN_DAYS";
 
     /**
+     * When known, the recovery starts from the timestamp of the last event stored in A4C minus RECOVERY_INTERVAL_IN_SECONDS.
+     * Should be at least >= LIVEPOLLER_POLL_INTERVAL_IN_SECONDS. If your system is under load and the DelayedPollers dispatch
+     * a lot of events, you should set this to maximum delay of them to avoid event miss at startup.
+     */
+    public static final String RECOVERYPOLLER_RECOVERY_INTERVAL_IN_SECONDS = "alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller.RECOVERY_INTERVAL_IN_SECONDS";
+
+    /**
      * You can deactivate the recovery polling at startup of the system by setting this to false or 0.
      */
     public static final String RECOVERYPOLLER_ACTIVATED = "alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller.ACTIVATED";

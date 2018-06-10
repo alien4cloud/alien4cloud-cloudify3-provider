@@ -16,6 +16,7 @@ import com.google.common.collect.Lists;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 /**
  * LivePoller is responsible for getting the realtime events stream from Cfy.
@@ -75,6 +76,11 @@ public class LivePoller extends AbstractPoller {
 	public void addDelayedPoller(DelayedPoller delayedPoller) {
 		delayedPollers.add(delayedPoller);
 	}
+
+    @Override
+    protected Logger getLogger() {
+        return log;
+    }
 
     @Override
     public void setUrl(String url) {

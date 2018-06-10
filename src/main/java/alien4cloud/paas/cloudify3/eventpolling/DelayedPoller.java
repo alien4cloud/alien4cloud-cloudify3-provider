@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import alien4cloud.paas.cloudify3.util.DateUtil;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 /**
  * An delayed poller is responsible off re-requesting events in the future.
@@ -42,6 +43,11 @@ public class DelayedPoller extends AbstractPoller {
     @Override
     public void start() {
         // Nothing to do here, polls will be started using schedule().
+    }
+
+    @Override
+    protected Logger getLogger() {
+        return log;
     }
 
     public void schedule(Instant fromDate, Instant toDate) {
