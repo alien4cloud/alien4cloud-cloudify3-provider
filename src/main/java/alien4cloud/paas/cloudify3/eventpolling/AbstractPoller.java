@@ -118,7 +118,7 @@ public abstract class AbstractPoller {
 //                    throw new PollingException(msg, e);
 //                }
                 try {
-                    if (getLogger().isDebugEnabled()) {
+                    if (getLogger().isWarnEnabled()) {
                         logWarn("An error occured while polling period ({}) after {} retries, retrying in {}s", e.getMessage(), retryCount, RETRY_DELAY_IN_SECOND.getSeconds());
                     }
                     Thread.sleep(RETRY_DELAY_IN_SECOND.toMillis());
