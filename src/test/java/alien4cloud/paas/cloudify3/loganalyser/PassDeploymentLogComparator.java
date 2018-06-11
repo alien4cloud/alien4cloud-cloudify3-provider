@@ -46,10 +46,11 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class PassDeploymentLogComparator {
 
-    private static final String A4C_ES_URL = "http://34.245.182.103:80";
+    private static final String A4C_ES_URL = "http://52.208.171.235:9200";
+//    private static final String A4C_ES_URL = "http://localhost:9200";
 
-    private static final String MATCH_ALL_QUERY = "{\"query\": { \"match_all\": {} },\"size\": 1000}";
-    private static final String MATCH_STRING_QUERY = "{\"query\": { \"match\": { \"%s\": \"%s\" } },\"size\": 1000}";
+    private static final String MATCH_ALL_QUERY = "{\"query\": { \"match_all\": {} },\"size\": 10000}";
+    private static final String MATCH_STRING_QUERY = "{\"query\": { \"match\": { \"%s\": \"%s\" } },\"size\": 10000}";
     private static final String MATCH_SINGLE_QUERY = "{\"query\": { \"match\": { \"%s\": \"%s\" } },\"size\": 1}";
 
     private JestClient client;
@@ -75,8 +76,8 @@ public class PassDeploymentLogComparator {
     @Test
     public void compareLogs() {
         init();
-        String leftDeploymentId = "28a97b87-e9d0-44e6-a4f6-61acc094b3cb";
-        String rightDeploymentId = "913e7450-c6dd-4857-bb3f-060ee249503c";
+        String leftDeploymentId = "e2ae6d61-eb49-4102-a1fc-b74b8e315b56";
+        String rightDeploymentId = "36e8335f-fe0a-42ad-bae3-6d9d34db9757";
 
         DeploymentLogs leftLogs = getLogPatterns(leftDeploymentId);
         DeploymentLogs rightLogs = getLogPatterns(rightDeploymentId);
@@ -84,7 +85,7 @@ public class PassDeploymentLogComparator {
         log.info("{} & {} {} match !", leftLogs.deployment.archiveName, rightLogs.deployment.archiveName, match ? "did" : "did NOT");
     }
 
-    public boolean compareTwoLogFileByMap(DeploymentLogs left, DeploymentLogs right) {
+    private boolean compareTwoLogFileByMap(DeploymentLogs left, DeploymentLogs right) {
         log.info("=========================");
         log.info("======  Compare Logs ====");
         log.info("=========================");
