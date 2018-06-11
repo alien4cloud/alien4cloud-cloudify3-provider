@@ -71,6 +71,9 @@ public class RecoveryPoller extends AbstractPoller {
 
     private AtomicBoolean livepollerStarted = new AtomicBoolean(false);
 
+    /**
+     * This poller will always request the same period, defined at startup.
+     */
     private Instant fromDate;
 
     private Instant toDate;
