@@ -71,6 +71,10 @@ public class RecoveryPoller extends AbstractPoller {
 
     private AtomicBoolean livepollerStarted = new AtomicBoolean(false);
 
+    private Instant fromDate;
+
+    private Instant toDate;
+
     @EventListener
     public void signalLivePollerStarted(LiverPollerStarted liverPollerStarted) {
         this.livepollerStarted.set(true);
@@ -106,7 +110,7 @@ public class RecoveryPoller extends AbstractPoller {
         // poll events until :
         // now
         // + LivePoller.POLL_PERIOD (the live poller will take in charge the live event stream after sleeping the POLL_PERIOD).
-        Instant toDate = Instant.now().plus(LivePoller.POLL_INTERVAL);
+        toDate = Instant.now().plus(LivePoller.POLL_INTERVAL);
 
         PaaSDeploymentLog lastEvent = null;
         try {
@@ -116,21 +120,11 @@ public class RecoveryPoller extends AbstractPoller {
                 logDebug("The last event found in the system date from {}", (lastEvent == null) ? "(no event found)" : DateUtil
                         .logDate(lastEvent.getTimestamp()));
             }
-            // TODO: we should get the events in the interval lastEvent.getTimestamp().toInstant().minus(RECOVERY_INTERVAL)
-            // TODO: and feed the cache with them to avoid event duplication in recovery stage
-            // TODO: since we don't store the ID in ES, we should probably deduplicate events on other fields
-
-
-//            if (lastEvent != null) {
-            // we don't want this event to be re-polled
-            // FIXME: useless since the id stored in ES is autogerated and will not match the eventId from cfy
-//                    getEventCache().blackList(lastEvent.getId());
-//            }
         } catch (Exception e) {
             log.warn("Not able to find last known event timestamp ({})", e.getMessage());
         }
 
-        Instant fromDate = null;
+        fromDate = null;
         if (lastEvent == null) {
             fromDate = Instant.now().minus(MAX_HISTORY_PERIOD);
         } else {
@@ -139,41 +133,57 @@ public class RecoveryPoller extends AbstractPoller {
             prepareRecoveryCache(loadLocalLogs(Date.from(fromDate), Date.from(toDate)));
         }
 
-
         int occurenceCount = 0;
+        // we loop polling the same period until the LivePoller starts polling.
+        // by this way, we are sure we don't miss events that occur during startup
         while (!livepollerStarted.get()) {
             occurenceCount++;
             logInfo("Will poll historical epoch {} -> {}, occurence {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), occurenceCount);
+            doRecover();
             try {
-                long _startTime = System.currentTimeMillis();
-                PollResult pollResult = pollEpoch(fromDate, toDate, events -> {
-                    List<Event> filteredEvents = Lists.newLinkedList();
-                    events.stream().forEach(event -> {
-                        // filter the event using the recovery cache to avoid event duplication
-                        String key = buildRecoveryDeduplicatingKey(event);
-                        if (recoveryCache.contains(key)) {
-                            if (log.isTraceEnabled()) {
-                                logTrace("The event with timestamp {} and deploymentId {} is ignored since it exists in recovery cache with key : {}", event.getTimestamp(), event.getContext().getDeploymentId(), key);
-                            }
-                        } else {
-                            filteredEvents.add(event);
-                        }
-                    });
-                    if (log.isDebugEnabled()) {
-                        logDebug("After filtering using recovery cache, event size is now {}/{}", filteredEvents.size(), events.size());
-                    }
-                    return filteredEvents;
-                });
-                String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
-                logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
-            } catch (PollingException e) {
-                // TODO: manage disaster recovery
-                logError("Giving up polling after several retries", e);
-                return;
+                // just to avoid high frequency looping
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                // nothing to do here
             }
         }
     }
 
+    private void doRecover() {
+        try {
+            long _startTime = System.currentTimeMillis();
+            PollResult pollResult = pollEpoch(fromDate, toDate, events -> {
+                List<Event> filteredEvents = Lists.newLinkedList();
+                events.stream().forEach(event -> {
+                    // filter the event using the recovery cache to avoid event duplication
+                    String key = buildRecoveryDeduplicatingKey(event);
+                    if (recoveryCache.contains(key)) {
+                        if (log.isTraceEnabled()) {
+                            logTrace("The event with timestamp {} and deploymentId {} is ignored since it exists in recovery cache with key : {}", event.getTimestamp(), event.getContext().getDeploymentId(), key);
+                        }
+                    } else {
+                        filteredEvents.add(event);
+                    }
+                });
+                if (log.isDebugEnabled()) {
+                    logDebug("After filtering using recovery cache, event size is now {}/{}", filteredEvents.size(), events.size());
+                }
+                return filteredEvents;
+            });
+            String duration = DurationFormatUtils.formatDurationHMS(System.currentTimeMillis() - _startTime);
+            logInfo("Recovery polling terminated: {} events polled in {} batches, {} dispatched (took {})", pollResult.eventPolledCount, pollResult.bactchCount, pollResult.eventDispatchedCount, duration);
+        } catch (PollingException e) {
+            logError("Giving up polling after several retries", e);
+            return;
+        }
+    }
+
+    /**
+     * Get the locally stored logs in order to de-duplicate recovered events.
+     * @param from
+     * @param to
+     * @return
+     */
     private PaaSDeploymentLog[] loadLocalLogs(Date from, Date to) {
         if (log.isDebugEnabled()) {
             logDebug("Query elasticseach for PaaSDeploymentLog between {} and {}", DateUtil.logDate(from), DateUtil.logDate(to));
