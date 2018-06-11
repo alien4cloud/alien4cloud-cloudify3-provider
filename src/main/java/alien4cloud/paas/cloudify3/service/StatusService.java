@@ -177,7 +177,7 @@ public class StatusService {
                     return Futures.immediateFuture(DeploymentStatus.UNDEPLOYED);
                 }
             }
-            log.warn("Unable to retrieve status for application " + deploymentPaaSId + ", its status will pass to " + DeploymentStatus.UNKNOWN, throwable);
+            log.warn("Unable to retrieve status for application {} its status will pass to {} ({})",  deploymentPaaSId, DeploymentStatus.UNKNOWN , throwable.getMessage());
             return Futures.immediateFuture(DeploymentStatus.UNKNOWN);
         });
     }
