@@ -7,7 +7,7 @@
     <version>1.4.3.3</version>
   </parent>
   <artifactId>alien4cloud-cloudify3-provider</artifactId>
-  <version>1.4.3.5-SNAPSHOT</version>
+  <version>1.4.3.5</version>
   <name>Cloudify 3.4.2 PaaS Provider for Alien 4 Cloud</name>
 
   <repositories>
