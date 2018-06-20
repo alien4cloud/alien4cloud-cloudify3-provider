@@ -63,6 +63,7 @@ public class EventService implements IEventConsumer {
     static {
         ACCEPTED_EVENTS.add(EventType.TASK_SUCCEEDED);
         ACCEPTED_EVENTS.add(EventType.TASK_FAILED);
+        ACCEPTED_EVENTS.add(EventType.TASK_RESCHEDULED);
         ACCEPTED_EVENTS.add(EventType.SENDING_TASK);
         ACCEPTED_EVENTS.add(EventType.A4C_PERSISTENT_EVENT);
         ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_EVENT);
@@ -71,6 +72,7 @@ public class EventService implements IEventConsumer {
         ACCEPTED_EVENTS.add(EventType.WORKFLOW_STARTED);
         ACCEPTED_EVENTS.add(EventType.WORKFLOW_SUCCEEDED);
         ACCEPTED_EVENTS.add(EventType.WORKFLOW_FAILED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_CANCELLED);
     }
 
     @Override
@@ -80,8 +82,8 @@ public class EventService implements IEventConsumer {
             if (event.getEvent().getEventType() == null) {
                 continue;
             }
-            if (log.isDebugEnabled()) {
-                log.debug("Received an event of type {}", event.getEvent().getEventType());
+            if (log.isTraceEnabled()) {
+                log.trace("Received an event of type {}", event.getEvent().getEventType());
             }
             if (ACCEPTED_EVENTS.contains(event.getEvent().getEventType())) {
                 filteredEvents.add(event);
@@ -333,6 +335,12 @@ public class EventService implements IEventConsumer {
             wfe.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
             alienEvents.add(wfe);
             break;
+        case EventType.WORKFLOW_CANCELLED:
+            PaaSWorkflowCancelledEvent wce = new PaaSWorkflowCancelledEvent();
+            wce.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wce.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(wce);
+            break;
         case EventType.SENDING_TASK:
             TaskSentEvent taskSentEvent = new TaskSentEvent();
             enrichTaskEvent(taskSentEvent, cloudifyEvent);
@@ -342,6 +350,11 @@ public class EventService implements IEventConsumer {
             TaskStartedEvent taskStartedEvent = new TaskStartedEvent();
             enrichTaskEvent(taskStartedEvent, cloudifyEvent);
             alienEvents.add(taskStartedEvent);
+            break;
+        case EventType.TASK_RESCHEDULED:
+            TaskCancelledEvent taskCancelledEvent = new TaskCancelledEvent();
+            enrichTaskEvent(taskCancelledEvent, cloudifyEvent);
+            alienEvents.add(taskCancelledEvent);
             break;
         case EventType.TASK_FAILED:
             TaskFailedEvent taskFailedEvent = new TaskFailedEvent();
