@@ -1,15 +1,18 @@
 package alien4cloud.paas.cloudify3.shared;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.json.JSONObject;
+
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.paas.cloudify3.shared.model.LogBatch;
 import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
+import alien4cloud.paas.cloudify3.util.LogParser;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -72,10 +75,55 @@ public class EventServiceInstance {
         initialized = true;
     }
 
-    private synchronized ListenableScheduledFuture<?> schedulePollLog() {
+    private synchronized void schedulePollLog() {
         log.debug("Scheduling event poll request in {} seconds.", pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling());
         long scheduleTime = pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling();
-        return scheduler.schedule(() -> triggerLogPolling(), scheduleTime, TimeUnit.SECONDS);
+        scheduler.schedule(this::triggerLogPolling, scheduleTime, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Add more resilience, mark and ignore the corrupted logs instead of polling always the same batch of events
+     */
+    private void triggerCorruptedLogPolling() {
+        if (log.isDebugEnabled()) {
+            log.debug("Corrupted poller: start");
+        }
+        Object response;
+        try {
+            response = a4cLogClient.asyncGetCorruptedLog().get();
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Corrupted poller: network error occurred", e);
+            }
+            // Some network error, continue to poll
+            if (!isStopPolling()) {
+                schedulePollLog();
+            }
+            return;
+        }
+
+        LogBatch logBatch = null;
+        try {
+            logBatch = LogParser.parseLog(new JSONObject((Map) response));
+            if (log.isDebugEnabled()) {
+                log.debug("Corrupted poller: polled {} events", logBatch.getEntries().length);
+            }
+
+            // Convert the data and dispatch.
+            if (!logBatch.getId().equals(lastAckId)) {
+                eventDispatcher.dispatch(logBatch.getEntries(), "Live feed");
+            } else if (log.isDebugEnabled()){
+                log.debug("Already processed batch {}", logBatch.getId());
+            }
+
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Corrupted poller: some error occurred", e);
+            }
+        } finally {
+            // Ack and trigger next batch
+            ackAndTriggerNext(logBatch.getId());
+        }
     }
 
     private synchronized void triggerLogPolling() {
@@ -108,9 +156,12 @@ public class EventServiceInstance {
 
             @Override
             public void onFailure(Throwable t) {
-                log.warn("Unable to poll log event", t);
+                if (log.isDebugEnabled()) {
+                    log.debug("Some error occurred when polling the logs", t.getMessage());
+                }
                 if (!stopPolling) {
-                    schedulePollLog();
+                    // Should continue when encountering some corrupted logs
+                    triggerCorruptedLogPolling();
                 }
             }
         });

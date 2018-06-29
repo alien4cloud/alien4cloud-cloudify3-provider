@@ -1,6 +1,5 @@
 package alien4cloud.paas.cloudify3.shared.restclient;
 
-import alien4cloud.paas.cloudify3.shared.model.LogRegistrationResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -13,6 +12,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.paas.cloudify3.shared.model.LogBatch;
 import alien4cloud.paas.cloudify3.shared.model.LogClientRegistration;
+import alien4cloud.paas.cloudify3.shared.model.LogRegistrationResponse;
 import alien4cloud.paas.cloudify3.util.FutureUtil;
 import lombok.SneakyThrows;
 
@@ -59,6 +59,10 @@ public class A4cLogClient {
     public ListenableFuture<LogBatch> asyncGet() {
         // Query the log server for events
         return FutureUtil.unwrapRestResponse(restTemplate.exchange(getLogUrl, HttpMethod.GET, createHttpEntity(), LogBatch.class, registrationId));
+    }
+
+    public ListenableFuture<Object> asyncGetCorruptedLog() {
+       return FutureUtil.unwrapRestResponse(restTemplate.getForEntity(getLogUrl, Object.class, registrationId));
     }
 
     public ListenableFuture<Void> asyncAck(long batchId) {
