@@ -81,8 +81,14 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return propertyValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(propertyValue);
     }
 
-    public boolean attributeCanBeExposed(AbstractPropertyValue attributeValue) {
-        return attributeValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(attributeValue);
+    public boolean attributeCanBeExposed(IValue value) {
+        if (value instanceof AbstractPropertyValue) {
+            AbstractPropertyValue attributeValue = (AbstractPropertyValue)value;
+            boolean result = attributeValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(attributeValue);
+            return result;
+        } else {
+            return value != null;
+        }
     }
 
     public String tryToMapToCloudifyInterface(String interfaceName) {
