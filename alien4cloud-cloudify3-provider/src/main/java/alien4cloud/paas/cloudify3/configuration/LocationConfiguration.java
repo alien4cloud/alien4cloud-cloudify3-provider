@@ -8,10 +8,12 @@ import alien4cloud.ui.form.annotation.FormProperties;
 
 @Getter
 @Setter
-@FormProperties({ "dsl", "imports" })
+@FormProperties({ "dsl", "imports", "agentConfig" })
 public class LocationConfiguration {
 
     private String dsl;
 
     private List<String> imports;
+
+    private AgentConfig agentConfig;
 }

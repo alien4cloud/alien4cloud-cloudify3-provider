@@ -4,9 +4,11 @@
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: overrides.openstack.wrapper.overrided_create_volume
+          implementation: overrides.cinder_plugin.wrapper.overrided_create_volume
           inputs:
             args: {}
+            status_attempts: 20
+            status_timeout: 15
 #if(${volumeTemplate.nodeTemplate.type}=="alien.cloudify.openstack.nodes.Volume")
         delete: {}
 #end## if
@@ -14,6 +16,9 @@
 #if(${util.property.hasPropertyValue($volumeTemplate.nodeTemplate.properties, "volume_id")})
       use_external_resource: true
 #end## if
+#if(!${volumeTemplate.nodeTemplate.properties.openstack_config})
+      openstack_config: *openstack_config
+#end
 #set( $relationshipTemplates = $util.nonNative.getSourceRelationships($volumeTemplate) )
 #if($util.collectionHasElement($relationshipTemplates))
     relationships:

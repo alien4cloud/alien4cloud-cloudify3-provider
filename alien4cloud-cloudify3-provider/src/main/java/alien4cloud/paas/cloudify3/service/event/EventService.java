@@ -1,13 +1,13 @@
 package alien4cloud.paas.cloudify3.service.event;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
+import alien4cloud.paas.cloudify3.model.*;
+import alien4cloud.paas.model.*;
+import org.elasticsearch.common.collect.Sets;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,26 +19,11 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.paas.cloudify3.configuration.CfyConnectionManager;
-import alien4cloud.paas.cloudify3.model.CloudifyLifeCycle;
-import alien4cloud.paas.cloudify3.model.Event;
-import alien4cloud.paas.cloudify3.model.EventAlienPersistent;
-import alien4cloud.paas.cloudify3.model.EventAlienWorkflow;
-import alien4cloud.paas.cloudify3.model.EventAlienWorkflowStarted;
-import alien4cloud.paas.cloudify3.model.EventType;
-import alien4cloud.paas.cloudify3.model.NodeInstance;
-import alien4cloud.paas.cloudify3.model.NodeInstanceStatus;
 import alien4cloud.paas.cloudify3.shared.IEventConsumer;
 import alien4cloud.paas.cloudify3.shared.model.CloudifyEvent;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
-import alien4cloud.paas.model.PaaSInstancePersistentResourceMonitorEvent;
-import alien4cloud.paas.model.PaaSInstanceStateMonitorEvent;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.model.PaaSWorkflowMonitorEvent;
-import alien4cloud.paas.model.PaaSWorkflowStepMonitorEvent;
 import alien4cloud.utils.MapUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 /**
  * Handle cloudify events request
@@ -74,6 +59,22 @@ public class EventService implements IEventConsumer {
         return paaSDeploymentIdToAlienDeploymentIdMapping.get(event.getContext().getDeploymentId());
     }
 
+    private static Set<String> ACCEPTED_EVENTS = Sets.newHashSet();
+    static {
+        ACCEPTED_EVENTS.add(EventType.TASK_SUCCEEDED);
+        ACCEPTED_EVENTS.add(EventType.TASK_FAILED);
+        ACCEPTED_EVENTS.add(EventType.TASK_RESCHEDULED);
+        ACCEPTED_EVENTS.add(EventType.SENDING_TASK);
+        ACCEPTED_EVENTS.add(EventType.A4C_PERSISTENT_EVENT);
+        ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_EVENT);
+        ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_RELATIONSHIP_STEP_EVENT);
+        ACCEPTED_EVENTS.add(EventType.A4C_WORKFLOW_STARTED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_STARTED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_SUCCEEDED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_FAILED);
+        ACCEPTED_EVENTS.add(EventType.WORKFLOW_CANCELLED);
+    }
+
     @Override
     public synchronized void accept(CloudifyEvent[] cloudifyEvents) {
         List<CloudifyEvent> filteredEvents = Lists.newArrayList();
@@ -81,17 +82,16 @@ public class EventService implements IEventConsumer {
             if (event.getEvent().getEventType() == null) {
                 continue;
             }
-            if (EventType.TASK_SUCCEEDED.equals(event.getEvent().getEventType()) || EventType.A4C_PERSISTENT_EVENT.equals(event.getEvent().getEventType())
-                    || EventType.A4C_WORKFLOW_EVENT.equals(event.getEvent().getEventType())
-                    || EventType.A4C_WORKFLOW_STARTED.equals(event.getEvent().getEventType())) {
+            if (log.isTraceEnabled()) {
+                log.trace("Received an event of type {}", event.getEvent().getEventType());
+            }
+            if (ACCEPTED_EVENTS.contains(event.getEvent().getEventType())) {
                 filteredEvents.add(event);
             }
         }
 
         List<AbstractMonitorEvent> alienEvents = toAlienEvents(filteredEvents);
-        for (AbstractMonitorEvent event : alienEvents) {
-            internalProviderEventsQueue.add(event);
-        }
+        internalProviderEventsQueue.addAll(alienEvents);
     }
 
     public synchronized ListenableFuture<AbstractMonitorEvent[]> getEventsSince(final Date lastTimestamp, int batchSize) {
@@ -169,35 +169,30 @@ public class EventService implements IEventConsumer {
     private List<AbstractMonitorEvent> toAlienEvents(List<CloudifyEvent> cloudifyEvents) {
         final List<AbstractMonitorEvent> alienEvents = Lists.newArrayList();
         for (CloudifyEvent cloudifyEvent : cloudifyEvents) {
-            AbstractMonitorEvent alienEvent = toAlienEvent(cloudifyEvent);
-            if (alienEvent != null) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Accepted after processing event {}", cloudifyEvent);
-                }
-                alienEvents.add(alienEvent);
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("Filtered After processing event {}", cloudifyEvent.getEvent().getId());
-                }
-            }
+            alienEvents.addAll(toAlienEvent(cloudifyEvent));
         }
         return alienEvents;
     }
 
-    private AbstractMonitorEvent toAlienEvent(CloudifyEvent cloudifyEvent) {
-        AbstractMonitorEvent alienEvent;
+    private List<AbstractMonitorEvent> toAlienEvent(CloudifyEvent cloudifyEvent) {
+        List<AbstractMonitorEvent> alienEvents = new ArrayList<AbstractMonitorEvent>();
         switch (cloudifyEvent.getEvent().getEventType()) {
         case EventType.TASK_SUCCEEDED:
+
+            TaskSucceededEvent taskSucceededEvent = new TaskSucceededEvent();
+            taskSucceededEvent.setTaskId(cloudifyEvent.getEvent().getContext().getTaskId());
+            taskSucceededEvent.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(taskSucceededEvent);
+
             String newInstanceState = CloudifyLifeCycle.getSucceededInstanceState(cloudifyEvent.getEvent().getContext().getOperation());
-            if (newInstanceState == null) {
-                return null;
+            if (newInstanceState != null) {
+                PaaSInstanceStateMonitorEvent instanceTaskStartedEvent = new PaaSInstanceStateMonitorEvent();
+                instanceTaskStartedEvent.setInstanceId(cloudifyEvent.getEvent().getContext().getNodeId());
+                instanceTaskStartedEvent.setNodeTemplateId(cloudifyEvent.getEvent().getContext().getNodeName());
+                instanceTaskStartedEvent.setInstanceState(newInstanceState);
+                instanceTaskStartedEvent.setInstanceStatus(NodeInstanceStatus.getInstanceStatusFromState(newInstanceState));
+                alienEvents.add(instanceTaskStartedEvent);
             }
-            PaaSInstanceStateMonitorEvent instanceTaskStartedEvent = new PaaSInstanceStateMonitorEvent();
-            instanceTaskStartedEvent.setInstanceId(cloudifyEvent.getEvent().getContext().getNodeId());
-            instanceTaskStartedEvent.setNodeTemplateId(cloudifyEvent.getEvent().getContext().getNodeName());
-            instanceTaskStartedEvent.setInstanceState(newInstanceState);
-            instanceTaskStartedEvent.setInstanceStatus(NodeInstanceStatus.getInstanceStatusFromState(newInstanceState));
-            alienEvent = instanceTaskStartedEvent;
             break;
         case EventType.A4C_PERSISTENT_EVENT:
             log.info("Received persistent event " + cloudifyEvent.getEvent().getId());
@@ -217,16 +212,17 @@ public class EventService implements IEventConsumer {
                         // As it is existing volumes, we already has the persistent properties in A4C.
                         // So we just ignore the event for convenience
                         log.warn("Ignore event. Couldn't find the key <{}> in the runtime properties of node instance <{}>", entry.getKey(), instance.getId());
-                        return null;
+                        return alienEvents;
                     }
                     String attributeValue = (String) MapUtil.get(instance.getRuntimeProperties(), entry.getKey());
                     persistentProperties.put(entry.getValue(), attributeValue);
                 }
-                alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getEvent().getContext().getNodeName(),
+                PaaSInstancePersistentResourceMonitorEvent alienEvent = new PaaSInstancePersistentResourceMonitorEvent(cloudifyEvent.getEvent().getContext().getNodeName(),
                         cloudifyEvent.getEvent().getContext().getNodeId(), persistentProperties);
+                alienEvents.add(alienEvent);
             } catch (Exception e) {
                 log.warn("Problem processing persistent event " + cloudifyEvent.getEvent().getId(), e);
-                return null;
+                return alienEvents;
             }
             break;
         case EventType.A4C_WORKFLOW_STARTED:
@@ -239,10 +235,10 @@ public class EventService implements IEventConsumer {
                 pwme.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
                 pwme.setWorkflowId(eventAlienWorkflowStarted.getWorkflowName());
                 pwme.setSubworkflow(eventAlienWorkflowStarted.getSubworkflow());
-                alienEvent = pwme;
+                alienEvents.add(pwme);
             } catch (Exception e) {
                 log.warn("Problem processing workflow started event " + cloudifyEvent.getEvent().getId(), e);
-                return null;
+                return alienEvents;
             }
             break;
         case EventType.A4C_WORKFLOW_EVENT:
@@ -258,17 +254,138 @@ public class EventService implements IEventConsumer {
                 e.setStage(eventAlienWorkflow.getStage());
                 e.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
                 e.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
-                alienEvent = e;
+                e.setOperationName(eventAlienWorkflow.getOperationName());
+                alienEvents.add(e);
+
+                if (StringUtils.hasText(eventAlienWorkflow.getOperationName())) {
+                    AbstractWorkflowStepEvent wse = null;
+                    switch(eventAlienWorkflow.getStage()) {
+                        case EventAlienWorkflow.STAGE_IN:
+                            wse = new WorkflowStepStartedEvent();
+                            break;
+                        case EventAlienWorkflow.STAGE_OK:
+                            wse = new WorkflowStepCompletedEvent();
+                            break;
+                    }
+                    if (wse != null) {
+                        wse.setNodeId(cloudifyEvent.getEvent().getContext().getNodeName());
+                        wse.setInstanceId(cloudifyEvent.getEvent().getContext().getNodeId());
+                        wse.setStepId(eventAlienWorkflow.getStepId());
+                        wse.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+                        wse.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+                        wse.setOperationName(eventAlienWorkflow.getOperationName());
+                        alienEvents.add(wse);
+                    }
+                }
             } catch (Exception e) {
                 log.warn("Problem processing workflow event " + cloudifyEvent.getEvent().getId(), e);
-                return null;
+                return alienEvents;
             }
             break;
-        default:
-            return null;
+        case EventType.A4C_WORKFLOW_RELATIONSHIP_STEP_EVENT:
+            wfCloudifyEvent = cloudifyEvent.getEvent().getMessage().getText();
+            objectMapper = new ObjectMapper();
+            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+            try {
+                EventAlienWorkflowRelationshipStepEvent eventAlienWorkflow = objectMapper.readValue(wfCloudifyEvent, EventAlienWorkflowRelationshipStepEvent.class);
+                AbstractWorkflowStepEvent e = null;
+                switch(eventAlienWorkflow.getStage()) {
+                    case EventAlienWorkflow.STAGE_IN:
+                        e = new WorkflowStepStartedEvent();
+                        break;
+                    case EventAlienWorkflow.STAGE_OK:
+                        e = new WorkflowStepCompletedEvent();
+                        break;
+                }
+                if (e != null) {
+                    e.setNodeId(cloudifyEvent.getEvent().getContext().getNodeName());
+                    e.setInstanceId(cloudifyEvent.getEvent().getContext().getNodeId());
+                    e.setStepId(eventAlienWorkflow.getStepId());
+                    e.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+                    e.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+                    e.setOperationName(eventAlienWorkflow.getOperationName());
+                    e.setTargetNodeId(eventAlienWorkflow.getTargetNodeId());
+                    e.setTargetInstanceId(eventAlienWorkflow.getTargetInstanceId());
+                    alienEvents.add(e);
+                }
+            } catch (Exception e) {
+                log.warn("Problem processing workflow event " + cloudifyEvent.getEvent().getId(), e);
+                return alienEvents;
+            }
+            break;
+        case EventType.WORKFLOW_STARTED:
+            PaaSWorkflowStartedEvent wste = new PaaSWorkflowStartedEvent();
+            String workflowId = cloudifyEvent.getEvent().getContext().getWorkflowId();
+            wste.setWorkflowId(workflowId);
+            if (workflowId.startsWith("a4c_")) {
+                wste.setWorkflowName(workflowId.substring(4));
+            }
+            wste.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(wste);
+            break;
+        case EventType.WORKFLOW_SUCCEEDED:
+            PaaSWorkflowSucceededEvent wse = new PaaSWorkflowSucceededEvent();
+            wse.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wse.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(wse);
+            break;
+        case EventType.WORKFLOW_FAILED:
+            PaaSWorkflowFailedEvent wfe = new PaaSWorkflowFailedEvent();
+            wfe.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wfe.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(wfe);
+            break;
+        case EventType.WORKFLOW_CANCELLED:
+            PaaSWorkflowCancelledEvent wce = new PaaSWorkflowCancelledEvent();
+            wce.setWorkflowId(cloudifyEvent.getEvent().getContext().getWorkflowId());
+            wce.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+            alienEvents.add(wce);
+            break;
+        case EventType.SENDING_TASK:
+            TaskSentEvent taskSentEvent = new TaskSentEvent();
+            enrichTaskEvent(taskSentEvent, cloudifyEvent);
+            alienEvents.add(taskSentEvent);
+            break;
+        case EventType.TASK_STARTED:
+            TaskStartedEvent taskStartedEvent = new TaskStartedEvent();
+            enrichTaskEvent(taskStartedEvent, cloudifyEvent);
+            alienEvents.add(taskStartedEvent);
+            break;
+        case EventType.TASK_RESCHEDULED:
+            TaskCancelledEvent taskCancelledEvent = new TaskCancelledEvent();
+            enrichTaskEvent(taskCancelledEvent, cloudifyEvent);
+            alienEvents.add(taskCancelledEvent);
+            break;
+        case EventType.TASK_FAILED:
+            TaskFailedEvent taskFailedEvent = new TaskFailedEvent();
+            enrichTaskEvent(taskFailedEvent, cloudifyEvent);
+            taskFailedEvent.setErrorCauses(cloudifyEvent.getEvent().getContext().getTaskErrorCauses());
+            alienEvents.add(taskFailedEvent);
+            break;
         }
-        alienEvent.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getEvent().getTimestamp()).getTimeInMillis());
-        alienEvent.setDeploymentId(cloudifyEvent.getAlienDeploymentId());
-        return alienEvent;
+        for (AbstractMonitorEvent e : alienEvents) {
+            e.setDate(DatatypeConverter.parseDateTime(cloudifyEvent.getEvent().getTimestamp()).getTimeInMillis());
+            e.setDeploymentId(cloudifyEvent.getAlienDeploymentId());
+        }
+        return alienEvents;
     }
+
+    private void enrichTaskEvent(AbstractTaskEvent taskSentEvent, CloudifyEvent cloudifyEvent) {
+        taskSentEvent.setTaskId(cloudifyEvent.getEvent().getContext().getTaskId());
+        taskSentEvent.setExecutionId(cloudifyEvent.getEvent().getContext().getExecutionId());
+        taskSentEvent.setInstanceId(cloudifyEvent.getEvent().getContext().getNodeId());
+        taskSentEvent.setNodeId(cloudifyEvent.getEvent().getContext().getNodeName());
+        if (StringUtils.hasText(cloudifyEvent.getEvent().getContext().getSourceId())) {
+            // it's a relationship task, we use the source id as instanceId
+            taskSentEvent.setInstanceId(cloudifyEvent.getEvent().getContext().getSourceId());
+        }
+        if (StringUtils.hasText(cloudifyEvent.getEvent().getContext().getSourceName())) {
+            // it's a relationship task, we use the source name as nodeId
+            taskSentEvent.setNodeId(cloudifyEvent.getEvent().getContext().getSourceName());
+        }
+        taskSentEvent.setTargetNodeId(cloudifyEvent.getEvent().getContext().getTargetName());
+        taskSentEvent.setTargetInstanceId(cloudifyEvent.getEvent().getContext().getTargetId());
+        taskSentEvent.setOperationName(cloudifyEvent.getEvent().getContext().getOperation());
+    }
+
 }

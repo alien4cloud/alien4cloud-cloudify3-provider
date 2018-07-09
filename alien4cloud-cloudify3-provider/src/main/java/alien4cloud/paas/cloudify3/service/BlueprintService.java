@@ -1,5 +1,17 @@
 package alien4cloud.paas.cloudify3.service;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import alien4cloud.orchestrators.locations.services.ILocationResourceService;
 import alien4cloud.orchestrators.locations.services.LocationService;
 import alien4cloud.paas.IPaaSTemplate;
@@ -20,44 +32,21 @@ import alien4cloud.paas.model.PaaSRelationshipTemplate;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.plugin.model.ManagedPlugin;
 import alien4cloud.utils.FileUtil;
-import alien4cloud.utils.MapUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
-import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
 import org.alien4cloud.tosca.model.definitions.IArtifact;
-import org.alien4cloud.tosca.model.definitions.IValue;
 import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.Operation;
-import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
-import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.alien4cloud.tosca.model.types.CapabilityType;
-import org.alien4cloud.tosca.normative.ToscaNormativeUtil;
-import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static alien4cloud.utils.AlienUtils.putIfNotEmpty;
 import static alien4cloud.utils.AlienUtils.safe;
@@ -70,8 +59,6 @@ import static alien4cloud.utils.AlienUtils.safe;
 @Component("cloudify-blueprint-service")
 @Slf4j
 public class BlueprintService {
-    public static final String TOSCA_DOCKER_CONTAINER_TYPE = "tosca.nodes.Container.Application.DockerContainer";
-    public static final String TOSCA_CAPABILITIES_ENDPOINT = "tosca.capabilities.Endpoint";
     @Resource
     private CfyConnectionManager connectionManager;
     @Resource
@@ -82,7 +69,9 @@ public class BlueprintService {
     private OrchestratorDeploymentPropertiesService deploymentPropertiesService;
     @Resource
     private ManagedPlugin pluginContext;
-    /** Registry of implementation artifacts supported by the plugin. */
+    /**
+     * Registry of implementation artifacts supported by the plugin.
+     */
     @Inject
     private ArtifactRegistryService artifactRegistryService;
     @Inject
@@ -127,8 +116,7 @@ public class BlueprintService {
     /**
      * Delete a blueprint on the file system.
      *
-     * @param deploymentPaaSId
-     *            Alien's paas deployment id used to identify the blueprint.
+     * @param deploymentPaaSId Alien's paas deployment id used to identify the blueprint.
      */
     public void deleteBlueprint(String deploymentPaaSId) {
         try {
@@ -141,8 +129,7 @@ public class BlueprintService {
     /**
      * Generate blueprint from an alien deployment request
      *
-     * @param alienDeployment
-     *            the alien deployment's configuration
+     * @param alienDeployment the alien deployment's configuration
      * @return the generated blueprint
      */
     public Path generateBlueprint(CloudifyDeployment alienDeployment) throws IOException {
@@ -282,94 +269,9 @@ public class BlueprintService {
             }
         }
 
-        // Docker types
-        generateKubFiles(alienDeployment, generatedBlueprintDirectoryPath, context);
-
         // Generate the blueprint at the end
         VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/blueprint.yaml.vm"), generatedBlueprintFilePath, context);
         return generatedBlueprintFilePath;
-    }
-
-    private void generateKubFiles(final CloudifyDeployment alienDeployment, final Path generatedBlueprintDirectoryPath, final Map<String, Object> context)
-            throws IOException {
-        BlueprintGenerationUtil util = (BlueprintGenerationUtil) context.get("util");
-
-        Map<String, Map<String, Object>> docker_envs = new HashMap<String, Map<String, Object>>();
-        for (PaaSNodeTemplate nonNative : alienDeployment.getDockerTypes()) {
-
-            // Retrieve env maps from the properties
-            Map<String, Object> envMap = new LinkedHashMap<String, Object>();
-            if (nonNative.getTemplate().getProperties().get("docker_env_vars") != null) {
-                envMap.putAll(((ComplexPropertyValue) nonNative.getTemplate().getProperties().get("docker_env_vars")).getValue());
-            }
-
-            // Retrieve the env maps from the interface (from create operation)
-            Map<String, IValue> inputs = (Map<String, IValue>) nonNative.getInterfaces().get("tosca.interfaces.node.lifecycle.Standard").getOperations()
-                    .get("create").getInputParameters();
-            if (inputs != null) {
-                for (Map.Entry<String, IValue> entry : inputs.entrySet()) {
-                    String key = entry.getKey();
-                    String value = null;
-                    if (entry.getValue() instanceof ScalarPropertyValue) {
-                        value = ((ScalarPropertyValue) entry.getValue()).getValue();
-                    } else {
-                        value = entry.getValue().toString();
-                    }
-                    if (key.startsWith("ENV")) {
-                        envMap.put(key.replaceFirst("^ENV_", ""), value);
-                    }
-                }
-            }
-
-            Map<String, Object> podContext = MapUtil.newHashMap(new String[] { "dockerType", "envMap", "util" }, new Object[] { nonNative, envMap, util });
-            if (!envMap.isEmpty()) {
-                docker_envs.put(nonNative.getId(), envMap);
-            }
-            // Pod name
-            String randomAlphanum = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
-            podContext.put("pod_name", nonNative.getId().toLowerCase() + "-" + randomAlphanum);
-            // Tag
-            podContext.put("deployment_id", alienDeployment.getDeploymentId());
-            podContext.put("deployment_id_name", alienDeployment.getDeploymentPaaSId());
-            // Add utils
-            podContext.put("util", util);
-
-            // Generate pod file
-            Path podTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/pod.yaml.vm");
-            Path podTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-pod.yaml");
-            VelocityUtil.generate(podTemplatePath, podTargetPath, podContext);
-
-            // Generate service file
-            for (Map.Entry<String, Capability> entry : nonNative.getTemplate().getCapabilities().entrySet()) {
-                Capability capability = entry.getValue();
-                CapabilityType capabilityType = alienDeployment.getCapabilityTypes().get(capability.getType());
-                if (ToscaTypeUtils.isOfType(capabilityType, TOSCA_CAPABILITIES_ENDPOINT)) {
-                    // Create a service if the capability is an endpoint
-                    podContext.put("service_capability", capability);
-
-                    String svcRandomAlphanum = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
-                    String shortenedName = util.getCommon().truncateString(nonNative.getId().toLowerCase(), 13);
-                    podContext.put("pod_service_name", shortenedName + "-" + svcRandomAlphanum + "-svc"); // service name must be <=24 characters
-
-                    Path serviceTemplatePath = pluginRecipeResourcesPath.resolve("kubernetes/service.yaml.vm");
-                    Path serviceTargetPath = generatedBlueprintDirectoryPath.resolve(nonNative.getId() + "-" + entry.getKey() + "-service.yaml");
-                    VelocityUtil.generate(serviceTemplatePath, serviceTargetPath, podContext);
-                }
-            }
-        }
-
-        if (!alienDeployment.getDockerTypes().isEmpty()) {
-            // Copy kubernetes plugins & resources
-            FileUtil.unzip(pluginRecipeResourcesPath.resolve("cloudify-kubernetes-plugin/cloudify-kubernetes-plugin.zip"),
-                    generatedBlueprintDirectoryPath.resolve("plugins"));
-            Path scriptsDir = generatedBlueprintDirectoryPath.resolve("scripts");
-            Files.createDirectories(scriptsDir);
-            Files.copy(pluginRecipeResourcesPath.resolve("kubernetes/configure_kubernetes_proxy.py"), scriptsDir.resolve("configure_kubernetes_proxy.py"));
-
-            if (!docker_envs.isEmpty()) {
-                context.put("docker_envs", docker_envs);
-            }
-        }
     }
 
     private void generateServiceCreateOperation(IPaaSTemplate<?> owner, BlueprintGenerationUtil util, Map<String, Object> context,
@@ -377,8 +279,7 @@ public class BlueprintService {
 
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("template", owner);
-        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"),
-                generatedBlueprintDirectoryPath
+        VelocityUtil.generate(pluginRecipeResourcesPath.resolve("velocity/service_create_operation.vm"), generatedBlueprintDirectoryPath
                         .resolve(util.getNonNative().getArtifactWrapperPath(owner, ToscaNodeLifecycleConstants.STANDARD, ToscaNodeLifecycleConstants.CREATE)),
                 operationContext);
     }
@@ -391,8 +292,8 @@ public class BlueprintService {
         Map<String, Object> operationContext = Maps.newHashMap(context);
         operationContext.put("operation", operationWrapper);
 
-        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService
-                .getCloudifyImplementationArtifact(operation.getImplementationArtifact().getArtifactType());
+        ICloudifyImplementationArtifact cloudifyImplementationArtifact = artifactRegistryService.getCloudifyImplementationArtifact(
+                operation.getImplementationArtifact().getArtifactType());
         if (cloudifyImplementationArtifact == null) {
             // fallback to script and add a warning log as this means we are trying to deploy an unknown artifact.
             log.warn("Trying to generate a recipe while the implementation artifact is not recognized.");
@@ -435,8 +336,8 @@ public class BlueprintService {
     private void ensureArtifactDefined(IArtifact artifact, String pathToNode) {
         if (artifact.getArtifactRef() == null || artifact.getArtifactRef().isEmpty()) {
             throw new BlueprintGenerationException(
-                    "Cloudify plugin only manage deployment artifact with an artifact ref not null or empty. Failed to copy artifact of type <"
-                            + artifact.getArtifactType() + "> for node <" + pathToNode + ">.");
+                    "Cloudify plugin only manage deployment artifact with an artifact ref not null or empty. Failed to copy artifact of type <" + artifact
+                            .getArtifactType() + "> for node <" + pathToNode + ">.");
         }
     }
 
@@ -485,9 +386,7 @@ public class BlueprintService {
                     } else {
                         throw new UnsupportedOperationException("Unsupported artifact copy for " + node.getClass().getName());
                     }
-                    if (!artifact.getArtifactRef().endsWith(".dockerimg")) {
-                        copyArtifact(artifactsDir, relativePathToArtifact, artifact);
-                    }
+                    copyArtifact(artifactsDir, relativePathToArtifact, artifact);
                 }
             }
         }

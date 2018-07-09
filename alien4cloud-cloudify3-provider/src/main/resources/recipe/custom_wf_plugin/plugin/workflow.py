@@ -38,10 +38,19 @@ class WfStartEvent(object):
 
 class WfEvent(object):
 
-    def __init__(self, stage, step_id):
+    def __init__(self, stage, step_id, operation_name):
         self.stage = stage
         self.step_id = step_id
+        self.operation_name = operation_name
 
+class WfRelationshipStepEvent(object):
+
+    def __init__(self, stage, step_id, operation_name, target_node_id, target_instance_id):
+        self.stage = stage
+        self.step_id = step_id
+        self.operation_name = operation_name
+        self.target_node_id = target_node_id
+        self.target_instance_id = target_instance_id
 
 class PersistentResourceEvent(object):
 

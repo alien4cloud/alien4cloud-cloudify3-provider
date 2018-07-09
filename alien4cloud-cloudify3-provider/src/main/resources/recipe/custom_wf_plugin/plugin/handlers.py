@@ -1,6 +1,7 @@
 from cloudify.workflows import tasks as workflow_tasks
 from workflow import PersistentResourceEvent
 from workflow import WfEvent
+from workflow import WfRelationshipStepEvent
 from workflow import build_pre_event
 from cloudify import logs
 from cloudify import utils
@@ -205,11 +206,21 @@ def build_persistent_event_tasks(instance):
         return None
 
 
-def build_wf_event_task(instance, step_id, stage):
-    event_msg = build_pre_event(WfEvent(stage, step_id))
+def build_wf_event_task(instance, step_id, stage, operation_name):
+    event_msg = build_pre_event(WfEvent(stage, step_id, operation_name))
 
     @task_config(send_task_events=False)
     def send_wf_event_task():
         _send_event(instance, 'workflow_node', 'a4c_workflow_event', event_msg, None, None, None)
 
     return instance.ctx.local_task(local_task=send_wf_event_task, node=instance, info=event_msg)
+
+def build_wf_relationship_event_task(rel_instance, step_id, stage, operation_name):
+    event_msg = build_pre_event(WfRelationshipStepEvent(stage, step_id, operation_name, rel_instance.target_node_instance.node_id, rel_instance.target_node_instance.id))
+
+    @task_config(send_task_events=False)
+    def send_wf_step_rel_event():
+        _send_event(rel_instance.node_instance, 'workflow_node', 'a4c_workflow_rel_step_event', event_msg, None, None, None)
+
+    return rel_instance.ctx.local_task(local_task=send_wf_step_rel_event, node=rel_instance.node_instance, info=event_msg)
+

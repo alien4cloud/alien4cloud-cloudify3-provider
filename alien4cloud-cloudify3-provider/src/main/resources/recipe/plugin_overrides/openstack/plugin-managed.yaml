@@ -2,4 +2,4 @@ plugins:
   overrides:
     executor: central_deployment_agent
     package_name: a4c-overrides-openstack
-    package_version: '1.3.1'
+    package_version: '2.7.1'

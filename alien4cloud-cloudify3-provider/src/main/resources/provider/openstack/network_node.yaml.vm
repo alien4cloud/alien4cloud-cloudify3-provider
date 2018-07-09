@@ -3,12 +3,18 @@
     type: ${network.nodeTemplate.type}
     properties:
       resource_id: ${network.id}
+#if(!${network.nodeTemplate.properties.openstack_config})
+      openstack_config: *openstack_config
+#end
 ${util.natives.formatProperties(3, ${network.nodeTemplate.properties}, ${util.natives.loadPropertyMapping(${network.indexedToscaElement}, "_a4c_c3_network_prop_map")})}
   ${mapping.generatedNodePrefix}_${network.id}_subnet:
     type: cloudify.openstack.nodes.Subnet
     properties:
       resource_id: ${network.id}_subnet
 ${util.natives.formatProperties(3, ${network.nodeTemplate.properties}, ${util.natives.loadPropertyMapping(${network.indexedToscaElement}, "_a4c_c3_subnet_prop_map")})}
+#if(!${network.nodeTemplate.properties.openstack_config})
+      openstack_config: *openstack_config
+#end
     relationships:
       - target: ${network.id}
         type: cloudify.relationships.contained_in

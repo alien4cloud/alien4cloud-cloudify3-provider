@@ -27,6 +27,12 @@ public class EventContext extends AbstractCloudifyModel {
     private String nodeId;
     private String nodeName;
 
+    // for relationships tasks
+    private String sourceId;
+    private String sourceName;
+    private String targetId;
+    private String targetName;
+
     @JsonDeserialize(using = PermissiveStringDeserializer.class)
     private String operation;
     @JsonDeserialize(using = PermissiveStringDeserializer.class)

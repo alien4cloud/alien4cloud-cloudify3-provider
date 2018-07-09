@@ -2,7 +2,7 @@ id: alien-cloudify-4-orchestrator
 name: Cloudify 4 Orchestrator Plugin
 version: ${project.version}
 description: >
-  Plugin that contains the Orchestrator for cloudify v4.
+  Plugin that contains the Orchestrator for cloudify v4.x
 configuration_class: alien4cloud.paas.cloudify3.PluginFactoryConfiguration
 component_descriptors:
   - bean_name: cloudify-orchestrator
@@ -10,3 +10,8 @@ component_descriptors:
     description: >
       An orchestrator that deploys applications on cloudify 4.x
       Make sure that you configure the url of the cloudify Rest API and the list of images and flavors.
+  - bean_name: iaas-property-modifier
+    name: Iaas Properties Modifier.
+    description: >
+      Override computes with the manager default properties.
+      Insert this modifier to post-node-match phase.

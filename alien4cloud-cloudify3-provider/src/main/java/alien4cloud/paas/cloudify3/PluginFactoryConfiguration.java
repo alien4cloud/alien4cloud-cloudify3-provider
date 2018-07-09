@@ -2,6 +2,7 @@ package alien4cloud.paas.cloudify3;
 
 import java.util.List;
 
+import alien4cloud.paas.cloudify3.modifier.IaasPropertiesModifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -84,4 +85,7 @@ public class PluginFactoryConfiguration {
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
         return new SchedulerServiceFactoryBean();
     }
+
+    @Bean(name = "iaas-property-modifier")
+    public IaasPropertiesModifier iaasPropertiesModifierBean() {return new IaasPropertiesModifier();}
 }

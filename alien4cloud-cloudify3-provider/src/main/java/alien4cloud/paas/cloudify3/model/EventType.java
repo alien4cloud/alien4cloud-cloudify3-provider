@@ -16,6 +16,7 @@ public class EventType {
     public static final String WORKFLOW_STARTED = "workflow_started";
     public static final String WORKFLOW_SUCCEEDED = "workflow_succeeded";
     public static final String WORKFLOW_FAILED = "workflow_failed";
+    public static final String WORKFLOW_CANCELLED = "workflow_cancelled";
 
     // SENDING_TASK and TASK_STARTED are not used in Alien
     public static final String SENDING_TASK = "sending_task";
@@ -24,9 +25,11 @@ public class EventType {
     // TASK_SUCCEEDED and TASK_FAILED are used for instance state information
     public static final String TASK_SUCCEEDED = "task_succeeded";
     public static final String TASK_FAILED = "task_failed";
+    public static final String TASK_RESCHEDULED = "task_rescheduled";
 
     public static final String A4C_PERSISTENT_EVENT = "a4c_persistent_event";
     public static final String A4C_WORKFLOW_EVENT = "a4c_workflow_event";
+    public static final String A4C_WORKFLOW_RELATIONSHIP_STEP_EVENT = "a4c_workflow_rel_step_event";
     public static final String A4C_WORKFLOW_STARTED = "a4c_workflow_started";
 
     public static final Collection<String> ALL = Lists.newArrayList(WORKFLOW_STARTED, WORKFLOW_SUCCEEDED, WORKFLOW_FAILED, TASK_SUCCEEDED);

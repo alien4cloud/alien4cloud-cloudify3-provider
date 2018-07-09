@@ -13,6 +13,9 @@ data_types:
 
   alien.data.openstack.nova.v2.CreateServerArgs:
     derived_from: tosca.datatypes.Root
+    description: >
+      The keypair object as described in OpenStack compute API (create server method):
+      https://developer.openstack.org/api-ref/compute/#servers-servers
     properties:
       userdata:
         type: string
@@ -31,64 +34,215 @@ data_types:
       key_name:
         type: string
         required: false
-      block_device_mapping:
+      block_device_mapping_v2:
         type: map
         required: false
         entry_schema:
           type: string
-      nics:
-        type: list
+      metadata:
+        type: map
         required: false
         entry_schema:
           type: string
-      tenant_id:
+
+  alien.data.openstack.custom_configuration:
+    derived_from: tosca.datatypes.Root
+    description: |
+      Custom configuration for OpenStack's API endpoints.
+      A dictionary that enables a custom configuration parameter to be overridden or directly passed to each of the OpenStack clients, by using any of the relevant keys: keystone_client, nova_client, neutron_client or cinder_client.
+      Parameters passed directly to OpenStack clients using the custom_configuration mechanism override other definitions . For example, any of the common OpenStack configuration parameters listed above, such as username and tenant_name.
+      Following is an example for the usage of the custom_configuration section in a blueprint:
+      '''
+      custom_configuration:
+        nova_client:
+          bypass_url: nova-endpoint-url
+          nova_specific_key_1: value_1
+          nova_specific_key_2: value_2
+        neutron_client:
+          endpoint_url: neutron-endpoint-url
+        keystone_client:
+          ..
+        cinder_client:
+          ..
+      '''
+    properties:
+      nova_client:
+        description: Parameters for Nova Client.
+        type: map
+        entry_schema:
+          type: string
+        required: false
+      neutron_client:
+        description: Parameters for Neutron Client.
+        type: map
+        entry_schema:
+          type: string
+        required: false
+      keystone_client:
+        description: Parameters for Keystone Client.
+        type: map
+        entry_schema:
+          type: string
+        required: false
+      cinder_client:
+        description: Parameters for Cinder Client.
+        type: map
+        entry_schema:
+          type: string
+        required: false
+      glance_client:
+        description: Parameters for Glance Client.
+        type: map
+        entry_schema:
+          type: string
+        required: false
+
+  alien.data.openstack.logging.groups:
+    derived_from: tosca.datatypes.Root
+    description: >
+      For logging groups' configuration. Each level can be one of the following values:
+      critical/error/warning/info/debug/notset
+    properties:
+      nova:
+        description: Default logging level for Nova.
         type: string
+        default: notset
         required: false
-      meta:
+        constraints:
+          - valid_values: [ critical, error, warning, info, debug, notset ]
+      neutron:
+        description: Default logging level for Neutron.
+        type: string
+        default: notset
+        required: false
+        constraints:
+          - valid_values: [ critical, error, warning, info, debug, notset ]
+      cinder:
+        description: Default logging level for Cinder.
+        type: string
+        default: notset
+        required: false
+        constraints:
+          - valid_values: [ critical, error, warning, info, debug, notset ]
+      keystone:
+        description: Default logging level for Keystone.
+        type: string
+        default: notset
+        required: false
+        constraints:
+          - valid_values: [ critical, error, warning, info, debug, notset ]
+      glance:
+        description: Default logging level for Glance.
+        type: string
+        default: notset
+        required: false
+        constraints:
+          - valid_values: [ critical, error, warning, info, debug, notset ]
+
+  alien.data.openstack.logging:
+    derived_from: tosca.datatypes.Root
+    description: Logging configuration for OpenStack communication.
+    properties:
+      use_cfy_logger:
+        description: If true, a logging handler is added, which emits logs to the Cloudify logger.
+        type: boolean
+        default: true
+      groups:
+        description: Assigns logging level to logger groups.
+        type: alien.data.openstack.logging.groups
+        required: false
+      loggers:
+        description: |
+          Assigns logging level to custom loggers (dictionary of string -> logging level).
+          For instance:
+            - keystoneauth.session: debug
         type: map
-        required: false
         entry_schema:
           type: string
+        required: false
 
   alien.data.OpenstackConfig:
     derived_from: tosca.datatypes.Root
     properties:
       username:
+        description: User to authenticate to KeyStone with.
         type: string
-        default: ''
+        required: false
       password:
+        description: Password to authenticate to KeyStone with.
         type: string
-        default: ''
-      tenant_name:
-        type: string
-        default: ''
+        required: false
       auth_url:
+        description: Keystone's URL (used for authentication).
         type: string
-        default: ''
+        required: false
       region:
+        description: The region's name (optional if only one region exists).
         type: string
-        default: ''
-      nova_url:
+        required: false
+      tenant_name:
+        description: Name of tenant.
         type: string
-        default: ''
-      neutron_url:
+        required: false
+      project_id:
+        description: ID of project to operate on.
         type: string
-        default: ''
+        required: false
+      project_name:
+        description: Name of project to operate on.
+        type: string
+        required: false
+      user_domain_name:
+        description: Domain name to operate on.
+        type: string
+        required: false
+      project_domain_name:
+        description: Project domain name to operate on.
+        type: string
+        required: false
+      insecure:
+        description: If true, SSL validation is skipped.
+        type: boolean
+        required: false
+        default: false
+      ca_cert:
+        description: Path to CA certificate to validate OpenStack's endpoint with.
+        type: string
+        required: false
       custom_configuration:
-        type: map
-        entry_schema:
-          type: map
-          entry_schema:
-            type: string
+        description: Custom configuration for OpenStack's API endpoints.
+        type: alien.data.openstack.custom_configuration
+        required: false
+#      logging:
+#        description: Logging configuration.
+#        type: alien.data.openstack.logging
+#        required: false
 
   alien.data.FloatingIpConfig:
     derived_from: tosca.datatypes.Root
     properties:
+      floating_network_name:
+        type: string
+        description: The name of the network associated with the floating IP
+      fixed_ip_address:
+        type: string
+        required: false
+        description: |
+           The fixed IP address that is associated with the floating IP.
+           If an internal port has multiple associated IP addresses, the service chooses the first IP address unless you explicitly define a fixed IP address in the ''fixed_ip_address'' parameter.
       floating_ip_address:
         type: string
         required: false
-      floating_network_name:
+        description: The floating IP address
+      dns_domain:
         type: string
+        required: false
+        description: A valid DNS domain.
+      dns_name :
+        type: string
+        required: false
+        description: A valid DNS name.
+
 
   alien.data.SubnetConfig:
     derived_from: tosca.datatypes.Root
@@ -104,14 +258,27 @@ data_types:
   alien.data.openstack.cinder.v1.VolumeCreateArgs:
     derived_from: tosca.datatypes.Root
     properties:
-      tenant_id:
+      name:
+        type: string
+        description: The volume name.
+      size:
+        type: integer
+        description: The size of the volume, in gibibytes (GiB).
+      description:
+        type: string
+        default: ''
+        description: The volume description.
+      imageRef:
         type: string
         required: false
-        description: The unique identifier of the tenant or account.
-      volume:
-        type: string
-        required: false
-        description: A partial representation of a volume used in the creation process.
+        description: >
+          The UUID of the image from which you want to create the volume. Required to create a bootable volume.
+      multiattach :
+        type: boolean
+        default: false
+        description: |
+          To enable this volume to attach to more than one server, set this value to true.
+          Default is false. Note that support for multiattach volumes depends on the volume type being used.
       availability_zone:
         type: string
         required: false
@@ -119,101 +286,111 @@ data_types:
       source_volid:
         type: string
         required: false
-        description: To create a volume from an existing volume, specify the ID of the existing volume. The volume is created with the same size as the source volume.
-      description:
+        description: >
+          To create a volume from an existing volume, specify the ID of the existing volume. The volume is created with the same size as the source volume.
+      consistencygroup_id:
         type: string
         required: false
-        description: The volume description.
-      name:
-        type: string
-        required: false
-        description: The volume name.
-      imageRef:
-        type: string
-        required: false
-        description: The ID of the image from which you want to create the volume. Required to create a bootable volume.
+        description: The UUID of the consistency group.
       volume_type:
         type: string
         required: false
-        description: The associated volume type.
-      metadata:
-        type: string
-        required: false
-        description: One or more metadata key and value pairs to associate with the volume.
-
-  alien.data.openstack.EmbededVolumeProperties:
-    derived_from: tosca.datatypes.Root
-    properties:
-      volume:
-        type: alien.data.openstack.cinder.v1.VolumeCreateArgs
-        required: true
-      openstack_config:
-        type: alien.data.OpenstackConfig
-        required: true
-      deletable:
-        type: boolean
-        default: false
-      # inherited from tosca.nodes.BlockStorage
-      size:
-        type: scalar-unit.size
-        description: >
-          The requested storage size (default unit is MB).
-          Note:
-          - Required when an existing volume (i.e., volume_id) is not available.
-          - If volume_id is provided, size is ignored.  Resize of existing volumes is not considered at this time.
-        constraints:
-          - greater_or_equal: 1 MB
-      volume_id:
-        type: string
-        description: ID of an existing volume (that is in the accessible scope of the requesting application).
-        required: false
+        description: |
+          The volume type. To create an environment with multiple-storage back ends, you must specify a volume type.
+          Block Storage volume back ends are spawned as children to cinder- volume, and they are keyed from a unique queue.
+          They are named cinder- volume.HOST.BACKEND. For example, cinder- volume.ubuntu.lvmdriver.
+          When a volume is created, the scheduler chooses an appropriate back end to handle the request based on the volume type. Default is None.
+          For information about how to use volume types to create multiple-storage back ends, see Configure multiple-storage back ends.
+          (https://docs.openstack.org/cinder/latest/admin/blockstorage-multi-backend.html)
       snapshot_id:
         type: string
-        description: Some identifier that represents an existing snapshot that should be used when creating the block storage (volume).
         required: false
-      device:
+        description: |
+          To create a volume from an existing snapshot, specify the UUID of the volume snapshot.
+          The volume is created in same availability zone and with same size as the snapshot.
+      source_replica:
         type: string
-        description: >
-          The logical device name which for the attached device (which is represented by the target node in the model).
-          e.g., ‘/dev/hda1’
-          Note: this property will be moved in next releases to the AttachTo relationship as it is specified by TOSCA spec.
         required: false
+        description: |
+      metadata:
+        type: map
+        entry_schema:
+          type: string
+        required: false
+        description: One or more metadata key and value pairs that are associated with the volume.
 
-    tags:
-      _a4c_c3_prop_map: >
-        {"size": {"path": "volume.size", "unit": "GiB", "ceil": true}, "volume_id": "resource_id", "snapshot_id": "volume.snapshot_id", "device": "device_name"}
+#  alien.data.openstack.EmbededVolumeProperties:
+#    derived_from: tosca.datatypes.Root
+#    properties:
+#      volume:
+#        type: alien.data.openstack.cinder.v1.VolumeCreateArgs
+#        required: true
+#      openstack_config:
+#        type: alien.data.OpenstackConfig
+#        required: true
+#      deletable:
+#        type: boolean
+#        default: false
+#      # inherited from tosca.nodes.BlockStorage
+#      size:
+#        type: scalar-unit.size
+#        description: >
+#          The requested storage size (default unit is MB).
+#          Note:
+#          - Required when an existing volume (i.e., volume_id) is not available.
+#          - If volume_id is provided, size is ignored.  Resize of existing volumes is not considered at this time.
+#        constraints:
+#          - greater_or_equal: 1 MB
+#      volume_id:
+#        type: string
+#        description: ID of an existing volume (that is in the accessible scope of the requesting application).
+#        required: false
+#      snapshot_id:
+#        type: string
+#        description: Some identifier that represents an existing snapshot that should be used when creating the block storage (volume).
+#        required: false
+#      device:
+#        type: string
+#        description: >
+#          The logical device name which for the attached device (which is represented by the target node in the model).
+#          e.g., ‘/dev/hda1’
+#          Note: this property will be moved in next releases to the AttachTo relationship as it is specified by TOSCA spec.
+#        required: false
+#    tags:
+#      _a4c_c3_prop_map: >
+#        {"size": {"path": "volume.size", "unit": "GiB", "ceil": true}, "volume_id": "resource_id", "snapshot_id": "volume.snapshot_id", "device": "device_name"}
 
-  alien.data.openstack.EmbededFloatingIpProperties:
-    derived_from: tosca.datatypes.Root
-    properties:
-      floatingip:
-        type: alien.data.FloatingIpConfig
-        required: true
-      openstack_config:
-        type: alien.data.OpenstackConfig
-        required: false
-      # inherited from tosca.nodes.Network
-      ip_version:
-        type: integer
-        required: false
-        default: 4
-        constraints:
-          - valid_values: [ 4, 6 ]
-      cidr:
-        type: string
-        required: false
-      gateway_ip:
-        type: string
-        required: false
-      network_name:
-        type: string
-        required: false
-      network_id:
-        type: string
-        required: false
-    tags:
-      _a4c_c3_prop_map: >
-        {"network_name": "floatingip.floating_network_name"}
+#  alien.data.openstack.EmbededFloatingIpProperties:
+#    derived_from: tosca.datatypes.Root
+#    properties:
+#      floatingip:
+#        type: alien.data.FloatingIpConfig
+#        required: true
+#      openstack_config:
+#        type: alien.data.OpenstackConfig
+#        required: false
+#      # inherited from tosca.nodes.Network
+#      ip_version:
+#        type: integer
+#        required: false
+#        default: 4
+#        constraints:
+#          - valid_values: [ 4, 6 ]
+#      cidr:
+#        type: string
+#        required: false
+#      gateway_ip:
+#        type: string
+#        required: false
+#      network_name:
+#        type: string
+#        required: false
+#      network_id:
+#        type: string
+#        required: false
+#    tags:
+#      _a4c_c3_prop_map: >
+#        {"network_name": "floatingip.floating_network_name"}
 
 node_types:
   alien.nodes.openstack.Image:
@@ -257,7 +434,7 @@ node_types:
     tags:
       _a4c_c3_derived_from: cloudify.openstack.nodes.Server
       _a4c_c3_prop_map: >
-        {"user": "cloudify_agent.user"}
+        {"user": "agent_config.user"}
     properties:
       server:
         type: alien.data.openstack.nova.v2.CreateServerArgs
@@ -266,23 +443,59 @@ node_types:
       use_external_resource:
         type: boolean
         required: false
+        description: >
+          a boolean for setting whether to create the resource or use an existing one.
+          See the using existing resources section.
+      create_if_missing:
+        type: boolean
+        default: false
+        required: false
+        description: >
+          If use_external_resource is ``true`` and the resource is missing,
+          create it instead of failing.
       resource_id:
         type: string
         default: ''
         required: false
+        description: >
+          name to give to the new resource or the name or ID of an existing resource when the ``use_external_resource`` property is set to ``true`` (see the using existing resources section). Defaults to '' (empty string).
       image:
         type: string
         default: ''
+        description: >
+          The image for the server.
+          May receive either the ID or the name of the image.
+          note: This property is currently optional for backwards compatibility,
+          but will be modified to become a required property in future versions
+          (Default: '').
       flavor:
         type: string
         default: ''
+        description: >
+          The flavor for the server.
+          May receive either the ID or the name of the flavor.
+          note: This property is currently optional for backwards compatibility,
+          but will be modified to become a required property in future versions
+          (Default: '').
       management_network_name:
         type: string
         default: ''
         required: false
+        description: >
+          Old requirement called management network name. Not required. Leave blank. Retained for backward compatibility.
+          Not every server need be connected to a management network.
+          If the management network's name information is available in the Provider Context,
+          this connection is made automatically and there's no need to override this property
+          (See the Misc section for more information on the Openstack Provider Context).
+          It is not required to set the value of this property to the management network name. As of Cloudify 4.0, it has no relationship to the bootstrap process.
       use_password:
         type: boolean
         required: false
+        description: >
+          A boolean describing whether this server image supports user-password authentication.
+          Images that do should post the administrator user's password to the Openstack metadata service (e.g. via cloudbase);
+          The password would then be retrieved by the plugin,
+          decrypted using the server's keypair and then saved in the server's runtime properties.
       openstack_config:
         type: alien.data.OpenstackConfig
         required: false
@@ -290,37 +503,37 @@ node_types:
         type: string
         required: true
         description: The user to log in to the created Compute VM.
-      cloudify_agent:
+      agent_config:
         type: alien.datatypes.AgentConfig
         required: false
     attributes:
       ip_address: { get_attribute: [SELF, ip] }
       public_ip_address: { get_attribute: [TARGET, cloudify.openstack.server_connected_to_floating_ip, floating_ip_address] }
 
-  alien.nodes.openstack.ScalableCompute:
-    # set to false to hide from on demand resources
-    abstract: false
-    derived_from: alien.nodes.openstack.Compute
-    tags:
-      _a4c_c3_derived_from: cloudify.openstack.nodes.ScalableServer
-    properties:
-      volumes:
-        type: list
-        entry_schema:
-          type: alien.data.openstack.EmbededVolumeProperties
-      floatingips:
-        type: list
-        entry_schema:
-          type: alien.data.openstack.EmbededFloatingIpProperties
-    attributes:
-      public_ip_address: { get_attribute: [SELF, public_ip_address] }
+#  alien.nodes.openstack.ScalableCompute:
+#    # set to false to hide from on demand resources
+#    abstract: false
+#    derived_from: alien.nodes.openstack.Compute
+#    tags:
+#      _a4c_c3_derived_from: cloudify.openstack.nodes.ScalableServer
+#    properties:
+#      volumes:
+#        type: list
+#        entry_schema:
+#          type: alien.data.openstack.EmbededVolumeProperties
+#      floatingips:
+#        type: list
+#        entry_schema:
+#          type: alien.data.openstack.EmbededFloatingIpProperties
+#    attributes:
+#      public_ip_address: { get_attribute: [SELF, public_ip_address] }
 
   alien.nodes.openstack.WindowsCompute:
     derived_from: alien.nodes.openstack.Compute
     tags:
       _a4c_c3_derived_from: cloudify.openstack.nodes.WindowsServer
       _a4c_c3_prop_map: >
-        {"user": "cloudify_agent.user", "password": "cloudify_agent.password", "port": "cloudify_agent.port", "key_pair": null, "private_key_path": null}
+        {"user": "agent_config.user", "password": "agent_config.password", "port": "agent_config.port"}
     properties:
       user:
         type: string
@@ -335,19 +548,17 @@ node_types:
         required: true
         description: The port which will be used by the agent to connect to the machine.
         default: 5985
-      key_pair:
+      use_password:
+        type: boolean
+        default: true
+        description: >
+          Default changed for derived type
+          because Windows instances need a password for agent installation
+      os_family:
         type: string
-        required: true
-        description: |
-          The existing keypair's name on OpenStack.
-          The private key must be copied to the manager's machine (or manager's docker container) to the path defined in private_key_path
-      private_key_path:
-        type: string
-        required: true
-        default: /root/.ssh/agent_key.pem
-        description: |
-          Path to the private key of the keypair defined in key_pair property on the manager's machine (or manager's docker container).
-          Default is set to the agent private key path
+        default: windows
+        description: >
+          (updates the os_family default as a convenience)
 
   alien.nodes.openstack.PublicNetwork:
     derived_from: alien.nodes.PublicNetwork
@@ -359,6 +570,27 @@ node_types:
       floatingip:
         type: alien.data.FloatingIpConfig
         required: true
+        description: >
+          The floatingip object as described in Openstack networking API (create floatingip method):
+          https://developer.openstack.org/api-ref/network/v2/index.html#floating-ips-floatingips
+      use_external_resource:
+        type: boolean
+        default: false
+        description: >
+          a boolean for setting whether to create the resource or use an existing one.
+          See the using existing resources section.
+      create_if_missing:
+        type: boolean
+        default: false
+        required: false
+        description: >
+          If use_external_resource is ``true`` and the resource is missing,
+          create it instead of failing.
+      resource_id:
+        type: string
+        description: IP address of the floating IP
+        required: false
+        default: ''
       openstack_config:
         type: alien.data.OpenstackConfig
         required: false
@@ -374,11 +606,23 @@ node_types:
     properties:
       use_external_resource:
         type: boolean
+        default: false
+        description: >
+          a boolean for setting whether to create the resource or use an existing one.
+          See the using existing resources section.
+      create_if_missing:
+        type: boolean
+        default: false
         required: false
+        description: >
+          If use_external_resource is ``true`` and the resource is missing,
+          create it instead of failing.
       resource_id:
         type: string
-        default: ''
         required: false
+        default: ''
+        description: >
+          name to give to the new resource or the name or ID of an existing resource when the ``use_external_resource`` property is set to ``true`` (see the using existing resources section). Defaults to '' (empty string).
       subnet_id:
         type: string
         default: ''
@@ -403,10 +647,48 @@ node_types:
       volume:
         type: alien.data.openstack.cinder.v1.VolumeCreateArgs
         required: false
-        description: Key-value volume configuration as described in http://developer.openstack.org/api-ref-blockstorage-v1.html#volumes-v1
+        description: >
+          The volume object as described in Openstack block-storage API (create volume method):
+          https://developer.openstack.org/api-ref/block-storage/v2/index.html#volumes-volumes.
+      use_external_resource:
+        type: boolean
+        default: false
+        description: >
+          a boolean for setting whether to create the resource or use an existing one.
+          See the using existing resources section.
+      create_if_missing:
+        type: boolean
+        default: false
+        required: false
+        description: >
+          If use_external_resource is ``true`` and the resource is missing,
+          create it instead of failing.
+      resource_id:
+        type: string
+        default: ''
+        required: false
+        description: >
+          name to give to the new resource or the name or ID of an existing resource when the ``use_external_resource`` property is set to ``true`` (see the using existing resources section). Defaults to '' (empty string).
+      device_name:
+        type: string
+        default: auto
+        description: >
+          The device name this volume will be attached to.
+          Default value is *auto*,
+          which means openstack will auto-assign a device.
+          Note that if you do explicitly set a value,
+          this value may not be the actual device name assigned.
+          Sometimes the device requested will not be available and openstack will assign it to a different device,
+          this is why we recommend using *auto*.
       openstack_config:
         type: alien.data.OpenstackConfig
         required: false
+      boot:
+        type: boolean
+        default: false
+        description: >
+          If a Server instance is connected to this Volume by a relationship,
+          this volume will be used as the boot volume for that Server.
     attributes:
       device: { get_attribute: [SELF, device_name] }
     tags:

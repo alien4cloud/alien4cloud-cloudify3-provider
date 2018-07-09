@@ -1,5 +1,19 @@
 package alien4cloud.paas.cloudify3.blueprint;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import alien4cloud.exception.InvalidArgumentException;
 import alien4cloud.paas.IPaaSTemplate;
 import alien4cloud.paas.cloudify3.artifacts.ICloudifyImplementationArtifact;
@@ -49,20 +63,6 @@ import org.alien4cloud.tosca.utils.ToscaTypeUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 @Slf4j
 public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
     private ArtifactRegistryService artifactRegistryService;
@@ -81,8 +81,14 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
         return propertyValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(propertyValue);
     }
 
-    public boolean attributeCanBeExposed(AbstractPropertyValue attributeValue) {
-        return attributeValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(attributeValue);
+    public boolean attributeCanBeExposed(IValue value) {
+        if (value instanceof AbstractPropertyValue) {
+            AbstractPropertyValue attributeValue = (AbstractPropertyValue)value;
+            boolean result = attributeValue != null && !org.alien4cloud.tosca.utils.FunctionEvaluator.containGetSecretFunction(attributeValue);
+            return result;
+        } else {
+            return value != null;
+        }
     }
 
     public String tryToMapToCloudifyInterface(String interfaceName) {
@@ -577,7 +583,7 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
      * In the node properties, isolate:
      * <ul>
      * <li>those related to cloudify type inherited properties.</li>
-     * <li>properties that can be serailized as string (for kubernetes)</li>
+     * <li>(deprecated) properties that can be serialized as string (for kubernetes)</li>
      * </ul>
      */
     public Map<String, AbstractPropertyValue> getCloudifyAndSimpleProperties(PaaSNodeTemplate node) {
@@ -593,7 +599,6 @@ public class NonNativeTypeGenerationUtil extends AbstractGenerationUtil {
                 // for custom native nodes we add inherited cloudify properties
                 result.put(e.getKey(), e.getValue());
             } else if (propertyValuesAsString.containsKey(e.getKey())) {
-                // for kubernetes we add simple scalar properties
                 result.put(e.getKey(), new ScalarPropertyValue(propertyValuesAsString.get(e.getKey())));
             }
         }

@@ -7,7 +7,7 @@ import lombok.Setter;
 @Setter
 public class LocationConfigurations {
 
-    private LocationConfiguration openstack;
+    private OpenstackLocationConfiguration openstack;
 
     private LocationConfiguration amazon;
 

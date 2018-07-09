@@ -1,2 +1,2 @@
-alien4cloud-cloudify4-provider
+Alien4cloud Cloudify4 Plugin
 ==============================
