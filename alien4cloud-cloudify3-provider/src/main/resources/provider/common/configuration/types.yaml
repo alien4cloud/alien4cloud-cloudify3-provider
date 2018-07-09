@@ -3,6 +3,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 metadata:
   template_name: cloudify3-common-types
   template_author: alien4cloud
+  # TODO: change at build time with project version
   template_version: 2.0.0
 
 imports:

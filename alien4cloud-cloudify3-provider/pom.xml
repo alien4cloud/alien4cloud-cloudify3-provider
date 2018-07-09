@@ -220,6 +220,38 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>com.google.code.maven-replacer-plugin</groupId>
+        <artifactId>maven-replacer-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>replace</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <basedir>${project.build.directory}/classes/provider</basedir>
+          <includes>
+            <include>amazon/configuration/types.yaml</include>
+            <include>byon/configuration/types.yaml</include>
+            <include>common/configuration/types.yaml</include>
+            <include>openstack/configuration/types.yaml</include>
+          </includes>
+          <replacements>
+            <replacement>
+              <token>template_version:.+</token>
+              <value>template_version: ${project.version}</value>
+            </replacement>
+            <replacement>
+              <token>cloudify3-common-types:.+</token>
+              <value>cloudify3-common-types:${project.version}</value>
+            </replacement>
+          </replacements>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
