@@ -6,6 +6,7 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
+import com.google.common.collect.Sets;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +41,9 @@ public class ArtifactRegistryService {
      * @return An array of the supported artifact types.
      */
     public String[] getSupportedArtifactTypes() {
-        Set<String> artifactTypeSet = artifactMap.keySet();
+        Set<String> artifactTypeSet = Sets.newHashSet(artifactMap.keySet());
+        artifactTypeSet.add("tosca.artifacts.Deployment.Image.Container.Docker");
+        artifactTypeSet.add("tosca.artifacts.Deployment.Image.Container.Docker.Kubernetes");
         return artifactTypeSet.toArray(new String[artifactTypeSet.size()]);
     }
 }
