@@ -55,10 +55,10 @@ public class EventService implements IEventConsumer {
     private Map<String, String> paaSDeploymentIdToAlienDeploymentIdMapping = Maps.newConcurrentMap();
     private Map<String, String> alienDeploymentIdToPaaSDeploymentIdMapping = Maps.newConcurrentMap();
 
-    public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
-        for (Map.Entry<String, PaaSTopologyDeploymentContext> activeDeploymentContextEntry : activeDeploymentContexts.entrySet()) {
-            paaSDeploymentIdToAlienDeploymentIdMapping.put(activeDeploymentContextEntry.getKey(), activeDeploymentContextEntry.getValue().getDeploymentId());
-        }
+    public void init(Map<String, String> activeDeploymentContexts) {
+        activeDeploymentContexts.forEach((paasDeploymentId, deploymentId) -> {
+            paaSDeploymentIdToAlienDeploymentIdMapping.put(paasDeploymentId, deploymentId);
+        });
     }
 
     /** This queue is used for internal events. */

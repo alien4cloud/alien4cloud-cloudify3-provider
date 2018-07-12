@@ -181,7 +181,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
      */
 
     @Override
-    public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
+    public void init(Map<String, String> activeDeployments) {
         if (activeDeployments == null) {
             return;
         } else {

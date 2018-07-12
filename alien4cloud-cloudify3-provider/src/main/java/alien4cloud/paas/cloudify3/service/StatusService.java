@@ -151,12 +151,11 @@ public class StatusService {
         }
     }
 
-    public void init(Map<String, PaaSTopologyDeploymentContext> activeDeploymentContexts) {
-        for (Map.Entry<String, PaaSTopologyDeploymentContext> contextEntry : activeDeploymentContexts.entrySet()) {
-            String deploymentPaaSId = contextEntry.getKey();
+    public void init(Map<String, String> activeDeploymentContexts) {
+        activeDeploymentContexts.forEach((deploymentPaaSId, deploymentId) -> {
             // Try to retrieve the last deployment status event to initialize the cache
             Map<String, String[]> filters = Maps.newHashMap();
-            filters.put("deploymentId", new String[] { contextEntry.getValue().getDeploymentId() });
+            filters.put("deploymentId", new String[] { deploymentId });
             GetMultipleDataResult<PaaSDeploymentStatusMonitorEvent> lastEventResult = alienMonitorDao.search(PaaSDeploymentStatusMonitorEvent.class, null,
                     filters, null, null, 0, 1, "date", true);
             if (lastEventResult.getData() != null && lastEventResult.getData().length > 0) {
@@ -164,7 +163,8 @@ public class StatusService {
             }
             // Query the manager to be sure that the status has not changed
             getStatusFromCloudify(deploymentPaaSId);
-        }
+
+        });
     }
 
     private ListenableFuture<DeploymentStatus> asyncGetStatus(String deploymentPaaSId) {
