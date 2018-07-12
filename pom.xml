@@ -7,7 +7,7 @@
   </parent>
   <artifactId>alien4cloud-cloudify4-parent</artifactId>
   <packaging>pom</packaging>
-  <version>1.4.3.4-SNAPSHOT</version>
+  <version>1.4.4-SNAPSHOT</version>
   <name>Cloudify 4.x OpenSource modules for Alien 4 Cloud</name>
   <description>Alien4cloud plugin and reliable log queue component for alien4cloud.</description>
 
