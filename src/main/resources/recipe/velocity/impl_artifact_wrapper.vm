@@ -153,7 +153,7 @@ if inputs.get('process', None) is not None and inputs['process'].get('env', None
 
 ## Register operation outputs (as tosca allow reference to operation execution outputs)
 for k,v in outputs:
-    ctx.logger.info('Output name: {0} value: {1}'.format(k, v))
+##    ctx.logger.info(u'Output name: {0} value: {1}'.format(k, v))
 #if($util.nonNative.isOperationOwnedByRelationship(${operation}))
     ctx.source.instance.runtime_properties['_a4c_OO:${operation.interfaceName}:${operation.operationName}:{0}'.format(k)] = v
 #else
