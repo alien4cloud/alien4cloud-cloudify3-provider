@@ -3,11 +3,11 @@
   <parent>
     <groupId>alien4cloud</groupId>
     <artifactId>alien4cloud-parent</artifactId>
-    <version>1.4.5</version>
+    <version>1.4.6-SNAPSHOT</version>
   </parent>
 
   <artifactId>alien4cloud-cfy-logs</artifactId>
-  <version>1.4.5</version>
+  <version>1.4.6-SNAPSHOT</version>
   <packaging>war</packaging>
 
   <name>Alien4Cloud cloudify log queue server</name>
