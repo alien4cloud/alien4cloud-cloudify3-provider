@@ -64,6 +64,7 @@ public class RecoveryPoller extends AbstractPoller {
     /**
      * Used to submit the recovery poll task.
      */
+    @Resource(name = "event-scheduler")
     private ScheduledExecutorService scheduler;
 
     /**

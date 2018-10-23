@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -41,6 +42,7 @@ public class EventCache {
     /**
      * Used to manage TTL.
      */
+    @Resource(name = "event-scheduler")
     private ScheduledExecutorService scheduler;
 
     /**

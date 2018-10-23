@@ -3,6 +3,11 @@ package alien4cloud.paas.cloudify3.shared;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import alien4cloud.paas.cloudify3.eventpolling.EventCache;
+import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
+import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
+import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
+import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
@@ -12,6 +17,8 @@ import alien4cloud.paas.cloudify3.shared.model.LogBatch;
 import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.AbstractApplicationContext;
 
 /**
  * Instance that polls events.
@@ -19,15 +26,63 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Getter
 public class EventServiceInstance {
-    private final ListeningScheduledExecutorService scheduler;
-    private final PluginConfigurationHolder pluginConfigurationHolder;
+    private ListeningScheduledExecutorService scheduler;
+    private PluginConfigurationHolder pluginConfigurationHolder;
 
-    private final A4cLogClient a4cLogClient;
-    private final EventDispatcher eventDispatcher = new EventDispatcher();
+    private A4cLogClient a4cLogClient;
 
     private boolean stopPolling = false;
     private boolean initialized = false;
     private Long lastAckId = null;
+
+    /**
+     * Context
+     */
+    private final AbstractApplicationContext context;
+
+    /**
+     * Rest client
+     */
+    private final EventClient client;
+
+    /**
+     * Url
+     */
+    private final String url;
+
+    /**
+     * EventDispatcher
+     *
+     * @param context
+     * @param url
+     * @param client
+     * @return
+     */
+    private final EventDispatcher eventDispatcher;
+
+    EventServiceInstance(AbstractApplicationContext context,String url,EventClient client) {
+        this.context = context;
+        this.client = client;
+        this.url = url;
+
+        EventCache eventCache = (EventCache) context.getBean("event-cache");
+        eventCache.setUrl(url);
+
+        LivePoller livePoller = (LivePoller) context.getBean("event-live-poller");
+        livePoller.setUrl(url);
+        livePoller.setEventClient(client);
+
+        RecoveryPoller recoveryPoller = (RecoveryPoller) context.getBean("event-recovery-poller");
+        recoveryPoller.setUrl(url);
+        recoveryPoller.setEventClient(client);
+
+        eventDispatcher = (EventDispatcher) context.getBean("event-dispatcher");
+
+        // Initialize the event cache
+        eventCache.init();
+
+        livePoller.start();
+    }
 
     /**
      * Create a new event service instance to fetch events.
@@ -36,14 +91,14 @@ public class EventServiceInstance {
      * @param scheduler The scheduler.
      * @param pluginConfigurationHolder
      */
-    public EventServiceInstance(final A4cLogClient a4cLogClient, final ListeningScheduledExecutorService scheduler,
-            final PluginConfigurationHolder pluginConfigurationHolder) {
-        // Initialize the client to get logs from rest
-        // Lookup for existing registration id
-        this.scheduler = scheduler;
-        this.pluginConfigurationHolder = pluginConfigurationHolder;
-        this.a4cLogClient = a4cLogClient;
-    }
+    //public EventServiceInstance(final A4cLogClient a4cLogClient, final ListeningScheduledExecutorService scheduler,
+    //        final PluginConfigurationHolder pluginConfigurationHolder) {
+    //    // Initialize the client to get logs from rest
+    //    // Lookup for existing registration id
+    //    this.scheduler = scheduler;
+    //    this.pluginConfigurationHolder = pluginConfigurationHolder;
+    //    this.a4cLogClient = a4cLogClient;
+    //}
 
     /**
      * Register an event consumer.
@@ -56,7 +111,7 @@ public class EventServiceInstance {
         log.info("Registered event consumer {} ", consumerId);
 
         // If the configuration is not set then we wait for it to be set before scheduling next poll.
-        initScheduling();
+        //initScheduling();
     }
 
     public synchronized Set<String> unRegister(String consumerId) {
@@ -134,7 +189,6 @@ public class EventServiceInstance {
     }
 
     public void preDestroy() {
-        log.debug("Cancel running schedule.");
-        stopPolling = true;
+        context.destroy();
     }
 }

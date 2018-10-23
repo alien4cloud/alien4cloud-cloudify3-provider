@@ -46,6 +46,8 @@ public class ApiClientFactoryService {
     private PluginConfigurationHolder pluginConfigurationHolder;
     @Resource(name = "cfy-es-dao")
     private IGenericSearchDAO cfyEsDao;
+    @Resource
+    private EventServiceInstanceFactory eventServiceFactory;
 
     /** Map of event services by manager url. */
     private Map<CloudConfiguration, Registration> clientRegistrations = Maps.newHashMap();
@@ -123,7 +125,7 @@ public class ApiClientFactoryService {
             // Create the event service instance that manage polling and dispatching of events.
             log.info("Creating a new event listeners for cloudify manager with url(s) {}; logQueueUrl(s) {}", cloudConfiguration.getUrl(),
                     cloudConfiguration.getLogQueueUrl());
-            registration.eventServiceInstances = createEventServiceInstances(registration.logQueueUrls);
+            registration.eventServiceInstances = createEventServiceInstances(registration);
         } else {
             log.info("Register consumer {} for event listener on existing connection {}", consumerId, cloudConfiguration.getUrl());
         }
@@ -158,14 +160,16 @@ public class ApiClientFactoryService {
         }
     }
 
-    protected List<EventServiceInstance> createEventServiceInstances(List<String> logQueueUrls) throws URISyntaxException {
-        List<EventServiceInstance> eventServiceInstances = new ArrayList<>(logQueueUrls.size());
-        for (String logQueueUrl : logQueueUrls) {
+    protected List<EventServiceInstance> createEventServiceInstances(Registration registration) throws URISyntaxException {
+        List<EventServiceInstance> eventServiceInstances = new ArrayList<>(registration.managerUrls.size());
+
+        for (String managerUrl : registration.managerUrls) {
             // Rebuild the url to find the one of the logs
-            URI logServiceUri = new URI(logQueueUrl);
-            log.info("Register event client for url {}", logServiceUri.toString());
-            A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
-            eventServiceInstances.add(new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder));
+            URI url = new URI(managerUrl);
+            log.info("Register event client for url {}", url.toString());
+            //A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
+            //eventServiceInstances.add(new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder));
+            eventServiceInstances.add(eventServiceFactory.buildEventService(managerUrl,registration.apiClient.getEventClient()));
         }
 
         return eventServiceInstances;
@@ -185,7 +189,7 @@ public class ApiClientFactoryService {
         }
     }
 
-    private class Registration {
+    protected class Registration {
         private ApiClient apiClient;
         private List<String> managerUrls;
         private List<String> logQueueUrls;

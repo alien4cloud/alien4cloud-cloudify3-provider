@@ -10,6 +10,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
+import javax.annotation.Resource;
+
 /**
  * An delayed poller is responsible off re-requesting events in the future.
  */
@@ -20,6 +22,7 @@ public class DelayedPoller extends AbstractPoller {
     /**
      * Used to schedule polls in the given delayInSeconds.
      */
+    @Resource(name = "event-scheduler")
     private ScheduledExecutorService scheduler;
 
     /**

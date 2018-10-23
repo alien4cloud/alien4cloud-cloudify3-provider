@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
 
+import javax.annotation.Resource;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,11 +47,13 @@ public abstract class AbstractPoller {
     /**
      * The dispatcher.
      */
+    @Resource(name="event-dispatcher")
     private EventDispatcher eventDispatcher;
 
     /**
      * The cache used to perform de-duplication.
      */
+    @Resource
     private EventCache eventCache;
 
     /**

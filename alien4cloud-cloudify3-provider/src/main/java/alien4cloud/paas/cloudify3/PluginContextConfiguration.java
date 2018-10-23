@@ -31,7 +31,8 @@ import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 @Order(ManagementServerProperties.ACCESS_OVERRIDE_ORDER)
 @Configuration
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3" }, excludeFilters = {
-        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.shared\\..*") })
+        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\.shared\\..*"),
+        @Filter(type = FilterType.REGEX, pattern = "alien4cloud\\.paas\\.cloudify3\\eventpolling\\..*") })
 @ImportResource("classpath:plugin-properties-config.xml")
 public class PluginContextConfiguration {
 }
