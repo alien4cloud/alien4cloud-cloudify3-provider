@@ -131,7 +131,7 @@ public class LivePoller extends AbstractPoller {
         logInfo("Starting live polling now !");
         bus.publishEvent(new LiverPollerStarted(this));
         // Start the long live thread
-        while (true) {
+        while (!stopRequested()) {
             if (log.isDebugEnabled()) {
                 logDebug("Beginning of live event polling, starting from {} to {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
             }
@@ -143,6 +143,7 @@ public class LivePoller extends AbstractPoller {
                 logError("Giving up polling after several retries", e);
                 return;
             }
+
             // Move to next epoch
             fromDate = fromDate.plus(POLL_PERIOD);
             toDate = toDate.plus(POLL_PERIOD);
@@ -155,7 +156,9 @@ public class LivePoller extends AbstractPoller {
                     }
                     Thread.sleep(sleepTime);
                 } catch (InterruptedException e) {
-                    // TODO: handle correctly this exception
+                    if (stopRequested()) {
+                        break;
+                    }
                     log.error("TODO: handle correctly this exception", e);
                 }
             } else if (log.isDebugEnabled()) {
@@ -166,7 +169,10 @@ public class LivePoller extends AbstractPoller {
 
     @PreDestroy
     public void shutdown() {
-        // shutdown long running thread
+        // Stop the living thread
+        stop();
+
+        // and shutdown the excutor
         executorService.shutdownNow();
     }
 }

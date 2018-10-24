@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -80,6 +81,7 @@ public class PluginFactoryConfiguration {
         return new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
     }
 
+    @Primary
     @Bean(name = "cloudify-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
         return new SchedulerServiceFactoryBean();

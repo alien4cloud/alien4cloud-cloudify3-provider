@@ -1,24 +1,15 @@
 package alien4cloud.paas.cloudify3.shared;
 
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
 
-import alien4cloud.paas.cloudify3.eventpolling.EventCache;
-import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
-import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
+import alien4cloud.paas.cloudify3.eventpolling.*;
+import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
-import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableScheduledFuture;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
-import alien4cloud.paas.cloudify3.shared.model.LogBatch;
-import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.AbstractApplicationContext;
 
 /**
  * Instance that polls events.
@@ -26,19 +17,11 @@ import org.springframework.context.support.AbstractApplicationContext;
 @Slf4j
 @Getter
 public class EventServiceInstance {
-    private ListeningScheduledExecutorService scheduler;
-    private PluginConfigurationHolder pluginConfigurationHolder;
-
-    private A4cLogClient a4cLogClient;
-
-    private boolean stopPolling = false;
-    private boolean initialized = false;
-    private Long lastAckId = null;
 
     /**
      * Context
      */
-    private final AbstractApplicationContext context;
+    private final AnnotationConfigApplicationContext context;
 
     /**
      * Rest client
@@ -60,7 +43,7 @@ public class EventServiceInstance {
      */
     private final EventDispatcher eventDispatcher;
 
-    EventServiceInstance(AbstractApplicationContext context,String url,EventClient client) {
+    EventServiceInstance(AnnotationConfigApplicationContext context,String url,EventClient client) {
         this.context = context;
         this.client = client;
         this.url = url;
@@ -72,6 +55,14 @@ public class EventServiceInstance {
         livePoller.setUrl(url);
         livePoller.setEventClient(client);
 
+        DelayedPoller delayed30 = (DelayedPoller) context.getBean("event-delayed-30-poller");
+        delayed30.setEventClient(client);
+        DelayedPoller delayed300 = (DelayedPoller) context.getBean("event-delayed-300-poller");
+        delayed300.setEventClient(client);
+
+        livePoller.addDelayedPoller(delayed30);
+        livePoller.addDelayedPoller(delayed300);
+
         RecoveryPoller recoveryPoller = (RecoveryPoller) context.getBean("event-recovery-poller");
         recoveryPoller.setUrl(url);
         recoveryPoller.setEventClient(client);
@@ -81,24 +72,12 @@ public class EventServiceInstance {
         // Initialize the event cache
         eventCache.init();
 
+        // Start the recovery poller
+        recoveryPoller.start();
+
+        // Start the live poller
         livePoller.start();
     }
-
-    /**
-     * Create a new event service instance to fetch events.
-     *
-     * @param a4cLogClient The log server client.
-     * @param scheduler The scheduler.
-     * @param pluginConfigurationHolder
-     */
-    //public EventServiceInstance(final A4cLogClient a4cLogClient, final ListeningScheduledExecutorService scheduler,
-    //        final PluginConfigurationHolder pluginConfigurationHolder) {
-    //    // Initialize the client to get logs from rest
-    //    // Lookup for existing registration id
-    //    this.scheduler = scheduler;
-    //    this.pluginConfigurationHolder = pluginConfigurationHolder;
-    //    this.a4cLogClient = a4cLogClient;
-    //}
 
     /**
      * Register an event consumer.
@@ -109,83 +88,10 @@ public class EventServiceInstance {
     public synchronized void register(String consumerId, IEventConsumer logEventConsumer) {
         eventDispatcher.register(consumerId, logEventConsumer);
         log.info("Registered event consumer {} ", consumerId);
-
-        // If the configuration is not set then we wait for it to be set before scheduling next poll.
-        //initScheduling();
     }
 
     public synchronized Set<String> unRegister(String consumerId) {
         return eventDispatcher.unRegister(consumerId);
-    }
-
-    private synchronized void initScheduling() {
-        if (initialized) {
-            return;
-        }
-        log.info("Initialized log polling");
-        schedulePollLog();
-        initialized = true;
-    }
-
-    private synchronized ListenableScheduledFuture<?> schedulePollLog() {
-        log.debug("Scheduling event poll request in {} seconds.", pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling());
-        long scheduleTime = pluginConfigurationHolder.getPluginConfiguration().getDelayBetweenLogPolling();
-        return scheduler.schedule(() -> triggerLogPolling(), scheduleTime, TimeUnit.SECONDS);
-    }
-
-    private synchronized void triggerLogPolling() {
-        log.debug("Triggering event poll request");
-        // This may create a loop actually if there is batch size events in the given delay (30 secs).
-
-        Futures.addCallback(a4cLogClient.asyncGet(), new FutureCallback<LogBatch>() {
-            @Override
-            public void onSuccess(LogBatch logBatch) {
-                if (stopPolling) {
-                    return;
-                }
-                int eventCount = logBatch.getEntries() == null ? 0 : logBatch.getEntries().length;
-                log.debug("Polled {} events", eventCount);
-                if (eventCount == 0) {
-                    schedulePollLog();
-                    return;
-                }
-
-                // Convert the data and dispatch.
-                if (lastAckId != logBatch.getId()) {
-                    eventDispatcher.dispatch(logBatch.getEntries(), "Live feed");
-                } else {
-                    log.info("Already processed batch {}", logBatch.getId());
-                }
-
-                // Ack and trigger next
-                ackAndTriggerNext(logBatch.getId());
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                log.warn("Unable to poll log event", t);
-                if (!stopPolling) {
-                    schedulePollLog();
-                }
-            }
-        });
-    }
-
-    private void ackAndTriggerNext(long batchId) {
-        Futures.addCallback(a4cLogClient.asyncAck(batchId), new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void aVoid) {
-                triggerLogPolling();
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                log.warn("Unable to ack log request", t);
-                if (!stopPolling) {
-                    schedulePollLog();
-                }
-            }
-        });
     }
 
     public void preDestroy() {
