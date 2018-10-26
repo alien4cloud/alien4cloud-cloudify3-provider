@@ -8,6 +8,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The configuration for the cfy manager dedicated child context.
@@ -16,6 +19,9 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3.eventpolling" })
 @Slf4j
 public class EventPollingConfig {
+
+    // A static final index to identify pools in case of multiple instances.
+    private static final AtomicInteger POOL_ID = new AtomicInteger(0);
 
     @Bean(name = "event-dispatcher")
     public EventDispatcher eventDispatcher() {
@@ -67,5 +73,16 @@ public class EventPollingConfig {
     @Bean(name = "event-scheduler")
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
         return new SchedulerServiceFactoryBean("event-scheduler", SyspropConfig.getInt(SyspropConfig.EVENT_SCHEDULER_CORE_SIZE, 2));
+    }
+
+    @Bean(name= "event-async-thread-pool")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setThreadNamePrefix("event-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
+        threadPoolTaskExecutor.setCorePoolSize(SyspropConfig.getInt(SyspropConfig.EVENT_ASYNC_CORE_SIZE, 2));
+        threadPoolTaskExecutor.setMaxPoolSize(SyspropConfig.getInt(SyspropConfig.EVENT_ASYNC_MAX_SIZE, 3));
+        threadPoolTaskExecutor.setKeepAliveSeconds(SyspropConfig.getInt(SyspropConfig.EVENT_ASYNC_KEEPALIVESECONDS, 10));
+        threadPoolTaskExecutor.initialize();
+        return threadPoolTaskExecutor;
     }
 }

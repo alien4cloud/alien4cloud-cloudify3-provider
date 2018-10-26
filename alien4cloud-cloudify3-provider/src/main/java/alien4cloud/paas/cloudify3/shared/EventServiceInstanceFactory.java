@@ -1,8 +1,8 @@
 package alien4cloud.paas.cloudify3.shared;
 
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.eventpolling.EventPollingConfig;
-import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
 import alien4cloud.utils.ClassLoaderUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
@@ -18,7 +18,7 @@ public class EventServiceInstanceFactory {
     @Resource
     private ApplicationContext mainContext;
 
-    EventServiceInstance buildEventService(String url,EventClient client) {
+    EventServiceInstance buildEventService(String url, CloudConfiguration cloudConfiguration) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
         context.setParent(mainContext);
@@ -28,6 +28,6 @@ public class EventServiceInstanceFactory {
             context.refresh();
         });
 
-        return new EventServiceInstance(context,url,client);
+        return new EventServiceInstance(context,url,cloudConfiguration);
     }
 }

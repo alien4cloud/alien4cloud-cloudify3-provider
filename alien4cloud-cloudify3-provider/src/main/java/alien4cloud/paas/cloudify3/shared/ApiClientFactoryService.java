@@ -24,7 +24,6 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.exception.NotFoundException;
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
-import alien4cloud.paas.cloudify3.shared.restclient.A4cLogClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiClient;
 import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
@@ -164,12 +163,9 @@ public class ApiClientFactoryService {
         List<EventServiceInstance> eventServiceInstances = new ArrayList<>(registration.managerUrls.size());
 
         for (String managerUrl : registration.managerUrls) {
-            // Rebuild the url to find the one of the logs
             URI url = new URI(managerUrl);
             log.info("Register event client for url {}", url.toString());
-            //A4cLogClient a4cLogClient = new A4cLogClient(restTemplate, cfyEsDao, logServiceUri.toString());
-            //eventServiceInstances.add(new EventServiceInstance(a4cLogClient, scheduler, pluginConfigurationHolder));
-            eventServiceInstances.add(eventServiceFactory.buildEventService(managerUrl,registration.apiClient.getEventClient()));
+            eventServiceInstances.add(eventServiceFactory.buildEventService(managerUrl,registration.cloudConfiguration));
         }
 
         return eventServiceInstances;

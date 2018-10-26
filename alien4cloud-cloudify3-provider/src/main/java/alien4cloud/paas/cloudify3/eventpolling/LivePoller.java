@@ -169,8 +169,14 @@ public class LivePoller extends AbstractPoller {
 
     @PreDestroy
     public void shutdown() {
+
         // Stop the living thread
         stop();
+
+        // Stop the delayed pollers
+        for (DelayedPoller poller : delayedPollers) {
+            poller.stop();
+        }
 
         // and shutdown the excutor
         executorService.shutdownNow();

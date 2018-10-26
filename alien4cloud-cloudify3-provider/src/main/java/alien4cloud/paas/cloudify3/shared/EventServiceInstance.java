@@ -1,15 +1,31 @@
 package alien4cloud.paas.cloudify3.shared;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
 
+import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
+import alien4cloud.paas.cloudify3.error.CloudifyResponseErrorHandler;
 import alien4cloud.paas.cloudify3.eventpolling.*;
-import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
+
+import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
 
+import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.google.common.collect.Lists;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * Instance that polls events.
@@ -24,16 +40,6 @@ public class EventServiceInstance {
     private final AnnotationConfigApplicationContext context;
 
     /**
-     * Rest client
-     */
-    private final EventClient client;
-
-    /**
-     * Url
-     */
-    private final String url;
-
-    /**
      * EventDispatcher
      *
      * @param context
@@ -43,10 +49,10 @@ public class EventServiceInstance {
      */
     private final EventDispatcher eventDispatcher;
 
-    EventServiceInstance(AnnotationConfigApplicationContext context,String url,EventClient client) {
+    EventServiceInstance(AnnotationConfigApplicationContext context, String url, CloudConfiguration cloudConfiguration) {
         this.context = context;
-        this.client = client;
-        this.url = url;
+
+        EventClient client = buildClient(url,cloudConfiguration);
 
         EventCache eventCache = (EventCache) context.getBean("event-cache");
         eventCache.setUrl(url);
@@ -80,6 +86,59 @@ public class EventServiceInstance {
     }
 
     /**
+     * Build the rest client we will use
+     *
+     * @param url
+     * @param cloudConfiguration
+     * @return
+     */
+    private EventClient buildClient(String url,CloudConfiguration cloudConfiguration) {
+        // This is a new connection configuration, let's create it
+        AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
+        interceptor.setUserName(cloudConfiguration.getUserName());
+        interceptor.setPassword(cloudConfiguration.getPassword());
+        interceptor.setTenant(cloudConfiguration.getTenant());
+
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) context.getBean("event-async-thread-pool");
+
+        SimpleClientHttpRequestFactory clientFactory = new SimpleClientHttpRequestFactory();
+        clientFactory.setTaskExecutor(executor);
+
+        RestTemplate template = new RestTemplate(clientFactory);
+        template.setErrorHandler(new CloudifyResponseErrorHandler());
+        template.setMessageConverters(buildConverters());
+        template.setRequestFactory(clientFactory);
+
+        ApiHttpClient apiHttpClient = new ApiHttpClient(
+                new AsyncRestTemplate(clientFactory,template),
+                Arrays.asList(url),
+                interceptor,
+                cloudConfiguration.getFailOverRetry(),
+                cloudConfiguration.getFailOverDelay()
+            );
+
+        return new EventClient(apiHttpClient);
+    }
+
+    /**
+     * Build message converters to use with the client
+     */
+    private List<HttpMessageConverter<?>> buildConverters() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+        MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
+        jackson2HttpMessageConverter.setObjectMapper(objectMapper);
+
+        List<HttpMessageConverter<?>> messageConverters = Lists.newArrayList();
+        messageConverters.add(new ByteArrayHttpMessageConverter());
+        messageConverters.add(new ResourceHttpMessageConverter());
+        messageConverters.add(jackson2HttpMessageConverter);
+
+        return messageConverters;
+    }
+
+    /**
      * Register an event consumer.
      *
      * @param consumerId The id of the consumer (should be the orchestrator id).
@@ -90,6 +149,12 @@ public class EventServiceInstance {
         log.info("Registered event consumer {} ", consumerId);
     }
 
+    /**
+     * Unregister an event consumer.
+     *
+     * @param consumerId
+     * @return
+     */
     public synchronized Set<String> unRegister(String consumerId) {
         return eventDispatcher.unRegister(consumerId);
     }
