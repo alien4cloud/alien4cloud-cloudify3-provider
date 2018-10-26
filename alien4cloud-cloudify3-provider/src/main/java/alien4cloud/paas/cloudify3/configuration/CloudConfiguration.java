@@ -14,7 +14,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@FormProperties({ "url", "logQueueUrl", "locations", "userName", "password", "tenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
+@FormProperties({ "url", "locations", "userName", "password", "tenant", "disableSSLVerification", "delayBetweenDeploymentStatusPolling",
         "delayBetweenInProgressDeploymentStatusPolling", "failOverRetry", "failOverDelay", "connectionTimeout", "disableDiamondMonitorAgent", "kubernetes" })
 @EqualsAndHashCode(of = { "url", "userName", "password", "tenant" })
 public class CloudConfiguration {
@@ -48,7 +48,7 @@ public class CloudConfiguration {
     @Deprecated
     private Integer logQueuePort = 8200;
 
-    @NotNull
+    @Deprecated
     private String logQueueUrl;
 
     @NotNull

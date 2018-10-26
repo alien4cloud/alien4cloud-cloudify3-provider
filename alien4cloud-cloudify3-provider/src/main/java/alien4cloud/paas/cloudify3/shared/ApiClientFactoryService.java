@@ -69,12 +69,6 @@ public class ApiClientFactoryService {
 
         // First configure the manager urls
         List<String> managerUrls = getAndValidateUrls(cloudConfiguration.getUrl(), "manager");
-        List<String> logQueueUrls = getAndValidateUrls(cloudConfiguration.getLogQueueUrl(), "logQueue");
-
-        // check the size of both provided url.
-        if (managerUrls.size() != logQueueUrls.size()) {
-            throw new PluginConfigurationException("The number of log queue and manager url provided should be equals.");
-        }
 
         // This is a new connection configuration, let's create it
         AuthenticationInterceptor interceptor = new AuthenticationInterceptor();
@@ -84,7 +78,6 @@ public class ApiClientFactoryService {
         registration = new Registration();
         registration.cloudConfiguration = cloudConfiguration;
         registration.managerUrls = managerUrls;
-        registration.logQueueUrls = logQueueUrls;
         registration.apiClient = new ApiClient(
                 new ApiHttpClient(restTemplate, managerUrls, interceptor, cloudConfiguration.getFailOverRetry(), cloudConfiguration.getFailOverDelay()));
 
@@ -122,8 +115,7 @@ public class ApiClientFactoryService {
         }
         if (registration.eventServiceInstances == null) {
             // Create the event service instance that manage polling and dispatching of events.
-            log.info("Creating a new event listeners for cloudify manager with url(s) {}; logQueueUrl(s) {}", cloudConfiguration.getUrl(),
-                    cloudConfiguration.getLogQueueUrl());
+            log.info("Creating a new event listeners for cloudify manager with url(s) {}", cloudConfiguration.getUrl());
             registration.eventServiceInstances = createEventServiceInstances(registration);
         } else {
             log.info("Register consumer {} for event listener on existing connection {}", consumerId, cloudConfiguration.getUrl());
@@ -178,7 +170,7 @@ public class ApiClientFactoryService {
     @PreDestroy
     public synchronized void stopAllPollings() {
         for (Registration registration : clientRegistrations.values()) {
-            log.info("Stopping all polling for manager {}; logQueues {}", registration.managerUrls, registration.logQueueUrls);
+            log.info("Stopping all polling for manager {}", registration.managerUrls);
             for (EventServiceInstance eventServiceInstance : safe(registration.eventServiceInstances)) {
                 eventServiceInstance.preDestroy();
             }
@@ -188,7 +180,6 @@ public class ApiClientFactoryService {
     protected class Registration {
         private ApiClient apiClient;
         private List<String> managerUrls;
-        private List<String> logQueueUrls;
         private List<EventServiceInstance> eventServiceInstances;
         private CloudConfiguration cloudConfiguration;
     }
