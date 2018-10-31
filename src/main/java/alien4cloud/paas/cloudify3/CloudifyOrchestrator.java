@@ -206,9 +206,10 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             throw new PluginConfigurationException("Url must be defined.");
         }
 
-        // -1 == system timeout
-        Integer timeout = newConfiguration.getConnectionTimeout() == null ? -1 : newConfiguration.getConnectionTimeout();
-        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
+        if (newConfiguration.getConnectionTimeout() != null) {
+            // overrides the SyspropConfig.CLOUDIFY_CONNECT_TIMEOUT
+            simpleClientHttpRequestFactory.setConnectTimeout(newConfiguration.getConnectionTimeout());
+        }
 
         cloudConfigurationHolder.setConfigurationAndNotifyListeners(newConfiguration);
     }
@@ -221,7 +222,7 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        statusService.getStatus(deploymentContext.getDeploymentPaaSId(), callback);
+        statusService.getStatus(deploymentContext.getDeploymentPaaSId(), callback, true);
     }
 
     @Override

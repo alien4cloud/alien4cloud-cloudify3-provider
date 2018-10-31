@@ -78,9 +78,6 @@ public class StatusService {
     @Resource
     private RuntimePropertiesService runtimePropertiesService;
 
-    @Resource(name = "cloudify-async-thread-pool")
-    private ThreadPoolTaskExecutor threadPoolTaskExecutor;
-
     @Resource(name="cloudify-scheduler")
     private ListeningScheduledExecutorService scheduler;
 
@@ -323,20 +320,24 @@ public class StatusService {
         return deploymentStatus;
     }
 
+    public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback) {
+        getStatus(deploymentPaaSId, callback, false);
+    }
+
     /**
      * This is used to retrieve the status of the application, get from cache for monitored entries else get from cloudify
      *
      * @param deploymentPaaSId the deployment id
      * @param callback the callback when the status is ready
      */
-    public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback) {
+    public void getStatus(String deploymentPaaSId, IPaaSCallback<DeploymentStatus> callback, boolean onlyFromCache) {
         try {
             cacheLock.readLock().lock();
             DeploymentStatus statusFromCache = getStatusFromCache(deploymentPaaSId);
-            if (DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
+            if (onlyFromCache || DeploymentStatus.INIT_DEPLOYMENT == statusFromCache || isApplicationMonitored(deploymentPaaSId)) {
                 // The deployment is being created means that currently it's not monitored, it's in transition
                 // The deployment is currently monitored so the cache can be used
-                threadPoolTaskExecutor.execute(() -> callback.onSuccess(statusFromCache));
+                callback.onSuccess(statusFromCache);
             } else {
                 Futures.addCallback(asyncGetStatus(deploymentPaaSId), new FutureCallback<DeploymentStatus>() {
                     @Override
