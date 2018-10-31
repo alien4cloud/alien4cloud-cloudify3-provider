@@ -29,9 +29,9 @@ public class CloudConfigurationHolder {
     @Setter
     private VersionClient versionClient;
 
-    @Resource
-    @Setter
-    private BlueprintClient blueprintClient;
+//    @Resource
+//    @Setter
+//    private BlueprintClient blueprintClient;
 
     @Resource
     @Setter
