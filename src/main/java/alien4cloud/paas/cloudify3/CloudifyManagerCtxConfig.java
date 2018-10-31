@@ -160,6 +160,8 @@ public class CloudifyManagerCtxConfig {
     public SimpleClientHttpRequestFactory simpleClientHttpRequestFactory() {
         SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
         simpleClientHttpRequestFactory.setTaskExecutor(threadPoolTaskExecutor());
+        simpleClientHttpRequestFactory.setConnectTimeout(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_CONNECT_TIMEOUT, 20000));
+        simpleClientHttpRequestFactory.setReadTimeout(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_READ_TIMEOUT, 120000));
         return simpleClientHttpRequestFactory;
     }
 
@@ -186,5 +188,7 @@ public class CloudifyManagerCtxConfig {
     public SchedulerServiceFactoryBean schedulerServiceFactoryBean() {
         return new SchedulerServiceFactoryBean("event-scheduler", SyspropConfig.getInt(SyspropConfig.EVENT_SCHEDULER_CORE_SIZE, 2));
     }
+
+
 
 }
