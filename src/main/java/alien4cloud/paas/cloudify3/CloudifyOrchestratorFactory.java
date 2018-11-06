@@ -128,6 +128,7 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
                         while (eventService.getOrchestratorId() == null) {
                             Thread.sleep(5000);
                         }
+                        provider.setOrchestratorId(eventService.getOrchestratorId());
                         eventServiceMultiplexer.register(newConfiguration.getUrl(), newConfiguration.getUserName(), newConfiguration.getPassword(),
                                 eventService.getOrchestratorId(), eventService);
                     } catch (InterruptedException e) {
@@ -152,8 +153,11 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
         EventService eventService = context.getBean(EventService.class);
         CloudConfigurationHolder cloudConfigurationHolder = context.getBean(CloudConfigurationHolder.class);
         if (cloudConfigurationHolder.getConfiguration() != null && cloudConfigurationHolder.getConfiguration().getUrl() != null
-                && !cloudConfigurationHolder.getConfiguration().getUrl().isEmpty() && eventService.getOrchestratorId() != null) {
-            eventServiceMultiplexer.unRegister(cloudConfigurationHolder.getConfiguration().getUrl(), eventService.getOrchestratorId());
+                && !cloudConfigurationHolder.getConfiguration().getUrl().isEmpty()) {
+            log.info("Unregistering orchestrator " + cloudConfigurationHolder.getConfiguration().getUrl());
+            eventServiceMultiplexer.unRegister(cloudConfigurationHolder.getConfiguration().getUrl(), instance.getOrchestratorId());
+        } else {
+            log.info("No Unregistering orchestrator");
         }
 
         if (context == null) {

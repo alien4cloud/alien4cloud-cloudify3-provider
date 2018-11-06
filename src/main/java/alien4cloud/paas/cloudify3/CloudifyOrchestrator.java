@@ -48,6 +48,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component("cloudify-paas-provider-bean")
 public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfiguration> {
 
+    private String orchestratorId;
+
     @Resource(name = "cloudify-deployment-service")
     private DeploymentService deploymentService;
 
@@ -293,5 +295,13 @@ public class CloudifyOrchestrator implements IOrchestratorPlugin<CloudConfigurat
             }
         }
         return null;
+    }
+
+    public String getOrchestratorId() {
+        return orchestratorId;
+    }
+
+    public void setOrchestratorId(String orchestratorId) {
+        this.orchestratorId = orchestratorId;
     }
 }

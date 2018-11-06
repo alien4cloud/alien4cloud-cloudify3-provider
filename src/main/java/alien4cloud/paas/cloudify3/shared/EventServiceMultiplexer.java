@@ -41,13 +41,18 @@ public class EventServiceMultiplexer {
     public synchronized void register(final String managerUrl, final String username, final String password, String consumerId, IEventConsumer eventConsumer) {
 
         AnnotationConfigApplicationContext managerContext = managerContexts.get(managerUrl);
+        boolean contextCreated = false;
         if (managerContext == null) {
+            log.info("No context found for manager " + managerUrl);
             managerContext = startContext(managerUrl, username, password);
             managerContexts.put(managerUrl, managerContext);
+            contextCreated = true;
         }
         EventDispatcher eventDispatcher = (EventDispatcher) managerContext.getBean("event-dispatcher");
         eventDispatcher.register(consumerId, eventConsumer);
-        eventDispatcher.register(LogEventConsumer.LOG_EVENT_CONSUMER_ID, logEventConsumer);
+        if (contextCreated) {
+            eventDispatcher.register(LogEventConsumer.LOG_EVENT_CONSUMER_ID, logEventConsumer);
+        }
     }
 
     private AnnotationConfigApplicationContext startContext(String managerUrl, final String username, final String password) {
@@ -96,10 +101,11 @@ public class EventServiceMultiplexer {
         EventDispatcher eventDispatcher = (EventDispatcher) managerContext.getBean("event-dispatcher");
 
         Set<String> remaining = eventDispatcher.unRegister(consumerId);
-        if (hasRemaningConsumers(remaining)) {
-            log.info("No more consumers for manager {}.", consumerId, managerUrl);
+        if (remaining.size() == 1 && remaining.stream().findFirst().get().equals(LogEventConsumer.LOG_EVENT_CONSUMER_ID)) {
+            eventDispatcher.unRegister(LogEventConsumer.LOG_EVENT_CONSUMER_ID);
+            log.info("No more consumers for manager {}.", managerUrl);
             managerContext.destroy();
-            // TODO remove from map
+            managerContexts.remove(managerUrl);
         }
     }
 

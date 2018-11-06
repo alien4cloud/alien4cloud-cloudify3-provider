@@ -1,10 +1,7 @@
 package alien4cloud.paas.cloudify3;
 
 import alien4cloud.paas.cloudify3.error.CloudifyResponseErrorHandler;
-import alien4cloud.paas.cloudify3.eventpolling.DelayedPoller;
-import alien4cloud.paas.cloudify3.eventpolling.EventCache;
-import alien4cloud.paas.cloudify3.eventpolling.RecoveryPoller;
-import alien4cloud.paas.cloudify3.eventpolling.LivePoller;
+import alien4cloud.paas.cloudify3.eventpolling.*;
 import alien4cloud.paas.cloudify3.restclient.AsyncClientHttpRequestLogger;
 import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 import alien4cloud.paas.cloudify3.shared.EventClient;
@@ -189,6 +186,13 @@ public class CloudifyManagerCtxConfig {
         return new SchedulerServiceFactoryBean("event-scheduler", SyspropConfig.getInt(SyspropConfig.EVENT_SCHEDULER_CORE_SIZE, 2));
     }
 
-
+    @Bean(name = "event-scheduler-wrapper")
+    @SneakyThrows
+    public SchedulerWrapper schedulerHandler() {
+        // we wrap the scheduler in order to ensure it is stopped when this context is destroyed.
+        SchedulerWrapper schedulerWrapper = new SchedulerWrapper();
+        schedulerWrapper.setScheduler(schedulerServiceFactoryBean().getObject());
+        return schedulerWrapper;
+    }
 
 }

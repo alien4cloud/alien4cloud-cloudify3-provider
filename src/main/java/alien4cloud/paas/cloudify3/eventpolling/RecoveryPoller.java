@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.springframework.context.event.*;
 import org.springframework.context.event.EventListener;
 
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.xml.bind.DatatypeConverter;
 import java.time.Duration;
@@ -139,7 +140,7 @@ public class RecoveryPoller extends AbstractPoller {
         int occurenceCount = 0;
         // we loop polling the same period until the LivePoller starts polling.
         // by this way, we are sure we don't miss events that occur during startup
-        while (!livepollerStarted.get()) {
+        while (!livepollerStarted.get() && !stopRequested()) {
             occurenceCount++;
             logInfo("Will poll historical epoch {} -> {}, occurence {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), occurenceCount);
             doRecover();
@@ -237,6 +238,12 @@ public class RecoveryPoller extends AbstractPoller {
         sb.append("#").append(timestamp.getTime());
         sb.append("#").append(content.hashCode());
         return sb.toString();
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        // Stop the recovery task
+        stop();
     }
 
 }

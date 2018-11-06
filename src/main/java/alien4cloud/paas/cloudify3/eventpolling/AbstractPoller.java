@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 /**
@@ -60,6 +61,11 @@ public abstract class AbstractPoller {
 
     protected String url;
 
+    /**
+     * Poller should abort his work
+     */
+    private AtomicBoolean stopRequested = new AtomicBoolean(false);
+
     protected PollResult pollEpoch(Instant fromDate, Instant toDate) throws PollingException {
         return this.pollEpoch(fromDate, toDate, null);
     }
@@ -97,7 +103,7 @@ public abstract class AbstractPoller {
             logDebug("About to poll epoch {} -> {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate));
         }
 
-        while (true) {
+        while (!stopRequested()) {
 
             logDebug("About to poll epoch {} -> {} offset: {}, batch size: {}", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), offset, BATCH_SIZE);
 
@@ -110,6 +116,10 @@ public abstract class AbstractPoller {
             try {
                 events = Arrays.asList(future.get());
                 retryCount = 0;
+            } catch (InterruptedException e) {
+                if (stopRequested()) {
+                    break;
+                }
             } catch (Exception e) {
                 // an exception occurred while polling epoch
 //                if (retryCount >= MAX_RETRY_COUNT) {
@@ -126,7 +136,9 @@ public abstract class AbstractPoller {
                     // continue the loop, so continue to try request the same period until Cfy is up
                     continue;
                 } catch (InterruptedException e1) {
-                    // Nothing to do here
+                    if (stopRequested()) {
+                        break;
+                    }
                 }
             }
 
@@ -169,6 +181,15 @@ public abstract class AbstractPoller {
             logDebug("End of epoch polling {} -> {}, {} events polled in {} batches, {} dispatched, took {} ms", DateUtil.logDate(fromDate), DateUtil.logDate(toDate), eventPolledCount, batchCount, eventDispatchedCount, _startEpochPollingDate.until(Instant.now(), ChronoUnit.MILLIS));
         }
         return new PollResult(eventPolledCount, eventDispatchedCount, batchCount);
+    }
+
+    protected boolean stopRequested() {
+        return stopRequested.get();
+    }
+
+    protected void stop() {
+        logInfo("This poller will stop now.");
+        stopRequested.set(true);
     }
 
     protected final class PollResult {
