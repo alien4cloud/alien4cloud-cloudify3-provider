@@ -15,9 +15,11 @@ import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationIntercept
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.collect.Lists;
+import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.http.client.Netty4ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -99,10 +101,8 @@ public class EventServiceInstance {
         interceptor.setPassword(cloudConfiguration.getPassword());
         interceptor.setTenant(cloudConfiguration.getTenant());
 
-        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) context.getBean("event-async-thread-pool");
-
-        SimpleClientHttpRequestFactory clientFactory = new SimpleClientHttpRequestFactory();
-        clientFactory.setTaskExecutor(executor);
+        EventLoopGroup eventLoopGroup = (EventLoopGroup) context.getBean("cloudify-event-loop");
+        Netty4ClientHttpRequestFactory clientFactory = new Netty4ClientHttpRequestFactory(eventLoopGroup);
 
         RestTemplate template = new RestTemplate(clientFactory);
         template.setErrorHandler(new CloudifyResponseErrorHandler());

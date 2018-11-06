@@ -18,6 +18,11 @@ public class SyspropConfig {
     public static final String CLOUDIFY_ASYNC_KEEPALIVESECONDS = "a4c.cfy3.cloudify-async-thread-pool.keepAliveSeconds";
 
     /**
+     * The number of thread used for NIO event LOOP.
+     */
+    public static final String CLOUDIFY_EVENT_LOOP_CORE_SIZE = "a4c.cfy3.cloudify-event-loop.coreSize";
+
+    /**
      * The number of thread used to schedule events polling.
      */
     public static final String EVENT_SCHEDULER_CORE_SIZE = "a4c.cfy3.event-scheduler.coreSize";

@@ -1,11 +1,19 @@
 package alien4cloud.paas.cloudify3;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.client.AsyncClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.Netty4ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -26,6 +34,9 @@ import alien4cloud.paas.cloudify3.service.SchedulerServiceFactoryBean;
 @Configuration
 @ComponentScan(basePackages = { "alien4cloud.paas.cloudify3.shared" })
 public class PluginFactoryConfiguration {
+
+    private static final AtomicInteger POOL_ID = new AtomicInteger(0);
+
     @Bean(name = "cloudify-orchestrator")
     public CloudifyOrchestratorFactory cloudifyOrchestratorFactory() {
         return new CloudifyOrchestratorFactory();
@@ -47,11 +58,18 @@ public class PluginFactoryConfiguration {
         return threadPoolTaskExecutor;
     }
 
-    @Bean(name = "cloudify-async-http-request-factory")
-    public SimpleClientHttpRequestFactory simpleClientHttpRequestFactory() {
-        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
-        simpleClientHttpRequestFactory.setTaskExecutor(threadPoolTaskExecutor());
-        return simpleClientHttpRequestFactory;
+    @Bean(name = "cloudify-event-loop")
+    public EventLoopGroup eventLoopGroup() {
+        BasicThreadFactory factory = new BasicThreadFactory.Builder()
+                .namingPattern("cloudify-event-loop-" + POOL_ID.incrementAndGet() + "-%d")
+                .build();
+        return new NioEventLoopGroup(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_EVENT_LOOP_CORE_SIZE,10),factory);
+    }
+
+    @Bean(name = "cloudify-async-http-request-factory2")
+    public Netty4ClientHttpRequestFactory clientHttpRequestFactory() {
+        Netty4ClientHttpRequestFactory factory = new Netty4ClientHttpRequestFactory();
+        return factory;
     }
 
     @Bean(name = "cloudify-rest-template")
@@ -70,7 +88,7 @@ public class PluginFactoryConfiguration {
         messageConverters.add(jackson2HttpMessageConverter);
 
         // Sync rest template
-        RestTemplate syncRestTemplate = new RestTemplate(simpleClientHttpRequestFactory());
+        RestTemplate syncRestTemplate = new RestTemplate(clientHttpRequestFactory());
         syncRestTemplate.setErrorHandler(new CloudifyResponseErrorHandler());
         syncRestTemplate.setMessageConverters(messageConverters);
         return syncRestTemplate;
@@ -78,7 +96,7 @@ public class PluginFactoryConfiguration {
 
     @Bean(name = "cloudify-async-rest-template")
     public AsyncRestTemplate asyncRestTemplate() {
-        return new AsyncRestTemplate(simpleClientHttpRequestFactory(), restTemplate());
+        return new AsyncRestTemplate(clientHttpRequestFactory(), restTemplate());
     }
 
     @Primary

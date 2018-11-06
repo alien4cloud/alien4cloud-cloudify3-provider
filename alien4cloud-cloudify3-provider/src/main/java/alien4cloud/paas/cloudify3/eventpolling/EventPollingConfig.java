@@ -75,7 +75,7 @@ public class EventPollingConfig {
         return new SchedulerServiceFactoryBean("event-scheduler", SyspropConfig.getInt(SyspropConfig.EVENT_SCHEDULER_CORE_SIZE, 2));
     }
 
-    @Bean(name= "event-async-thread-pool")
+    /*@Bean(name= "event-async-thread-pool")
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(){
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setThreadNamePrefix("event-async-thread-pool-" + POOL_ID.incrementAndGet() + "-");
@@ -84,5 +84,5 @@ public class EventPollingConfig {
         threadPoolTaskExecutor.setKeepAliveSeconds(SyspropConfig.getInt(SyspropConfig.EVENT_ASYNC_KEEPALIVESECONDS, 10));
         threadPoolTaskExecutor.initialize();
         return threadPoolTaskExecutor;
-    }
+    }*/
 }

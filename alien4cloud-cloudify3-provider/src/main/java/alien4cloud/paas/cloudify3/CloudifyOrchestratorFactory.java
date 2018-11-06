@@ -14,6 +14,7 @@ import alien4cloud.paas.cloudify3.shared.ArtifactRegistryService;
 import alien4cloud.utils.ClassLoaderUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import io.netty.channel.EventLoopGroup;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
 import org.springframework.context.ApplicationContext;
@@ -136,8 +137,14 @@ public class CloudifyOrchestratorFactory implements IOrchestratorPluginFactory<C
             log.warn("Context not found for paaS provider instance {}", instance);
         } else {
             log.info("Dispose context created for paaS provider {}", instance);
+            closeEventLoop(context);
             context.close();
         }
+    }
+
+    private void closeEventLoop(AnnotationConfigApplicationContext context) {
+        EventLoopGroup eventLoopGroup = (EventLoopGroup) context.getBean("cloudify-event-loop");
+        eventLoopGroup.shutdownGracefully();
     }
 
     @Override
