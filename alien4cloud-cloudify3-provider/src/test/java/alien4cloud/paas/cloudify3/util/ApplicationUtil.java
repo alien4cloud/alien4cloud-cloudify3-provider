@@ -61,7 +61,7 @@ public class ApplicationUtil {
             applicationService.delete(application.getId());
         }
         Csar csar = parseYamlTopology(topologyFileName, locationName);
-        String applicationId = applicationService.create("alien", applicationName, applicationName, null);
+        String applicationId = applicationService.create("alien", applicationName, applicationName, null, null);
         // TODO validate this works
         ApplicationVersion version = applicationVersionService.createInitialVersion(applicationId, csar.getId());
         ApplicationEnvironment applicationEnvironment = applicationEnvironmentService.createApplicationEnvironment("alien", applicationId,
