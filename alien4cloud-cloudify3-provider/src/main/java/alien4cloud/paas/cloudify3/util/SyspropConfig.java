@@ -17,6 +17,10 @@ public class SyspropConfig {
     public static final String CLOUDIFY_ASYNC_MAX_SIZE = "a4c.cfy3.cloudify-async-thread-pool.maxSize";
     public static final String CLOUDIFY_ASYNC_KEEPALIVESECONDS = "a4c.cfy3.cloudify-async-thread-pool.keepAliveSeconds";
 
+    // Config for REST HTTP connections
+    public static final String CLOUDIFY_CONNECT_TIMEOUT = "a4c.cfy3.http.connectTimeoutMillis";
+    public static final String CLOUDIFY_READ_TIMEOUT = "a4c.cfy3.http.readTimeoutMillis";
+
     /**
      * The number of thread used to schedule events polling.
      */

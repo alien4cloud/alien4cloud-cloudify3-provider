@@ -1,5 +1,6 @@
 package alien4cloud.paas.cloudify3.restclient;
 
+import alien4cloud.paas.cloudify3.PluginContextConfiguration;
 import org.springframework.web.client.AsyncRestTemplate;
 
 import com.google.common.collect.Lists;
@@ -31,7 +32,7 @@ public abstract class AbstractRestClientTest {
             cloudifyManagerURL = MANAGER_URL;
         }
 
-        asyncRestTemplate = new PluginFactoryConfiguration().asyncRestTemplate();
+        asyncRestTemplate = new PluginContextConfiguration().asyncRestTemplate();
 
         authenticationInterceptor = new AuthenticationInterceptor();
         authenticationInterceptor.setUserName(MANAGER_USER);

@@ -137,6 +137,11 @@ public class LivePoller extends AbstractPoller {
             }
             try {
                 pollEpoch(fromDate, toDate);
+
+                if (stopRequested()) {
+                    break;
+                }
+
                 triggerDelayedPollers(fromDate, toDate);
             } catch (PollingException e) {
                 // TODO: manage disaster recovery

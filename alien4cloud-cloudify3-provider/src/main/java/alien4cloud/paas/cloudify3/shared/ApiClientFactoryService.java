@@ -19,7 +19,6 @@ import org.springframework.web.client.AsyncRestTemplate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import alien4cloud.dao.IGenericSearchDAO;
 import alien4cloud.exception.NotFoundException;
@@ -37,8 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class ApiClientFactoryService {
-    @Resource(name = "cloudify-scheduler")
-    private ListeningScheduledExecutorService scheduler;
     @Resource(name = "cloudify-async-rest-template")
     private AsyncRestTemplate restTemplate;
     @Resource

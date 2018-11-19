@@ -3,6 +3,7 @@ package alien4cloud.paas.cloudify3.shared;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import alien4cloud.paas.cloudify3.configuration.CloudConfiguration;
 import alien4cloud.paas.cloudify3.error.CloudifyResponseErrorHandler;
@@ -12,6 +13,7 @@ import alien4cloud.paas.cloudify3.shared.restclient.ApiHttpClient;
 import alien4cloud.paas.cloudify3.shared.restclient.EventClient;
 
 import alien4cloud.paas.cloudify3.shared.restclient.auth.AuthenticationInterceptor;
+import alien4cloud.paas.cloudify3.util.SyspropConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.google.common.collect.Lists;
@@ -102,6 +104,8 @@ public class EventServiceInstance {
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) context.getBean("event-async-thread-pool");
 
         SimpleClientHttpRequestFactory clientFactory = new SimpleClientHttpRequestFactory();
+        clientFactory.setConnectTimeout(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_CONNECT_TIMEOUT, 20000));
+        clientFactory.setReadTimeout(SyspropConfig.getInt(SyspropConfig.CLOUDIFY_READ_TIMEOUT, 120000));
         clientFactory.setTaskExecutor(executor);
 
         RestTemplate template = new RestTemplate(clientFactory);
@@ -160,6 +164,12 @@ public class EventServiceInstance {
     }
 
     public void preDestroy() {
+        ExecutorService svc1 = (ExecutorService) context.getBean("cloudify-scheduler");
+        ExecutorService svc2 = (ExecutorService) context.getBean("event-scheduler");
+
+        svc1.shutdownNow();
+        svc2.shutdownNow();
+
         context.destroy();
     }
 }

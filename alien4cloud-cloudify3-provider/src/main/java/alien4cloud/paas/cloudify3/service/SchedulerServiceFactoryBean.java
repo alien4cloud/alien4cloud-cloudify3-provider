@@ -37,7 +37,7 @@ public class SchedulerServiceFactoryBean implements FactoryBean<ListeningSchedul
                     .namingPattern(poolName + "-" + POOL_ID.incrementAndGet() + "-%d")
                     .build();
 
-             executor = Executors.newScheduledThreadPool(poolSize, factory);
+            executor = Executors.newScheduledThreadPool(poolSize, factory);
         } else {
             executor = Executors.newScheduledThreadPool(poolSize);
         }
